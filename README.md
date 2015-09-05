@@ -1,8 +1,8 @@
 # Sondra 
 
-**Author**: Jefferson Heard
-**Copyright**: 2015 Jefferson Heard
-**License**: [Apache 2.0](./LICENSE)
+* **Author**: Jefferson Heard
+* **Copyright**: 2015 Jefferson Heard
+* **License**: [Apache 2.0](./LICENSE)
 
 Sondra is an "ORM" for Python 3.x, Flask, and RethinkDB with some quite unique features. Sondra's goal is to aid full stack developers by letting them focus on data models and functionality instead of writing workarounds and glue code. It embraces common "shortcuts" developers take in common full-stack web applications, e.g. merging "Model" and "Controller" in the oft-used MVC pattern.
 
