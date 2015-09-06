@@ -1,3 +1,6 @@
+"""Core data document types.
+"""
+
 from collections.abc import MutableMapping, Mapping
 from abc import ABCMeta
 from copy import deepcopy, copy
@@ -14,6 +17,7 @@ from . import utils
 from .ref import Reference
 
 _validator = jsonschema.Draft4Validator
+
 
 BASIC_TYPES = {
     "date": {
@@ -60,13 +64,13 @@ BASIC_TYPES = {
 }
 
 
-def to_ref(doc):
+def _to_ref(doc):
     if isinstance(doc, Document):
         return doc.url
     else:
         return doc
 
-def from_ref(doc):
+def _from_ref(doc):
     env = Suite()
     if isinstance(doc, str):
         if doc.startswith(env.base_url):
@@ -76,24 +80,47 @@ def from_ref(doc):
     else:
         return doc
 
-
-references = partial(utils.mapjson, to_ref)
-documents = partial(utils.mapjson, from_ref)
+references = partial(utils.mapjson, _to_ref)
+documents = partial(utils.mapjson, _from_ref)
 
 class ValidationError(Exception):
-    pass
+    """This kind of validation error is thrown whenever an :class:`Application` or :class:`Collection` is
+    misconfigured."""
 
 class ValueHandler(object):
+    """This is base class for transforming values to/from RethinkDB representations to standard representations.
+
+    Attributes:
+        is_geometry (bool): Does this handle geometry/geographical values. Indicates to Sondra that indexing should
+            be handled differently.
+    """
     is_geometry = False
 
     def to_rql_repr(self, value):
+        """Transform the object value into a ReQL object for storage.
+
+        Args:
+            value: The value to transform
+
+        Returns:
+            object: A ReQL object.
+        """
         return value
 
     def from_rql_repr(self, value):
+        """Transform the object from a ReQL value into a standard value.
+
+        Args:
+            value (ReQL): The value to transform
+
+        Returns:
+            dict: A Python object representing the value.
+        """
         return value
 
 
 class Geometry(ValueHandler):
+    """A value handler for GeoJSON"""
     is_geometry = True
 
     def __init__(self, *allowed_types):
@@ -111,6 +138,7 @@ class Geometry(ValueHandler):
 
 
 class Date(ValueHandler):
+    """A value handler for Python dates"""
     def to_rql_repr(self, value):
         if isinstance(value, dict):
             return r.date(value['year'], value.get('month', None), value.get('day', None))
@@ -123,6 +151,7 @@ class Date(ValueHandler):
 
 
 class Time(ValueHandler):
+    """A valuehandler for Python datetimes"""
     def __init__(self, timezone='Z'):
         self.timezone = timezone
 
@@ -160,19 +189,20 @@ class Time(ValueHandler):
         return dt
 
 
-class EnvironmentException(Exception):
-    pass
+class SuiteException(Exception):
+    """Represents a misconfiguration in a :class:`Suite` class"""
 
 
 class ApplicationException(Exception):
-    pass
+    """Represents a misconfiguration in an :class:`Application` class definition"""
 
 
 class CollectionException(Exception):
-    pass
+    """Represents a misconfiguration in a :class:`Collection` class definition"""
 
 
 class Singleton(type):
+    """Define a singleton. This Suite class is a singleton."""
     instance = None
     def __call__(cls, *args, **kw):
         if not cls.instance:
@@ -181,6 +211,8 @@ class Singleton(type):
 
 
 class SuiteMetaclass(ABCMeta):
+    """This special bit of kit transforms the :class:`Suite`() call so that it always returns the instance of a
+    concrete subclass of Suite. There should only be one concrete subclass of Suite."""
     instance = None
     def __init__(cls, name, bases, nmspc):
         super(SuiteMetaclass, cls).__init__(name, bases, nmspc)
@@ -192,7 +224,7 @@ class SuiteMetaclass(ABCMeta):
 
     def __call__(cls, *args, **kwargs):
         if len(cls.registry) > 1:
-            raise EnvironmentException("There can only be one final environment class")
+            raise SuiteException("There can only be one final environment class")
 
         if not cls.instance:
             c = next(iter(cls.registry))
@@ -201,6 +233,23 @@ class SuiteMetaclass(ABCMeta):
 
 
 class Suite(Mapping, metaclass=SuiteMetaclass):
+    """This is the "environment" for Sondra. Similar to a `settings.py` file in Django, it defines the
+    environment in which all :class:`Application`s exist.
+
+    The Suite is also a mapping type, and it should be used to access or enumerate all the :class:`Application` objects
+    that are registered.
+
+    Attributes:
+        applications (dict): A mapping from application name to Application objects. Suite itself implements a mapping
+            protocol and this is its backend.
+        async (dict): (Unsupported)
+        base_url (str): The base URL for the API. The Suite will be mounted off of here.
+        logging (logging.Logging): The base logger for all of Sondra.
+        connections (dict): For each key in connections setup keyword args to be passed to `rethinkdb.connect()`
+        schema (dict): The schema of a suite is a dict where the keys are the names of :class:`Application` objects
+            registered to the suite. The values are the schemas of the named app.  See :class:`Application` for more
+            details on application schemas.
+    """
     applications = {}
     async = False
     base_url = "http://localhost:8000"
@@ -240,15 +289,31 @@ class Suite(Mapping, metaclass=SuiteMetaclass):
                 self.docstring_processor = lambda x: "<pre>" + str(x) + "</pre>"
 
     def register_application(self, app):
+        """This is called automatically whenever an Application object is constructed."""
         if app.slug in self.applications:
             self.log.error("Tried to register application '{0}' more than once.".format(app.slug))
-            raise EnvironmentException("Tried to register multiple applications with the same name.")
+            raise SuiteException("Tried to register multiple applications with the same name.")
 
         self.applications[app.slug] = app
         self.log.info('Registered application {0} to {1}'.format(app.__class__.__name__, app.url))
 
 
     def __getitem__(self, item):
+        """Application objects are indexed by "slug." Every Application object registered has its name slugified.
+
+        This means that if your app was called `MyCoolApp`, its registered name would be `my-cool-app`. This key is
+        used whether you are accessing the application via URL or locally via Python.  For example, the following
+        both produce the same result::
+
+            URL (yields schema as application/json):
+
+                http://localhost:5000/api/my-cool-app;schema
+
+            Python (yields schema as a dict):
+
+                suite = Suite()
+                suite['my-cool-app'].schema
+        """
         return self.applications[item]
 
     def __len__(self):
@@ -330,6 +395,12 @@ class ApplicationMetaclass(ABCMeta):
 
 
 class Application(Mapping, metaclass=ApplicationMetaclass):
+    """A reusable group of :class:`Collections` and optional top-level exposed functionality.
+
+    An Application can contain any number of :class:`Collection`s.
+
+
+    """
     db = 'default'
     connection = 'default'
     slug = None
@@ -495,6 +566,7 @@ class Collection(MutableMapping, metaclass=CollectionMetaclass):
     application = Application
     document_class = Document
     primary_key = "id"
+    private = False
     specials = {}
     indexes = []
     relations = []
