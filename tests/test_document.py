@@ -1,6 +1,7 @@
 import pytest
 
 from sondra import document
+from shapely.geometry import mapping, shape
 
 
 # WHy do we do this?  We need to test that the environment created by the Environment constructor is
@@ -93,7 +94,7 @@ class ItemGroup(document.Document):
         "properties": {
             "parent": {"type": "string"},
             "name": {"type": "string"},
-            "geometry": {"type", "object"},
+            "geometry": {"type": "object"},
             "items": {"type": "array", "items": {"type": "string"}}
         }
     }
@@ -259,7 +260,7 @@ def test_simple_document_create_and_delete(apps):
     
     assert 'CHINT-300.2014' in templates
     assert isinstance(templates['CHINT-300.2014'], TrackedItemTemplate)
-    assert templates['CHINT-300.2014']['baseGeometry'] == chint300["baseGeometry"]
+    assert mapping(templates['CHINT-300.2014']['baseGeometry']) == mapping(shape(chint300["baseGeometry"]))
     assert templates['CHINT-300.2014']['properties']['manufacturer'] == 'CHINT'
 
     chint300.delete()

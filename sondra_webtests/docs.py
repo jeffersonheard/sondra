@@ -73,6 +73,7 @@ class TrackedItemTemplates(document.Collection):
 class TrackedItem(document.Document):
     schema = {
         "type": "object",
+        "required": ["barcode", "template"],
         "properties": {
             "barcode": {"type": "string"},
             "template": {"type": "string"},
@@ -87,9 +88,9 @@ class TrackedItems(document.Collection):
     application = BaseApp
     primary_key = "barcode"
     specials = {
-        "location": document.Geometry("point")
+        "location": document.Geometry("Point")
     }
-    references = [("template", TrackedItemTemplates)]
+    relations = [("template", TrackedItemTemplates)]
     indexes = ("template","location")
 
 
@@ -99,7 +100,7 @@ class TrackedItemHistory(document.Document):
         "properties": {
             "item": {"type": "string"},
             "location": {"type": "object"},
-            "timestamp": {"type": "object"},
+            "timestamp": {"type": "string"},
             "properties": {"type": "object"}
         }
     }
@@ -109,7 +110,8 @@ class TrackedItemHistories(document.Collection):
     document_class = TrackedItemHistory
     application = BaseApp
     specials = {
-        "location": document.Geometry("point")
+        "location": document.Geometry("Point"),
+        "timestamp": document.Time(),
     }
     references = [("item", TrackedItem)]
     indexes = ("item", "location", "timestamp")
@@ -118,12 +120,15 @@ class TrackedItemHistories(document.Collection):
 class ItemGroup(document.Document):
     schema = {
         "type": "object",
-        "required": ["name","items"],
+        "required": ["name", "items"],
         "properties": {
             "parent": {"type": "string"},
             "name": {"type": "string"},
             "geometry": {"type": "object"},
-            "items": {"type": "array", "items": {"type": "string"}}
+            "items": {
+                "type": "array",
+                "items": {"type": "string"}
+            }
         }
     }
 
@@ -132,6 +137,6 @@ class ItemGroups(document.Collection):
     document_class = ItemGroup
     application = BaseApp
     specials = {
-        "geometry": document.Geometry('polygon')
+        "geometry": document.Geometry('Polygon')
     }
     references = [("parent", "self"), {"items": TrackedItems}]

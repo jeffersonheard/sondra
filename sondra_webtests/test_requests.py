@@ -190,10 +190,86 @@ def test_add_delete_document():
     assert len(get_empty.json()) == 0
 
 
-
-
 def test_add_delete_documents():
-    pass
+    tracked_item_templates = _url('api/base-app/tracked-item-templates')
+    tracked_items = _url('api/base-app/tracked-items')
+    tracked_item_template1 = {
+        "name": "test_template",
+        "category": "barcoded",
+        "baseGeoemtry": {"type": "Point", "coordinates": [1.5, 1.5]},
+        "properties": {
+            "prop1": True,
+            "prop2": 0,
+            "prop3": "yes"
+        }
+    }
+
+    # delete all documents in a collection
+    confirmed_dangerous_delete = requests.delete(tracked_item_templates, params={'delete_all': True})
+    assert confirmed_dangerous_delete.ok
+    confirmed_dangerous_delete = requests.delete(tracked_items, params={'delete_all': True})
+    assert confirmed_dangerous_delete.ok
+
+    # delete all documents in a collection, set delete_all to false and throw an error
+    dangerous_delete = requests.delete(tracked_item_templates, params={'delete_all': False})
+    assert not dangerous_delete.ok
+
+    # try to delete all documents in a collection, but don't specify "delete_all" to confirm
+    get_empty = requests.get(tracked_item_templates + ';json')
+    assert get_empty.ok
+    assert len(get_empty.json()) == 0
+
+    # add an item to the collection
+    post = requests.post(tracked_item_templates, data=json.dumps(tracked_item_template1))
+    assert post.ok
+
+    tracked_item_template1_ref = post.json()[0]
+    tracked_items_data = [{
+        'barcode': 'ABCD' + str(x).zfill(3),
+        'template': tracked_item_template1_ref,
+        'location': {"type": "Point", "coordinates": [1.5, 1.5]}
+    } for x in range(100)]
+    tracked_items_post = requests.post(tracked_items, data=json.dumps(tracked_items_data))
+    assert tracked_items_post.ok
+
+    tracked_items_keys = tracked_items_post.json()
+    assert len(tracked_items_keys) == len(tracked_items_data)
+    barcodes = sorted([b['barcode'] for b in tracked_items_data])
+    for i, x in enumerate(sorted(tracked_items_keys)):
+        assert x.endswith(barcodes[i])
+
+    # attempt to delete everything, but fail
+    dangerous_delete = requests.delete(tracked_item_templates)
+    assert not dangerous_delete.ok
+
+    # get the item we just added
+    get_one = requests.get(tracked_item_templates + '/test_template' + ';json')
+    assert get_one.ok
+    assert get_one.json() == tracked_item_template1
+
+    # get the help for a document
+    get_one = requests.get(tracked_item_templates + '/test_template' + ';help')
+    assert get_one.ok
+    assert get_one.text
+
+    # get the schema for a document
+    get_one = requests.get(tracked_item_templates + '/test_template' + ';schema')
+    assert get_one.ok
+    assert get_one.json() == docs.TrackedItemTemplates.schema
+
+    # get the first page of the docs added (one)
+    get_all = requests.get(tracked_item_templates + ';json')
+    assert get_all.ok
+    assert len(get_all.json()) < len(barcodes)
+
+    # delete the doc that we added
+    delete = requests.delete(tracked_item_templates + '/test_template')
+    assert delete.ok
+
+    # ensure there are no docs left in the data store
+    get_empty = requests.get(tracked_item_templates + ';json')
+    assert get_empty.ok
+    assert len(get_empty.json()) == 0
 
 
 def test_update_document():

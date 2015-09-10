@@ -39,7 +39,7 @@ class Reference(object):
             self.url = url
 
         # to allow browsers to pass fragments to the server, change fragment character
-        p_url = urlparse(url.replace("@", "#"))
+        p_url = urlparse(url.replace("@!", "#"))
 
         # if this is a relative URL, pass it through. Otherwise make sure that the base URL is the same.
         if not all((

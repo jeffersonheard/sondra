@@ -1,6 +1,7 @@
 import json
 from flask import Flask, request, current_app, Response
 
+from sondra.auth import Auth
 from sondra.flask import api_tree
 from sondra.document import Suite
 
@@ -11,6 +12,9 @@ app.debug = True
 
 app.suite = Suite()
 api = docs.BaseApp()
+auth = Auth()
+auth.create_database()
+auth.create_tables()
 api.create_database()
 api.create_tables()
 

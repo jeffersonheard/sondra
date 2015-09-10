@@ -290,6 +290,9 @@ class APIRequest(object):
         if self.reference.format in ('json','jsonp','geojson'):
             self._get_arguments()
 
+        if self.reference.kind in {'collection','document','subdocument'} and self.reference.get_collection().private:
+            raise PermissionError("The collection referenced in this request is marked private. It can only be used locally.")
+
         self.decision_tree = {
             'help': {
                 'application': {
@@ -871,8 +874,9 @@ class APIRequest(object):
 
     def add_collection_items(self):
         coll = self.reference.get_collection()
-        ret = coll.save(self.arguments, conflict='error')
-        return ret
+        changes = coll.save(self.arguments, conflict='error', return_changes=True)
+        keys = [(coll.url + '/' + k) for k in (value['new_val'][coll.primary_key] for value in changes['changes'])]
+        return keys
 
     def update_collection_items(self):
         coll = self.reference.get_collection()

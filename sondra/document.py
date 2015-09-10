@@ -6,15 +6,51 @@ from abc import ABCMeta
 from copy import deepcopy, copy
 from functools import partial
 from urllib.parse import urlparse
+from shapely.geometry import mapping, shape
+from shapely.geometry.base import BaseGeometry
 import json
 import jsonschema
 import rethinkdb as r
 from datetime import date, datetime, timezone
 import logging
 import logging.config
+import iso8601
 
 from . import utils
 from .ref import Reference
+
+
+DOCSTRING_PROCESSORS = {}
+try:
+    from docutils.core import publish_string
+    from sphinxcontrib import napoleon
+
+    def google_processor(s):
+        return publish_string(str(napoleon.GoogleDocstring(s)), writer_name='html')
+
+    def numpy_processor(s):
+        return publish_string(str(napoleon.NumpyDocstring(s)), writer_name='html')
+
+    DOCSTRING_PROCESSORS['google'] = google_processor
+    DOCSTRING_PROCESSORS['numpy'] = numpy_processor
+except ImportError:
+    pass
+
+try:
+    from docutils.core import publish_string
+
+    DOCSTRING_PROCESSORS['rst'] = partial(publish_string, writer_name='html')
+except ImportError:
+    pass
+
+try:
+    from markdown import markdown
+
+    DOCSTRING_PROCESSORS['markdown'] = markdown
+except ImportError:
+    pass
+
+DOCSTRING_PROCESSORS['preformatted'] = lambda x: "<pre>" + str(x) + "</pre>"
 
 _validator = jsonschema.Draft4Validator
 
@@ -107,7 +143,18 @@ class ValueHandler(object):
         """
         return value
 
-    def from_rql_repr(self, value):
+    def to_json_repr(self, value):
+        """Transform the object from a ReQL value into a standard value.
+
+        Args:
+            value (ReQL): The value to transform
+
+        Returns:
+            dict: A Python object representing the value.
+        """
+        return value
+
+    def to_python_repr(self, value):
         """Transform the object from a ReQL value into a standard value.
 
         Args:
@@ -132,25 +179,19 @@ class Geometry(ValueHandler):
                 raise ValidationError('value not in ' + ','.join(t for t in self.allowed_types))
         return r.geojson(value)
 
-    def from_rql_repr(self, value):
-        del value['$reql_type$']
-        return value
-
-
-class Date(ValueHandler):
-    """A value handler for Python dates"""
-    def to_rql_repr(self, value):
-        if isinstance(value, dict):
-            return r.date(value['year'], value.get('month', None), value.get('day', None))
+    def to_json_repr(self, value):
+        if isinstance(value, BaseGeometry):
+            return mapping(value)
         else:
-            return r.date(value.year, value.month, value.day)
+            return value
 
-    def from_rql_repr(self, value):
-        timestamp = r.epoch_time(value)
-        return date.fromtimestamp(timestamp)
+    def to_python_repr(self, value):
+        del value['$reql_type$']
+        return shape(value)
 
 
 class Time(ValueHandler):
+    DEFAULT_TIMEZONE='Z'
     """A valuehandler for Python datetimes"""
     def __init__(self, timezone='Z'):
         self.timezone = timezone
@@ -166,8 +207,10 @@ class Time(ValueHandler):
 
     def to_rql_repr(self, value):
         if isinstance(value, str):
-            return r.iso8601(value).as_timezone(self.timezone)
-        if isinstance(value, dict):
+            return r.iso8601(value, default_timezone=self.DEFAULT_TIMEZONE).in_timezone(self.timezone)
+        elif isinstance(value, int) or isinstance(value, float):
+            return datetime.fromtimestamp(value).isoformat()
+        elif isinstance(value, dict):
             return r.time(
                 value.get('year', None),
                 value.get('month', None),
@@ -176,17 +219,32 @@ class Time(ValueHandler):
                 value.get('minute', None),
                 value.get('second', None),
                 value.get('timezone', self.timezone),
-            ).as_timezone(self.timezone)
+            ).in_timezone(self.timezone)
         else:
-            return r.iso8601(value.isoformat()).as_timezone(self.timezone)
+            return r.iso8601(value.isoformat(), default_timezone=self.DEFAULT_TIMEZONE).as_timezone(self.timezone)
 
-    def from_rql_repr(self, value):
-        timestamp = value.to_epoch_time()
-        tz = value.timezone()
-        offset = self.from_rql_tz(tz)
-        offset_tz = timezone(offset)
-        dt = datetime.fromtimestamp(timestamp, tz=offset_tz)
-        return dt
+    def to_json_repr(self, value):
+        if isinstance(value, date) or isinstance(value, datetime):
+            return value.isoformat()
+        elif hasattr(value, 'to_epoch_time'):
+            return value.to_iso8601()
+        elif isinstance(value, int) or isinstance(value, float):
+            return datetime.fromtimestamp(value).isoformat()
+        else:
+            return value
+
+    def to_python_repr(self, value):
+        if isinstance(value, str):
+            return iso8601.parse_date(value)
+        elif isinstance(value, datetime):
+            return value
+        elif hasattr(value, 'to_epoch_time'):
+            timestamp = value.to_epoch_time()
+            tz = value.timezone()
+            offset = self.from_rql_tz(tz)
+            offset_tz = timezone(offset)
+            dt = datetime.fromtimestamp(timestamp, tz=offset_tz)
+            return dt
 
 
 class SuiteException(Exception):
@@ -226,10 +284,10 @@ class SuiteMetaclass(ABCMeta):
         if len(cls.registry) > 1:
             raise SuiteException("There can only be one final environment class")
 
-        if not cls.instance:
+        if not Suite.instance:
             c = next(iter(cls.registry))
-            cls.instance = super(SuiteMetaclass, c).__call__(*args, **kwargs)
-        return cls.instance
+            Suite.instance = super(SuiteMetaclass, c).__call__(*args, **kwargs)
+        return Suite.instance
 
 
 class Suite(Mapping, metaclass=SuiteMetaclass):
@@ -244,8 +302,15 @@ class Suite(Mapping, metaclass=SuiteMetaclass):
             protocol and this is its backend.
         async (dict): (Unsupported)
         base_url (str): The base URL for the API. The Suite will be mounted off of here.
-        logging (logging.Logging): The base logger for all of Sondra.
-        connections (dict): For each key in connections setup keyword args to be passed to `rethinkdb.connect()`
+        base_url_scheme (str): http or https, automatically set.
+        base_url_netloc (str): automatically set hostname of the suite.
+        connection_config (dict): For each key in connections setup keyword args to be passed to `rethinkdb.connect()`
+        connections (dict): RethinkDB connections for each key in ``connection_config``
+        docstring_processor_name (str): Any member of DOCSTRING_PROCESSORS: ``preformatted``, ``rst``, ``markdown``,
+            ``google``, or ``numpy``.
+        docstring_processor (callable): A ``lambda (str)`` that returns HTML for a docstring.
+        logging (dict): A dict-config for logging.
+        log (logging.Logger): A logger object configured with the above dictconfig.
         schema (dict): The schema of a suite is a dict where the keys are the names of :class:`Application` objects
             registered to the suite. The values are the schemas of the named app.  See :class:`Application` for more
             details on application schemas.
@@ -254,39 +319,31 @@ class Suite(Mapping, metaclass=SuiteMetaclass):
     async = False
     base_url = "http://localhost:8000"
     logging = None
-    connections = {
+    docstring_processor_name = 'preformatted'
+    connection_config = {
         'default': {}
     }
 
     def __init__(self):
-        self.connections = {name: r.connect(**kwargs) for name, kwargs in self.connections.items()}
-        self._prefix_len = len(self.base_url)
-        p_base_url = urlparse(self.base_url)
-
-        #: str: http or https
-        self.base_url_scheme = p_base_url.scheme
-
-        #: str: host
-        self.base_url_netloc = p_base_url.netloc
-
-        #: str: offset path for all applications.  Not supported currently.
-        self.base_url_path = p_base_url.path
-
         if self.logging:
             logging.config.dictConfig(self.logging)
+        else:
+            logging.basicConfig()
 
         self.log = logging  # use root logger for the environment
 
-        try:
-            from docutils.core import publish_string
-            self.docstring_processor = partial(publish_string, writer_name='html')
+        self.connections = {name: r.connect(**kwargs) for name, kwargs in self.connection_config.items()}
+        for name in self.connections:
+            self.log.warning("Connection established to '{0}'".format(name))
 
-        except ImportError:
-            try:
-                from markdown import markdown
-                self.docstring_processor = markdown
-            except ImportError:
-                self.docstring_processor = lambda x: "<pre>" + str(x) + "</pre>"
+        p_base_url = urlparse(self.base_url)
+        self.base_url_scheme = p_base_url.scheme
+        self.base_url_netloc = p_base_url.netloc
+        self.base_url_path = p_base_url.path
+        self.log.warning("Suite base url is: '{0}".format(self.base_url))
+
+        self.docstring_processor = DOCSTRING_PROCESSORS[self.docstring_processor_name]
+        self.log.info('Docstring processor is {0}')
 
     def register_application(self, app):
         """This is called automatically whenever an Application object is constructed."""
@@ -399,12 +456,12 @@ class Application(Mapping, metaclass=ApplicationMetaclass):
 
     An Application can contain any number of :class:`Collection`s.
 
-
     """
     db = 'default'
     connection = 'default'
     slug = None
     collections = None
+    anonymous_reads = True
 
     def __init__(self, name=None):
         self.env = Suite()
@@ -436,11 +493,17 @@ class Application(Mapping, metaclass=ApplicationMetaclass):
 
     def create_tables(self, *args, **kwargs):
         for collection_class in self.collections.values():
-            collection_class.create_table(*args, **kwargs)
+            try:
+                collection_class.create_table(*args, **kwargs)
+            except:
+                pass
 
     def drop_tables(self, *args, **kwargs):
         for collection_class in self.collections.values():
-            collection_class.drop_table(*args, **kwargs)
+            try:
+                collection_class.drop_table(*args, **kwargs)
+            except:
+                pass
 
     def create_database(self):
         try:
@@ -494,16 +557,17 @@ class Document(MutableMapping):
             self[k] = v
 
     @property
-    def id(self):
-        return self.obj.get(self.collection.primary_key, None)
-
-    @property
     def application(self):
         return self.collection.application
+
+    @property
+    def id(self):
+        return self.obj.get(self.collection.primary_key, None)
 
     @id.setter
     def id(self, v):
         self.obj[self.collection.primary_key] = v
+        self.url = '/'.join((self.collection.url, v))
 
     @property
     def name(self):
@@ -570,6 +634,7 @@ class Collection(MutableMapping, metaclass=CollectionMetaclass):
     specials = {}
     indexes = []
     relations = []
+    anonymous_reads = True
 
     @property
     def table(self):
@@ -625,10 +690,15 @@ class Collection(MutableMapping, metaclass=CollectionMetaclass):
         self.after_table_drop()
         return ret
 
-    def _from_rql_repr(self, doc):
+    def _to_python_repr(self, doc):
         for property, special in self.specials.items():
             if property in doc:
-                doc[property] = special.from_rql_repr(doc[property])
+                doc[property] = special.to_python_repr(doc[property])
+
+    def _to_json_repr(self, doc):
+        for property, special in self.specials.items():
+            if property in doc:
+                doc[property] = special.to_json_repr(doc[property])
 
     def _to_rql_repr(self, doc):
         for property, special in self.specials.items():
@@ -638,7 +708,7 @@ class Collection(MutableMapping, metaclass=CollectionMetaclass):
     def __getitem__(self, key):
         doc = self.table.get(key).run(self.application.connection)
         if doc:
-            self._from_rql_repr(doc)
+            self._to_python_repr(doc)
             return self.document_class(doc, collection=self)
         else:
             raise KeyError('{0} not found in {1}'.format(key, self.url))
@@ -653,7 +723,7 @@ class Collection(MutableMapping, metaclass=CollectionMetaclass):
 
     def __iter__(self):
         for doc in self.table.run(self.application.connection):
-            self._from_rql_repr(doc)
+            self._to_python_repr(doc)
             yield doc
 
     def __contains__(self, item):
@@ -665,7 +735,7 @@ class Collection(MutableMapping, metaclass=CollectionMetaclass):
 
     def q(self, query):
         for doc in query.run(self.application.connection):
-            self._from_rql_repr(doc)
+            self._to_python_repr(doc)
             yield self.document_class(doc, collection=self)
 
     def doc(self, kwargs):
@@ -673,7 +743,9 @@ class Collection(MutableMapping, metaclass=CollectionMetaclass):
 
     def create(self,kwargs):
         doc = self.document_class(kwargs, collection=self)
-        self.save(doc, conflict="error")
+        ret = self.save(doc, conflict="error")
+        if 'generated_keys' in ret:
+            doc.id = ret['generated_keys'][0]
         return doc
 
     def validator(self, value):
@@ -721,21 +793,23 @@ class Collection(MutableMapping, metaclass=CollectionMetaclass):
             docs = [docs]
 
         values = []
+        self.before_save()
         for value in docs:
             if isinstance(value, Document):
                 value = copy(value.obj)
 
             self.before_validation()
             value = references(value)  # get rid of Document objects and turn them into URLs
+            self._to_json_repr(value)
             jsonschema.validate(value, self.schema)
             self.validator(value)
 
-            self.before_save()
             self._to_rql_repr(value)
             values.append(value)
-            self.after_save()
 
-        return self.table.insert(*values, **kwargs).run(self.application.connection)
+        ret = self.table.insert(values, **kwargs).run(self.application.connection)
+        self.after_save()
+        return ret
 
 
 
