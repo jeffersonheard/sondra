@@ -1,5 +1,4 @@
 from urllib.parse import urlencode, urlparse, parse_qs
-import inspect
 from .utils import is_exposed
 
 
@@ -22,20 +21,20 @@ class Reference(object):
             url = url[:-1]
 
         self.url = url
-        self.app = app = kw.get("app")
-        self.app_method = app_method = kw.get("app_method")
-        self.coll = coll = kw.get("coll")
-        self.coll_method = coll_method = kw.get("coll_method")
-        self.doc = doc = kw.get("doc")
-        self.doc_method = doc_method = kw.get("doc_method")
-        self.fragment = fragment = kw.get("fragment")
+        self.app =  kw.get("app")
+        self.app_method = kw.get("app_method")
+        self.coll = kw.get("coll")
+        self.coll_method = kw.get("coll_method")
+        self.doc = kw.get("doc")
+        self.doc_method = kw.get("doc_method")
+        self.fragment = kw.get("fragment")
         self.format = format = kw.get("format", 'json')
         self.query = query = kw.get("query")
         self.vargs = vargs = kw.get("vargs", [])
         self.kwargs = kwargs = kw.get("kwargs", {})
 
         if not url:
-            url = self.construct(**kw)
+            url = self.construct()
             self.url = url
 
         # to allow browsers to pass fragments to the server, change fragment character

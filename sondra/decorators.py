@@ -107,7 +107,7 @@ def _parse_arg(instance, arg):
     return arg
 
 
-def expose(method, authorization=None, modifies_args=()):
+def expose(method, help_is_public=True, schema_is_public=True, admin_required=False, anonymous=False, modifies_args=()):
     """Defines a method that is exposable as an API call on the defining class.
 
     This method parses function annotations to determine the schema of arguments and returns. All
@@ -133,8 +133,10 @@ def expose(method, authorization=None, modifies_args=()):
         modifies_args={str}: The names of any Document arguments that the method might modify. This
             helps the API do permissions checking.
     """
-
-    method.authorize = authorization or (lambda request, user: True)
+    method.admin_required = admin_required
+    method.help_is_public = help_is_public
+    method.schema_is_public = schema_is_public
+    method.anonymous = anonymous
     method.modifies_args = modifies_args
     method.request_schema = _request_schema
     method.response_schema = _response_schema

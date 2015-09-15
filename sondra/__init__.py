@@ -1,1 +1,5 @@
-from . import api, decorators, django, document, ref, flask, utils
+from . import api, document, decorators, django, ref, flask, utils
+from .document import Document
+from .suite import Suite
+from .application import Application
+from .collection import Collection

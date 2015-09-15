@@ -1,21 +1,591 @@
-from sondra.document import Application, Collection, Document, Time
+from functools import reduce, singledispatch
+from sondra.application import Application
+from sondra.collection import Collection
+from sondra.document import Document, Time
 from sondra.decorators import expose
 import datetime
 import bcrypt
 import jwt
 import rethinkdb as r
+from types import MethodType
 
-class Authorization(object):
-    def authorize(self, user, permission):
-        return True
-
-
-class JWTAuthentication(object):
-    def authenticate(self, user, password):
-        pass
+from .utils import is_exposed
+from sondra.api import RequestProcessor
 
 
-class Auth(Application):
+@singledispatch
+def _permission_key(obj):
+    if hasattr(obj, 'permission_key'):
+        return obj.permission_key()
+    raise PermissionError("Object has no key")
+
+
+@singledispatch(Application)
+def _permission_key(obj):
+    return (obj.slug,)
+
+
+@singledispatch(Collection)
+def _permission_key(obj):
+    return (obj.application.slug, obj.slug)
+
+
+@singledispatch(Document)
+def _permission_key(obj):
+    return (obj.collection.application.slug, obj.collection.slug, obj.slug)
+
+
+@singledispatch(MethodType)
+def _permission_key(obj):
+    if is_exposed(obj):
+        return _permission_key(obj.__self__)
+
+
+def _has_permission(perm, permission_tree, keys, default=False):
+    """Descends the permission tree looking for the finest grained permission."""
+    p = default
+    for k in keys:
+        new_p = permission_tree['$p'].get(perm, None)
+        if new_p is not None:
+            p = new_p
+        permission_tree = permission_tree.get(k, None)
+        if permission_tree is None:
+            break
+
+    return p
+
+
+class AuthorizableDocument(Document):
+    anonymous_read = None
+    anonymous_write = None
+    anonymous_update = None
+    anonymous_delete = None
+    anonymous_help = None
+    anonymous_schema = None
+    check_document_permissions = False
+    
+    def can_read(self, user):
+        if self.anonymous_read is True:
+            return True
+        elif user is None:
+            if self.anonymous_read is None:
+                return self.collection.can_read(user)
+            else:
+                return self.anonymous_read
+        elif not self.check_document_permissions:
+            return self.collection.can_read(user)
+        else:
+            if user.get('admin', False):
+                return True
+            
+            app = self.application.slug
+            coll = self.collection.slug
+            permission_tree = user.permissions()
+            app_permissions = permission_tree.get(app, {})
+            coll_permissions = app_permissions.get(coll, {})
+            my_permissions = coll_permissions.get(self.id, None)
+            
+            user_can_read = None
+            if my_permissions:
+                user_can_read = my_permissions['_p'].get('read', None)
+            
+            if user_can_read is None:
+                user_can_read = self.collection.can_read(user)
+            
+            return user_can_read is True
+            
+    def can_write(self, user):
+        if self.anonymous_write is True:
+            return True
+        elif user is None:
+            if self.anonymous_write is None:
+                return self.collection.can_write(user)
+            else:
+                return self.anonymous_write
+        elif not self.check_document_permissions:
+            return self.collection.can_write(user)
+        else:
+            if user.get('admin', False):
+                return True
+            
+            app = self.application.slug
+            coll = self.collection.slug
+            permission_tree = user.permissions()
+            app_permissions = permission_tree.get(app, {})
+            coll_permissions = app_permissions.get(coll, {})
+            my_permissions = coll_permissions.get(self.id, None)
+            
+            user_can_write = None
+            if my_permissions:
+                user_can_write = my_permissions['_p'].get('write', None)
+            
+            if user_can_write is None:
+                user_can_write = self.collection.can_write(user)
+            
+            return user_can_write is True
+            
+    def can_update(self, user):
+        if self.anonymous_update is True:
+            return True
+        elif user is None:
+            if self.anonymous_update is None:
+                return self.collection.can_update(user)
+            else:
+                return self.anonymous_update
+        elif not self.check_document_permissions:
+            return self.collection.can_update(user)
+        else:
+            if user.get('admin', False):
+                return True
+            
+            app = self.application.slug
+            coll = self.collection.slug
+            permission_tree = user.permissions()
+            app_permissions = permission_tree.get(app, {})
+            coll_permissions = app_permissions.get(coll, {})
+            my_permissions = coll_permissions.get(self.id, None)
+            
+            user_can_update = None
+            if my_permissions:
+                user_can_update = my_permissions['_p'].get('update', None)
+            
+            if user_can_update is None:
+                user_can_update = self.collection.can_update(user)
+            
+            return user_can_update is True
+        
+    def can_delete(self, user):
+        if self.anonymous_delete is True:
+            return True
+        elif user is None:
+            if self.anonymous_delete is None:
+                return self.collection.can_delete(user)
+            else:
+                return self.anonymous_delete
+        elif not self.check_document_permissions:
+            return self.collection.can_delete(user)
+        else:
+            if user.get('admin', False):
+                return True
+            
+            app = self.application.slug
+            coll = self.collection.slug
+            permission_tree = user.permissions()
+            app_permissions = permission_tree.get(app, {})
+            coll_permissions = app_permissions.get(coll, {})
+            my_permissions = coll_permissions.get(self.id, None)
+            
+            user_can_delete = None
+            if my_permissions:
+                user_can_delete = my_permissions['_p'].get('delete', None)
+            
+            if user_can_delete is None:
+                user_can_delete = self.collection.can_delete(user)
+            
+            return user_can_delete is True
+            
+    def can_view_help(self, user):
+        if self.anonymous_help is True:
+            return True
+        elif user is None:
+            if self.anonymous_help is None:
+                return self.collection.can_help(user)
+            else:
+                return self.anonymous_help
+        elif not self.check_document_permissions:
+            return self.collection.can_help(user)
+        else:
+            if user.get('admin', False):
+                return True
+            
+            app = self.application.slug
+            coll = self.collection.slug
+            permission_tree = user.permissions()
+            app_permissions = permission_tree.get(app, {})
+            coll_permissions = app_permissions.get(coll, {})
+            my_permissions = coll_permissions.get(self.id, None)
+            
+            user_can_help = None
+            if my_permissions:
+                user_can_help = my_permissions['_p'].get('help', None)
+            
+            if user_can_help is None:
+                user_can_help = self.collection.can_help(user)
+            
+            return user_can_help is True
+            
+    def can_view_schema(self, user):
+        if self.anonymous_schema is True:
+            return True
+        elif user is None:
+            if self.anonymous_schema is None:
+                return self.collection.can_schema(user)
+            else:
+                return self.anonymous_schema
+        elif not self.check_document_permissions:
+            return self.collection.can_schema(user)
+        else:
+            if user.get('admin', False):
+                return True
+            
+            app = self.application.slug
+            coll = self.collection.slug
+            permission_tree = user.permissions()
+            app_permissions = permission_tree.get(app, {})
+            coll_permissions = app_permissions.get(coll, {})
+            my_permissions = coll_permissions.get(self.id, None)
+            
+            user_can_schema = None
+            if my_permissions:
+                user_can_schema = my_permissions['_p'].get('schema', None)
+            
+            if user_can_schema is None:
+                user_can_schema = self.collection.can_schema(user)
+            
+            return user_can_schema is True
+            
+
+class AuthorizableCollection(Collection):
+    anonymous_read = None
+    anonymous_write = None
+    anonymous_update = None
+    anonymous_delete = None
+    anonymous_help = None
+    anonymous_schema = None
+
+    def can_read(self, user):
+        if self.anonymous_read is True:
+            return True
+        elif user is None:
+            if self.anonymous_read is None:
+                return self.application.can_read(user)
+            else:
+                return self.anonymous_read
+        else:
+            if user.get('admin', False):
+                return True
+
+            app = self.application.slug
+            permission_tree = user.permissions()
+            app_permissions = permission_tree.get(app, {})
+            coll_permissions = app_permissions.get(self.slug, None)
+
+            user_can_read = None
+            if coll_permissions:
+                user_can_read = coll_permissions['_p'].get('read', None)
+
+            if user_can_read is None:
+                user_can_read = self.application.can_read(user)
+
+            return user_can_read is True
+
+    def can_write(self, user):
+        if self.anonymous_write is True:
+            return True
+        elif user is None:
+            if self.anonymous_write is None:
+                return self.application.can_write(user)
+            else:
+                return self.anonymous_write
+        else:
+            if user.get('admin', False):
+                return True
+
+            app = self.application.slug
+            permission_tree = user.permissions()
+            app_permissions = permission_tree.get(app, {})
+            coll_permissions = app_permissions.get(self.slug, None)
+
+            user_can_write = None
+            if coll_permissions:
+                user_can_write = coll_permissions['_p'].get('write', None)
+
+            if user_can_write is None:
+                user_can_write = self.application.can_write(user)
+
+            return user_can_write is True
+
+    def can_update(self, user):
+        if self.anonymous_update is True:
+            return True
+        elif user is None:
+            if self.anonymous_update is None:
+                return self.application.can_update(user)
+            else:
+                return self.anonymous_update
+        else:
+            if user.get('admin', False):
+                return True
+
+            app = self.application.slug
+            permission_tree = user.permissions()
+            app_permissions = permission_tree.get(app, {})
+            coll_permissions = app_permissions.get(self.slug, None)
+
+            user_can_update = None
+            if coll_permissions:
+                user_can_update = coll_permissions['_p'].get('update', None)
+
+            if user_can_update is None:
+                user_can_update = self.application.can_update(user)
+
+            return user_can_update is True
+
+    def can_delete(self, user):
+        if self.anonymous_delete is True:
+            return True
+        elif user is None:
+            if self.anonymous_delete is None:
+                return self.application.can_delete(user)
+            else:
+                return self.anonymous_delete
+        else:
+            if user.get('admin', False):
+                return True
+
+            app = self.application.slug
+            permission_tree = user.permissions()
+            app_permissions = permission_tree.get(app, {})
+            coll_permissions = app_permissions.get(self.slug, None)
+
+            user_can_delete = None
+            if coll_permissions:
+                user_can_delete = coll_permissions['_p'].get('delete', None)
+
+            if user_can_delete is None:
+                user_can_delete = self.application.can_delete(user)
+
+            return user_can_delete is True
+
+    def can_view_help(self, user):
+        if self.anonymous_help is True:
+            return True
+        elif user is None:
+            if self.anonymous_help is None:
+                return self.application.can_view_help(user)
+            else:
+                return self.anonymous_help
+        else:
+            if user.get('admin', False):
+                return True
+
+            app = self.application.slug
+            permission_tree = user.permissions()
+            app_permissions = permission_tree.get(app, {})
+            coll_permissions = app_permissions.get(self.slug, None)
+
+            user_can_help = None
+            if coll_permissions:
+                user_can_help = coll_permissions['_p'].get('help', None)
+
+            if user_can_help is None:
+                user_can_help = self.application.can_view_help(user)
+
+            return user_can_help is True
+
+    def can_view_schema(self, user):
+        if self.anonymous_schema is True:
+            return True
+        elif user is None:
+            if self.anonymous_schema is None:
+                return self.application.can_view_schema(user)
+            else:
+                return self.anonymous_schema
+        else:
+            if user.get('admin', False):
+                return True
+
+            app = self.application.slug
+            permission_tree = user.permissions()
+            app_permissions = permission_tree.get(app, {})
+            coll_permissions = app_permissions.get(self.slug, None)
+
+            user_can_schema = None
+            if coll_permissions:
+                user_can_schema = coll_permissions['_p'].get('schema', None)
+
+            if user_can_schema is None:
+                user_can_schema = self.application.can_view_schema(user)
+
+            return user_can_schema is True
+
+
+class AuthorizableApplication(Application):
+    anonymous_read = True
+    anonymous_write = False
+    anonymous_update = False
+    anonymous_delete = False
+    anonymous_help = True
+    anonymous_schema = False
+    
+    def can_read(self, user):
+        if self.anonymous_read is True:
+            return True
+        elif user is None:
+            return self.anonymous_read is True
+        else:
+            if user.get('admin', False):
+                return True
+
+            permission_tree = user.permissions()
+            app_permissions = permission_tree.get(self.slug, None)
+            
+            user_can_read = None
+            if app_permissions:
+                user_can_read = app_permissions['_p'].get('read', None)
+
+            return user_can_read is True
+
+    def can_write(self, user):
+        if self.anonymous_read is True:
+            return True
+        elif user is None:
+            return self.anonymous_write is True
+        else:
+            if user.get('admin', False):
+                return True
+
+            permission_tree = user.permissions()
+            app_permissions = permission_tree.get(self.slug, None)
+            
+            user_can_read = None
+            if app_permissions:
+                user_can_read = app_permissions['_p'].get('read', None)
+
+            return user_can_read is True
+        
+    def can_update(self, user):
+        if self.anonymous_read is True:
+            return True
+        elif user is None:
+            return self.anonymous_update is True
+        else:
+            if user.get('admin', False):
+                return True
+
+            permission_tree = user.permissions()
+            app_permissions = permission_tree.get(self.slug, None)
+            
+            user_can_read = None
+            if app_permissions:
+                user_can_read = app_permissions['_p'].get('read', None)
+
+            return user_can_read is True
+        
+    def can_delete(self, user):
+        if self.anonymous_read is True:
+            return True
+        elif user is None:
+            return self.anonymous_delete is True
+        else:
+            if user.get('admin', False):
+                return True
+
+            permission_tree = user.permissions()
+            app_permissions = permission_tree.get(self.slug, None)
+            
+            user_can_read = None
+            if app_permissions:
+                user_can_read = app_permissions['_p'].get('read', None)
+
+            return user_can_read is True
+
+    def can_view_help(self, user):
+        if self.anonymous_help is True:
+            return True
+        elif user is None:
+            return self.anonymous_help is not False
+        else:
+            if user.get('admin', False):
+                return True
+
+            permission_tree = user.permissions()
+            app_permissions = permission_tree.get(self.slug, None)
+            
+            user_can_help = None
+            if app_permissions:
+                user_can_help = app_permissions['_p'].get('help', None)
+
+            return user_can_help is True
+
+    def can_view_schema(self, user):
+        if self.anonymous_schema is True:
+            return True
+        elif user is None:
+            return self.anonymous_help is not False
+        else:
+            if user.get('admin', False):
+                return True
+
+            permission_tree = user.permissions()
+            app_permissions = permission_tree.get(self.slug, None)
+            
+            user_can_schema = None
+            if app_permissions:
+                user_can_schema = app_permissions['_p'].get('schema', None)
+
+            return user_can_schema is True
+
+
+class AuthRequestProcessor(RequestProcessor):
+    """APIRequest processor makes sure that a user is authorized to perform an operation"""
+
+    def process_api_request(self, request):
+        auth_token = request.api_arguments.get('_auth', None)
+        if auth_token:
+            user = request.suite['auth'].check(auth_token)
+        else:
+            user = None
+
+        if request.reference.kind == 'subdocument':
+            _, auth_target, _, _ = request.reference.value
+        else:
+            auth_target = request.reference.value
+
+        permission_name = self._get_permission_name(request)
+
+        if permission_name == 'read':
+            authorized =  auth_target.can_read(user)
+        elif permission_name == 'write':
+            authorized =  auth_target.can_write(user)
+        elif permission_name == 'update':
+            authorized =  auth_target.can_update(user)
+        elif permission_name == 'delete':
+            authorized =  auth_target.can_delete(user)
+        elif permission_name == 'help':
+            authorized =  auth_target.can_view_help(user)
+        else:  # permission_name == 'schema':
+            authorized =  auth_target.can_view_schema(user)
+
+        if not authorized:
+            msg = "Permission '{name}' denied for '{user}' accessing '{url}'".format(
+                user=user,
+                url=request.reference.url,
+                name=permission_name
+            )
+            request.suite.log.error(msg)
+            raise PermissionError(msg)
+        else:
+            return request
+
+    def _get_permission_name(self, request):
+        if request.kind.endswith('method'):
+            return request.reference.value.slug
+        elif request.format == 'help':
+            return 'help'
+        elif request.format == 'schema':
+            return 'schema'
+        elif request.method == 'GET':
+            return 'read'
+        elif request.method == 'POST':
+            return 'write'
+        elif request.method == 'PATCH':
+            return 'update'
+        elif request.method == 'DELETE':
+            return 'delete'
+
+
+class Auth(AuthorizableApplication):
     SECONDS_CREDENTIALS_VALID = 3600
 
     db = 'auth'
@@ -120,7 +690,7 @@ class Auth(Application):
             token (str): the JWT token to check against.
             **claims: a dictionary of extra claims to check
         Returns:
-            str: the username that the token came from.
+            User: the user the token came from.
         Raisees:
             DecodeError: if the JWT token is out of date, not issued by this authority, or otherwise invalid.
             PermissionError: if a claim is not present, or if claims differ.
@@ -135,12 +705,12 @@ class Auth(Application):
                     raise PermissionError("Claim not present in {0}: {1}".format(decoded['user'], name))
                 elif decoded[name] != value:
                     raise PermissionError("Claims differ for {0}: {1}".format(decoded['user'], name))
-            return decoded['user']
+            return self['users'][decoded['user']]
         except KeyError:
             raise PermissionError("Token not present in system")
 
 
-class Role(Document):
+class Role(AuthorizableDocument):
     """A role is a group of permissions, which are strings. Each role may have
     one or more "parent" roles, whose permissions it inherits at a minimum.
     """
@@ -153,20 +723,108 @@ class Role(Document):
                 "description": "The name of the role"
             },
             "permissions": {
-                "type": "array",
-                "items": {"type": "string"},
-                "description": "The permissions this role grants"
+                "type": "object",
+                "description": "The hierarchy of permissions this role grants"
             },
-            "parents": {
+            "includes": {
                 "type": "array",
                 "items": {"type": "string"},
-                "description": "References to parent roles"
+                "description": "References to additional roles granted by this role"
             }
         }
     }
 
+    @expose
+    def grant(self, application, collection=None,  document=None, method=None, action=None) -> None:
+        app = application.slug
+        perms = self['permissions']
+        if app not in perms:
+            perms[app] = { '_p': {}}
+        perms = perms[app]
 
-class Credentials(Document):
+        if collection:
+            coll = collection.slug
+            if coll not in perms:
+                perms[coll] = { '_p': {}}
+            perms = perms[coll]
+
+            if document:
+                doc = document.slug
+                if doc not in perms:
+                    perms[doc] = { '_p': {}}
+                perms = perms[doc]
+
+        if method:
+            perms['_p'][method] = True
+        elif action:
+            perms['_p'][action] = True
+        else:
+            raise Exception("Must grant/revoke/inherit a method or action")
+
+        self.save()
+
+    @expose
+    def revoke(self, application=None, collection=None, document=None, method=None, action=None) -> None:
+        app = application.slug
+        perms = self['permissions']
+        if app not in perms:
+            perms[app] = { '_p': {}}
+        perms = perms[app]
+
+        if collection:
+            coll = collection.slug
+            if coll not in perms:
+                perms[coll] = { '_p': {}}
+            perms = perms[coll]
+
+            if document:
+                doc = document.slug
+                if doc not in perms:
+                    perms[doc] = { '_p': {}}
+                perms = perms[doc]
+
+        if method:
+            perms['_p'][method] = False
+        elif action:
+            perms['_p'][action] = False
+        else:
+            raise Exception("Must grant/revoke/inherit a method or action")
+
+        self.save()
+
+    @expose
+    def inherit(self, application=None, collection=None, document=None, method=None, action=None) -> None:
+        app = application.slug
+        perms = self['permissions']
+        if app not in perms:
+            perms[app] = { '_p': {}}
+        perms = perms[app]
+
+        if collection:
+            coll = collection.slug
+            if coll not in perms:
+                perms[coll] = { '_p': {}}
+            perms = perms[coll]
+
+            if document:
+                doc = document.slug
+                if doc not in perms:
+                    perms[doc] = { '_p': {}}
+                perms = perms[doc]
+
+        if method:
+            if method in perms['_p']:
+                del perms['_p'][method]
+        elif action:
+            if action in perms['_p']:
+                del perms['_p'][action]
+        else:
+            raise Exception("Must grant/revoke/inherit a method or action")
+
+        self.save()
+
+
+class Credentials(AuthorizableDocument):
     """A set of credentials for a user"""
     schema = {
         'type': 'object',
@@ -192,7 +850,18 @@ class Credentials(Document):
     }
 
 
-class User(Document):
+def _merge(destination, source):
+    for key, value in source.items():
+        if isinstance(value, dict):
+            # get node or create one
+            node = destination.setdefault(key, {})
+            _merge(node, value)
+        else:
+            destination[key] = value
+    return destination
+
+
+class User(AuthorizableDocument):
     """A basic, but fairly complete system user record"""
     schema = {
         'type': 'object',
@@ -251,17 +920,35 @@ class User(Document):
                 'description': 'The timestamp this user was created',
             },
             "roles": {
-                "type": "string",
+                "type": "array",
+                "items": {"type": "string"},
                 "description": "Roles that have been granted to this user",
             }
         }
     }
 
+    def __init__(self, obj, collection=None, parent=None):
+        super(User, self).__init__(obj, collection, parent)
+        self._perms = None
 
-class Roles(Collection):
+    @expose
+    def permissions(self) -> [str]:
+        if not self._perms:
+            self.dereference()
+            self._perms = reduce(_merge, (r['permissions'] for r in self['roles']), {})
+        return self._perms
+
+    def __str__(self):
+        return self['username']
+
+
+class Roles(AuthorizableCollection):
+    primary_key = 'name'
     document_class = Role
     application = Auth
-
+    relations = [
+        ('includes', 'self')
+    ]
 
 
 class UserCredentials(Collection):
@@ -270,7 +957,7 @@ class UserCredentials(Collection):
     private = True
 
 
-class Users(Collection):
+class Users(AuthorizableCollection):
     document_class = User
     application = Auth
     primary_key = 'username'
@@ -281,6 +968,18 @@ class Users(Collection):
         ('credentials', UserCredentials),
         ('roles', Roles)
     ]
+
+    def __init__(self, application):
+        super(Users, self).__init__(application)
+
+        # if '__anonymous__' not in self:
+        #     self.create_user('__anonymous__', '', '', active=False)
+        #
+        # self._anonymous_user = self['__anonymous__']
+        #
+    @property
+    def anonymous(self):
+        return None  # self._anonymous_user
 
     def validate_password(self, password):
         """Validate that the desired password is strong enough to use.
@@ -310,7 +1009,8 @@ class Users(Collection):
             familyName: str=None,
             givenName: str=None,
             names: list=None,
-            picture: str=None
+            picture: str=None,
+            active: bool=True
     ) -> str:
         """Create a new user
 
@@ -323,6 +1023,7 @@ class Users(Collection):
             givenName (str): The user's given name
             names (str): The user's middle names
             picture (url as str): A pointer to a resource that is the user's picture.
+            active (bool): Default true. Whether or not the user is allowed to log in.
 
         Returns:
             str: The url of the new user object.
@@ -354,7 +1055,7 @@ class Users(Collection):
             "email": email,
             "credentials": cred,
             "emailVerified": False,
-            "active": True,
+            "active": active,
             "locale": locale,
             "created": datetime.datetime.now()
         }

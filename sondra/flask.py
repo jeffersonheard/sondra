@@ -1,4 +1,4 @@
-from flask import request, Blueprint, abort, current_app, Response
+from flask import request, Blueprint, current_app, Response
 import json
 
 from .api import APIRequest
@@ -30,6 +30,10 @@ def api_request(path):
         args,
         request.files
     )
+
+    # Run any number of post-processing steps on this request, including
+    for p in current_app.suite.api_request_processors:
+        r = p(r)
 
     mimetype, response = r()
     return Response(

@@ -1,15 +1,8 @@
-from sondra import document
+from sondra import document, suite, collection, application
+
 from sondra.decorators import expose
 
-# WHy do we do this?  We need to test that the environment created by the Environment constructor is
-# ConcreteSuite() and not any of the base classes.  This tests the EnvironmentMetaclass
-class BaseSuite(document.Suite):
-    pass
-
-class BaseSuite2(document.Suite):
-    pass
-
-class ConcreteSuite(BaseSuite, BaseSuite2):
+class ConcreteSuite(suite.Suite):
     base_url = "http://localhost:5000/api"
 
 
@@ -39,10 +32,10 @@ class TrackedItemTemplate(document.Document):
         }
 
 
-class OtherApplication(document.Application):
+class OtherApplication(application.Application):
     pass
 
-class BaseApp(document.Application):
+class BaseApp(application.Application):
     @expose
     def test_app_method(self, int_arg: int=0, str_arg: str='', list_arg: list=[], dict_arg: dict={}) -> dict:
         return {
@@ -52,7 +45,7 @@ class BaseApp(document.Application):
             "dict_arg": dict_arg
         }
 
-class TrackedItemTemplates(document.Collection):
+class TrackedItemTemplates(collection.Collection):
     document_class = TrackedItemTemplate
     application = BaseApp
     primary_key = 'name'
@@ -83,7 +76,7 @@ class TrackedItem(document.Document):
     }
 
 
-class TrackedItems(document.Collection):
+class TrackedItems(collection.Collection):
     document_class = TrackedItem
     application = BaseApp
     primary_key = "barcode"
@@ -106,7 +99,7 @@ class TrackedItemHistory(document.Document):
     }
 
 
-class TrackedItemHistories(document.Collection):
+class TrackedItemHistories(collection.Collection):
     document_class = TrackedItemHistory
     application = BaseApp
     specials = {
@@ -133,7 +126,7 @@ class ItemGroup(document.Document):
     }
 
 
-class ItemGroups(document.Collection):
+class ItemGroups(collection.Collection):
     document_class = ItemGroup
     application = BaseApp
     specials = {

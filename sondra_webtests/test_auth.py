@@ -1,11 +1,10 @@
 import docs
-from sondra.document import Suite
-from sondra.auth import Auth, UserCredentials, Credentials, Users
+from sondra.auth import Auth, UserCredentials, Credentials, Users, User
 import pytest
 
-s = Suite()
+s = docs.ConcreteSuite()
 
-auth = Auth()
+auth = Auth(s)
 auth.drop_tables()
 auth.create_database()
 auth.create_tables()
@@ -49,7 +48,7 @@ def test_login_local(local_calvin):
     token = s['auth'].login(local_calvin['username'], 'password')
     assert isinstance(token, str)
     assert '.' in token
-    assert s['auth'].check(token, user='calvin')
+    assert isinstance(s['auth'].check(token, user='calvin'), User)
 
     token2 = s['auth'].renew(token)
     assert s['auth'].check(token2, user='calvin')

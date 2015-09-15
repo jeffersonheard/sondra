@@ -219,25 +219,27 @@ import rethinkdb as r
 
 from .ref import Reference
 from . import document
+from .suite import BASIC_TYPES
 from .utils import mapjson
 
 def to_reql_types(doc):
     if isinstance(doc, str) and doc.startswith("$@"):  # only dereference a value if the user requests it.
         doc = Reference(document.Suite(), doc[2:]).value
-    try:
-        jsonschema.validate(doc, document.BASIC_TYPES['datetime'])
-        return document.Time().to_rql_repr(doc)
-    except jsonschema.ValidationError:
-        try:
-            jsonschema.validate(doc, document.BASIC_TYPES['date'])
-            return document.Date().to_rql_repr(doc)
-        except jsonschema.ValidationError:
-            return doc
+    jsonschema.validate(doc, BASIC_TYPES['datetime'])
+    return document.Time().to_rql_repr(doc)
 
 _parse_query = partial(mapjson, to_reql_types)
 
 class ValidationError(Exception):
     pass
+
+
+class RequestProcessor(object):
+    def process_api_request(self, r):
+        return r
+
+    def __call__(self, *args, **kwargs):
+        self.process_api_request(*args, **kwargs)
 
 
 class APIRequest(object):
@@ -267,28 +269,27 @@ class APIRequest(object):
         'get_nearest',
     }
 
-    def __init__(self, sondra, headers, body, method, user, path, query_params, files):
-        self.sondra = sondra
+    def __init__(self, suite, headers, body, method, user, path, query_params, files):
+        self.suite = suite
         self.headers = headers
         self.body = body
         self.request_method = method
         self.user = user
         self.query_params = query_params or {}
         self.files = files
-        self.api_key = None
         self.arguments = []
         self.api_arguments = {}
 
         self.reference = Reference(
-            self.sondra,
+            self.suite,
             "{0}?{1}".format(
                  path,
                  urlencode(query_params) if not isinstance(query_params, str) else query_params
             )
         )
 
-        if self.reference.format in ('json','jsonp','geojson'):
-            self._get_arguments()
+        self._get_arguments()
+
 
         if self.reference.kind in {'collection','document','subdocument'} and self.reference.get_collection().private:
             raise PermissionError("The collection referenced in this request is marked private. It can only be used locally.")
@@ -501,7 +502,6 @@ class APIRequest(object):
             del self.query_params['q']
 
         # Validate and copy query params into arguments dictionary
-        # FIXME: make sure objects check permissions on retrieval
         if self.query_params:
             for k, v in self.query_params.items():
                 v = v[0]  # no list valued arguments in api-args
@@ -533,7 +533,6 @@ class APIRequest(object):
         if self.files:
             self.arguments[0].update(self.files)
 
-        self.api_key = self.api_arguments.get('apikey', None)
         self.durability = self.api_arguments.get('durability', 'hard')
         self.return_changes = self.api_arguments.get('return_changes', 'false').lower() != 'false'
         self.dereference = self.api_arguments.get('dereference', 'false').lower() != 'false'
@@ -546,6 +545,7 @@ class APIRequest(object):
 
         for a in self.arguments:
             jsonschema.validate(a, schema)
+
 
     def help(self):
         """Return HTML help from a docstring"""
@@ -690,7 +690,7 @@ class APIRequest(object):
             out.write(method.__doc__ or "*No documentation provided.*\n")
             out.write("\n\n.. App_: {0}".format(method.__self__.application.url))
 
-        return 'text/html', self.sondra.docstring_processor(out.getvalue())
+        return 'text/html', self.suite.docstring_processor(out.getvalue())
 
     def json_response(self, method):
         result = method()

@@ -1,18 +1,16 @@
-import json
-from flask import Flask, request, current_app, Response
+from flask import Flask
 
 from sondra.auth import Auth
 from sondra.flask import api_tree
-from sondra.document import Suite
 
 import docs
 
 app = Flask(__name__)
 app.debug = True
 
-app.suite = Suite()
-api = docs.BaseApp()
-auth = Auth()
+app.suite = docs.ConreteSuite()
+api = docs.BaseApp(app.suite)
+auth = Auth(app.suite)
 auth.create_database()
 auth.create_tables()
 api.create_database()

@@ -1,18 +1,9 @@
 import pytest
 
-from sondra import document
+from sondra import document, suite, collection, application
 from shapely.geometry import mapping, shape
 
-
-# WHy do we do this?  We need to test that the environment created by the Environment constructor is
-# ConcreteSuite() and not any of the base classes.  This tests the EnvironmentMetaclass
-class BaseSuite(document.Suite):
-    pass
-
-class BaseSuite2(document.Suite):
-    pass
-
-class ConcreteSuite(BaseSuite, BaseSuite2):
+class ConcreteSuite(suite.Suite):
     pass
 
 
@@ -28,13 +19,13 @@ class TrackedItemTemplate(document.Document):
         }
     }
 
-class OtherApplication(document.Application):
+class OtherApplication(application.Application):
     pass
 
-class TerraHubBase(document.Application):
+class TerraHubBase(application.Application):
     pass
 
-class TrackedItemTemplates(document.Collection):
+class TrackedItemTemplates(collection.Collection):
     document_class = TrackedItemTemplate
     application = TerraHubBase
     primary_key = 'name'
@@ -54,7 +45,7 @@ class TrackedItem(document.Document):
     }
 
 
-class TrackedItems(document.Collection):
+class TrackedItems(collection.Collection):
     document_class = TrackedItem
     application = TerraHubBase
     primary_key = "barcode"
@@ -77,7 +68,7 @@ class TrackedItemHistory(document.Document):
     }
 
     
-class TrackedItemHistories(document.Collection):
+class TrackedItemHistories(collection.Collection):
     document_class = TrackedItemHistory
     application = TerraHubBase
     specials = {
@@ -100,7 +91,7 @@ class ItemGroup(document.Document):
     }
 
 
-class ItemGroups(document.Collection):
+class ItemGroups(collection.Collection):
     document_class = ItemGroup
     application = TerraHubBase
     specials = {
@@ -108,11 +99,14 @@ class ItemGroups(document.Collection):
     }
     references = [("parent", "self"), {"items": TrackedItems}]
 
+@pytest.fixture(scope='module')
+def s(request):
+    return ConcreteSuite()
 
 @pytest.fixture(scope='module')
-def apps(request):
-    customer_jeff = TerraHubBase('jeff')
-    customer_steve = TerraHubBase('steve')
+def apps(request, s):
+    customer_jeff = TerraHubBase(s, 'jeff')
+    customer_steve = TerraHubBase(s, 'steve')
 
     try:
         customer_jeff.create_database()
@@ -214,16 +208,15 @@ def tracked_items(request, apps, tracked_item_templates):
 
 
 
-def test_application(apps):
+def test_application(s, apps):
     customer_jeff, customer_steve = apps
     app2 = OtherApplication()
-    suite = document.Suite()
 
     # make sure the environment contains all the applicatoins
-    assert suite.name == 'concrete_suite'
-    assert 'jeff' in suite
-    assert 'steve' in suite
-    assert 'other-application' in suite
+    assert s.name == 'concrete_suite'
+    assert 'jeff' in s
+    assert 'steve' in s
+    assert 'other-application' in s
 
     # make sure that the databases are separate for the different application instances
     assert customer_jeff.db == 'jeff'
