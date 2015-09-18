@@ -13,34 +13,6 @@ from .utils import is_exposed
 from sondra.api import RequestProcessor
 
 
-@singledispatch
-def _permission_key(obj):
-    if hasattr(obj, 'permission_key'):
-        return obj.permission_key()
-    raise PermissionError("Object has no key")
-
-
-@singledispatch(Application)
-def _permission_key(obj):
-    return (obj.slug,)
-
-
-@singledispatch(Collection)
-def _permission_key(obj):
-    return (obj.application.slug, obj.slug)
-
-
-@singledispatch(Document)
-def _permission_key(obj):
-    return (obj.collection.application.slug, obj.collection.slug, obj.slug)
-
-
-@singledispatch(MethodType)
-def _permission_key(obj):
-    if is_exposed(obj):
-        return _permission_key(obj.__self__)
-
-
 def _has_permission(perm, permission_tree, keys, default=False):
     """Descends the permission tree looking for the finest grained permission."""
     p = default
@@ -417,7 +389,7 @@ class AuthorizableApplication(Application):
     anonymous_delete = False
     anonymous_help = True
     anonymous_schema = False
-    
+
     def can_read(self, user):
         if self.anonymous_read is True:
             return True

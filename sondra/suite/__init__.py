@@ -135,7 +135,7 @@ class Suite(Mapping):
         else:
             logging.basicConfig()
 
-        self.log = logging  # use root logger for the environment
+        self.log = logging.getLogger(self.__class__.__name__)  # use root logger for the environment
 
         signals.pre_init.send(self.__class__, isntance=self)
 
@@ -195,13 +195,13 @@ class Suite(Mapping):
         if not url.startswith(self.base_url):
             return None
         else:
-            return Reference(Suite(), url).value
+            return Reference(self, url).value
 
     def lookup_document(self, url):
         if not url.startswith(self.base_url):
             return None
         else:
-            return Reference(Suite(), url).get_document()
+            return Reference(self, url).get_document()
 
     @property
     def schema(self):

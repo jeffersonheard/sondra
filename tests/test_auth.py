@@ -1,8 +1,16 @@
-import docs
-from sondra.auth import Auth, UserCredentials, Credentials, Users, User
+from sondra.auth import Auth, Credentials, User
 import pytest
 
-s = docs.ConcreteSuite()
+
+from sondra import document, suite, collection, application
+
+from sondra.decorators import expose
+
+class ConcreteSuite(suite.Suite):
+    base_url = "http://localhost:5000/api"
+
+
+s = ConcreteSuite()
 
 auth = Auth(s)
 auth.drop_tables()
@@ -33,7 +41,6 @@ def local_calvin(calvin):
 
 
 def test_login_local(local_calvin):
-
     assert local_calvin['username'] == 'calvin'
     local_calvin.dereference()
 

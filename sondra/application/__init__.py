@@ -44,13 +44,13 @@ class Application(Mapping, metaclass=ApplicationMetaclass):
     anonymous_reads = True
 
     def __init__(self, suite, name=None):
-        self.env = suite
+        self.suite = suite
         self.name = name or self.__class__.__name__
         self.slug = utils.camelcase_slugify(self.name)
         self.db = utils.convert_camelcase(self.name)
         self.connection = suite.connections[self.connection]
         self.collections = {}
-        self.url = '/'.join((self.env.base_url, self.slug))
+        self.url = '/'.join((self.suite.base_url, self.slug))
         self.log = logging.getLogger(self.name)
         self.application = self
 

@@ -6,8 +6,9 @@ import rethinkdb as r
 import logging
 import logging.config
 
-from sondra import utils, Document, Application
-from sondra.document import references, signals as doc_signals
+from sondra import utils
+from sondra.application import Application
+from sondra.document import Document, references, signals as doc_signals
 
 from . import signals
 
@@ -58,12 +59,12 @@ class Collection(MutableMapping, metaclass=CollectionMetaclass):
         return r.db(self.application.db).table(self.name)
 
     def __init__(self, application):
-        signals.pre_init.send(self.__class__, application)
+        signals.pre_init.send(self.__class__, instance=self)
         self.application = application
         self.url = '/'.join((self.application.url, self.slug))
         self.schema['id'] = self.url + ";schema"
         self.log = logging.getLogger(self.application.name + "." + self.name)
-        signals.post_init.send(self.__class__, application)
+        signals.post_init.send(self.__class__, instance=self)
 
     def create_table(self, *args, **kwargs):
         signals.pre_table_creation.send(

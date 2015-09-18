@@ -223,8 +223,6 @@ from .suite import BASIC_TYPES
 from .utils import mapjson
 
 def to_reql_types(doc):
-    if isinstance(doc, str) and doc.startswith("$@"):  # only dereference a value if the user requests it.
-        doc = Reference(document.Suite(), doc[2:]).value
     jsonschema.validate(doc, BASIC_TYPES['datetime'])
     return document.Time().to_rql_repr(doc)
 

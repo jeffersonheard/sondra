@@ -210,10 +210,9 @@ def tracked_items(request, apps, tracked_item_templates):
 
 def test_application(s, apps):
     customer_jeff, customer_steve = apps
-    app2 = OtherApplication()
+    app2 = OtherApplication(s)
 
     # make sure the environment contains all the applicatoins
-    assert s.name == 'concrete_suite'
     assert 'jeff' in s
     assert 'steve' in s
     assert 'other-application' in s
@@ -231,7 +230,7 @@ def test_application(s, apps):
     assert 'tracked-items' not in app2
 
     # make sure the URLs are correct
-    assert customer_jeff.url == suite.base_url + '/jeff'
+    assert customer_jeff.url == s.base_url + '/jeff'
     assert customer_jeff['tracked-items'].url == customer_jeff.url + '/tracked-items'
 
 

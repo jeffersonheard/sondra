@@ -11,7 +11,8 @@ import rethinkdb as r
 from datetime import date, datetime, timezone
 import iso8601
 
-from sondra import utils, Suite
+from sondra import utils
+from sondra.suite import Suite
 
 
 def _to_ref(doc):
@@ -20,21 +21,9 @@ def _to_ref(doc):
     else:
         return doc
 
-def _from_ref(doc):
-    env = Suite()
-    if isinstance(doc, str):
-        if doc.startswith(env.base_url):
-            return env.lookup_document(doc)
-        else:
-            return doc
-    else:
-        return doc
-
-
 references = partial(utils.mapjson, _to_ref)
 
 
-documents = partial(utils.mapjson, _from_ref)
 
 
 
@@ -166,9 +155,6 @@ class Time(ValueHandler):
             return dt
 
 
-
-
-
 class Document(MutableMapping):
     schema = {
         "type": "object",
@@ -194,6 +180,10 @@ class Document(MutableMapping):
     @property
     def application(self):
         return self.collection.application
+
+    @property
+    def suite(self):
+        return self.application.suite
 
     @property
     def id(self):
@@ -244,8 +234,18 @@ class Document(MutableMapping):
     def delete(self, **kwargs):
         return  self.collection.delete(self.id, **kwargs)
 
+
+    def _from_ref(self, doc):
+        if isinstance(doc, str):
+            if doc.startswith(self.suite.base_url):
+                return self.suite.lookup_document(doc)
+            else:
+                return doc
+        else:
+            return doc
+
     def dereference(self):
-        self.obj = documents(self.obj)
+        self.obj = utils.mapjson(self._from_ref, self.obj)
         self._referenced = False
         return self
 

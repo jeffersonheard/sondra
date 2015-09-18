@@ -1,7 +1,8 @@
 from copy import copy
 import re
 import inspect
-from .document import Collection, Document
+from .document import Document
+from .collection import Collection
 from .ref import Reference
 
 class ParseError(Exception):
