@@ -2,6 +2,7 @@ appnope==0.1.0
 bcrypt==2.0.0
 blinker==1.4
 cffi==1.2.1
+click==5.1
 decorator==4.0.2
 Django==1.8.3
 django-enumfield==1.2.1
@@ -30,7 +31,7 @@ PyJWT==1.4.0
 pytest==2.7.2
 remodel==0.4.2
 requests==2.7.0
-rethinkdb==2.1.0
+rethinkdb==2.1.0.post2
 Shapely==1.5.12
 simplegeneric==0.8.1
 six==1.9.0
