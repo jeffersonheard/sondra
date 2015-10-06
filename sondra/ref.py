@@ -12,7 +12,7 @@ class EndpointError(Exception):
 
 class Reference(object):
     """Contains the application, collection, document, methods, and fragment the URL refers to"""
-    FORMATS = {'form', 'help', 'schema', 'json', 'jsonp', 'html'}
+    FORMATS = {'help', 'schema', 'json', 'jsonp', 'html'}
 
     def __init__(self, env, url=None, **kw):
         self.environment = env
