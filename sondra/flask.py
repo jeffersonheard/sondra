@@ -13,6 +13,17 @@ def suite_schema():
         mimetype='application/json'
     )
 
+@api_tree.route('/help')
+def suite_help():
+    h = current_app.suite.help()
+    help_text = current_app.suite.docstring_processor(h)
+
+    return Response(
+        help_text,
+        status=200,
+        mimetype='text/html'
+    )
+
 @api_tree.route('/<path:path>', methods=['GET','POST','PUT','PATCH', 'DELETE'])
 def api_request(path):
     args = dict(request.args)

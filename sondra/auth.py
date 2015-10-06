@@ -1,4 +1,4 @@
-from functools import reduce, singledispatch
+from functools import reduce
 from sondra.application import Application
 from sondra.collection import Collection
 from sondra.document import Document, Time
@@ -7,9 +7,6 @@ import datetime
 import bcrypt
 import jwt
 import rethinkdb as r
-from types import MethodType
-
-from .utils import is_exposed
 from sondra.api import RequestProcessor
 
 

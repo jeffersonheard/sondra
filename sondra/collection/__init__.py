@@ -11,7 +11,7 @@ from sondra.application import Application
 from sondra.document import Document, references, signals as doc_signals
 
 from . import signals
-
+from sondra import help
 
 _validator = jsonschema.Draft4Validator
 
@@ -20,16 +20,39 @@ class CollectionException(Exception):
 
 
 class CollectionMetaclass(ABCMeta):
+    def __new__(mcs, name, bases, attrs):
+        definitions = {}
+        for base in bases:
+            if hasattr(base, "definitions") and base.definitions:
+                definitions.update(base.definitions)
+
+        if "definitions" in attrs:
+            attrs['definitions'].update(definitions)
+        else:
+            attrs['definitions'] = definitions
+
+        return super().__new__(mcs, name, bases, attrs)
+
     def __init__(cls, name, bases, nmspc):
         super(CollectionMetaclass, cls).__init__(name, bases, nmspc)
         cls.name = utils.convert_camelcase(cls.__name__)
-        cls.slug = utils.camelcase_slugify(cls.__name__)
 
         cls.schema = deepcopy(cls.document_class.schema)
+
         if 'description' not in cls.schema:
             cls.schema['description'] = cls.__doc__ or "No description provided"
+
+        if "title" not in cls.schema:
+            cls.schema['title'] = cls.__name__
+
+        if "definitions" in cls.schema:
+            cls.schema['definitions'].update(cls.definitions)
+        else:
+            cls.schema['definitions'] = cls.definitions
+
         if 'id' in cls.schema['properties']:
             raise CollectionException('Document schema should not have an "id" property')
+
         if not cls.primary_key:
             cls.schema['properties']['id'] = {"type": "string"}
 
@@ -37,8 +60,11 @@ class CollectionMetaclass(ABCMeta):
 
         if not hasattr(cls, 'application') or cls.application is None:
             raise CollectionException("{0} declared without application".format(name))
-        else:
+        elif not cls.abstract:
+            cls.slug = utils.camelcase_slugify(cls.__name__)
             cls.application.register_collection(cls)
+        else:
+            pass
 
 
 class Collection(MutableMapping, metaclass=CollectionMetaclass):
@@ -53,18 +79,47 @@ class Collection(MutableMapping, metaclass=CollectionMetaclass):
     indexes = []
     relations = []
     anonymous_reads = True
+    abstract = False
 
     @property
     def table(self):
         return r.db(self.application.db).table(self.name)
 
+    @property
+    def url(self):
+        if self._url:
+            return self._url
+        elif self.application:
+            return self.application.url + "/" + self.slug
+        else:
+            return self.slug
+
+    @property
+    def schema_url(self):
+        return self.url + ";schema"''
+
     def __init__(self, application):
         signals.pre_init.send(self.__class__, instance=self)
         self.application = application
-        self.url = '/'.join((self.application.url, self.slug))
+        self._url = '/'.join((self.application.url, self.slug))
         self.schema['id'] = self.url + ";schema"
         self.log = logging.getLogger(self.application.name + "." + self.name)
         signals.post_init.send(self.__class__, instance=self)
+
+    def help(self, out=None, initial_heading_level=0):
+        """Return full reStructuredText help for this class"""
+        builder = help.SchemaHelpBuilder(self.schema, self.url, out=out, initial_heading_level=initial_heading_level)
+        builder.begin_subheading(self.name)
+        builder.begin_list()
+        builder.define("Application", self.application.url + ';help')
+        builder.define("Schema URL", self.schema_url)
+        builder.define("JSON URL", self.url)
+        builder.define("Primary Key", self.primary_key)
+        builder.define("Anonymous Reads", "yes" if self.anonymous_reads else "no")
+        builder.end_list()
+        builder.end_subheading()
+        builder.build()
+        return builder.rst
 
     def create_table(self, *args, **kwargs):
         signals.pre_table_creation.send(
@@ -145,7 +200,7 @@ class Collection(MutableMapping, metaclass=CollectionMetaclass):
     def __delitem__(self, key):
         doc_signals.pre_delete.send(self.document_class, key=key)
         results = self.table.get(key).delete().run(self.application.connection)
-        doc_signals.post_deleete.send(self.document_class, results=results)
+        doc_signals.post_delete.send(self.document_class, results=results)
 
     def __iter__(self):
         for doc in self.table.run(self.application.connection):

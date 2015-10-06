@@ -1,4 +1,5 @@
 from collections.abc import Mapping
+from abc import ABCMeta
 from copy import copy
 from functools import partial
 from urllib.parse import urlparse
@@ -6,6 +7,7 @@ import rethinkdb as r
 import logging
 import logging.config
 
+from sondra import help
 from sondra.ref import Reference
 from . import signals
 
@@ -16,10 +18,10 @@ try:
     from sphinxcontrib import napoleon
 
     def google_processor(s):
-        return publish_string(str(napoleon.GoogleDocstring(s)), writer_name='html')
+        return publish_string(str(napoleon.GoogleDocstring(s)), writer_name='html', settings_overrides={"stylesheet_path": "sondra/css/flasky.css"})
 
     def numpy_processor(s):
-        return publish_string(str(napoleon.NumpyDocstring(s)), writer_name='html')
+        return publish_string(str(napoleon.NumpyDocstring(s)), writer_name='html', settings_overrides={"stylesheet_path": "sondra/css/flasky.css"})
 
     DOCSTRING_PROCESSORS['google'] = google_processor
     DOCSTRING_PROCESSORS['numpy'] = numpy_processor
@@ -29,7 +31,7 @@ except ImportError:
 try:
     from docutils.core import publish_string
 
-    DOCSTRING_PROCESSORS['rst'] = partial(publish_string, writer_name='html')
+    DOCSTRING_PROCESSORS['rst'] = partial(publish_string, writer_name='html', settings_overrides={"stylesheet_path": "sondra/css/flasky.css"})
 except ImportError:
     pass
 
@@ -55,12 +57,12 @@ BASIC_TYPES = {
     },
     "datetime": {
         "type": "object",
-        "allOf": ["#/definitions/date"],
+        "allOf": [{"$ref": "#/definitions/date"}],
         "required": ["year","month","day","hour"],
         "properties": {
             "hour": {"type": "integer"},
             "minute": {"type": "integer"},
-            "second": {"type": "float"},
+            "second": {"type": "number"},
             "timezone": {"type": "string", "default": "Z"}
         }
     },
@@ -74,22 +76,61 @@ BASIC_TYPES = {
         "definitions": {
             "datetime": {
                 "type": "object",
-                "allOf": ["#/definitions/date"],
+                "allOf": [{"$ref": "#/definitions/date"}],
                 "required": ["year","month","day","hour"],
                 "properties": {
                     "hour": {"type": "integer"},
                     "minute": {"type": "integer"},
-                    "second": {"type": "float"},
+                    "second": {"type": "number"},
                     "timezone": {"type": "string", "default": "Z"}
                 }
             }
         }
+    },
+    "filterOps": {
+        "enum": [
+            'with_fields',
+            'count',
+            'max',
+            'min',
+            'avg',
+            'sample',
+            'sum',
+            'distinct',
+            'contains',
+            'pluck',
+            'without',
+            'has_fields',
+            'order_by',
+            'between'
+        ]
+    },
+    "spatialOps": {
+        "enum": [
+            'distance',
+            'get_intersecting',
+            'get_nearest',
+        ]
     }
 }
 
 
 class SuiteException(Exception):
     """Represents a misconfiguration in a :class:`Suite` class"""
+
+class SuiteMetaclass(ABCMeta):
+    def __new__(mcs, name, bases, attrs):
+        definitions = {}
+        for base in bases:
+            if hasattr(base, "definitions") and base.definitions:
+                definitions.update(base.definitions)
+
+        if "definitions" in attrs:
+            attrs['definitions'].update(definitions)
+        else:
+            attrs['definitions'] = definitions
+
+        return super().__new__(mcs, name, bases, attrs)
 
 
 class Suite(Mapping):
@@ -118,6 +159,7 @@ class Suite(Mapping):
             registered to the suite. The values are the schemas of the named app.  See :class:`Application` for more
             details on application schemas.
     """
+    name = None
     applications = {}
     async = False
     base_url = "http://localhost:8000"
@@ -125,9 +167,40 @@ class Suite(Mapping):
     docstring_processor_name = 'preformatted'
     allow_anonymous_formats = {'help', 'schema'}
     api_request_processors = ()
+    definitions = BASIC_TYPES
     connection_config = {
         'default': {}
     }
+
+    @property
+    def url(self):
+        return self.base_url_path
+
+    @property
+    def schema_url(self):
+        return self.base_url_path + "/schema"
+
+    @property
+    def schema(self):
+        return {
+            "id": self.url + "/schema",
+            "name": self.name,
+            "type": None,
+            "description": self.__doc__ or "*No description provided.*",
+            "applications": {k: v.schema_url for k, v in self.applications.items()},
+            "definitions": self.definitions
+        }
+
+    @property
+    def full_schema(self):
+        return {
+            "id": self.url + ";schema",
+            "name": self.name,
+            "type": None,
+            "description": self.__doc__ or "*No description provided.*",
+            "applications": {k: v.full_schema for k, v in self.applications.items()},
+            "definitions": self.definitions
+        }
 
     def __init__(self):
         if self.logging:
@@ -152,6 +225,9 @@ class Suite(Mapping):
         self.docstring_processor = DOCSTRING_PROCESSORS[self.docstring_processor_name]
         self.log.info('Docstring processor is {0}')
 
+        self.name = self.name or self.__class__.__name__
+        self.description = self.__doc__ or "No description provided."
+
         signals.post_init.send(self.__class__, instance=self)
 
     def register_application(self, app):
@@ -162,7 +238,6 @@ class Suite(Mapping):
 
         self.applications[app.slug] = app
         self.log.info('Registered application {0} to {1}'.format(app.__class__.__name__, app.url))
-
 
     def __getitem__(self, item):
         """Application objects are indexed by "slug." Every Application object registered has its name slugified.
@@ -191,6 +266,25 @@ class Suite(Mapping):
     def __contains__(self, item):
         return item in self.applications
 
+    def help(self, out=None, initial_heading_level=0):
+        """Return full reStructuredText help for this class"""
+        builder = help.SchemaHelpBuilder(self.schema, self.url, out=out, initial_heading_level=initial_heading_level)
+        builder.begin_subheading(self.name)
+        builder.define("Suite", self.url)
+        builder.line()
+        builder.define("Schema URL", self.schema_url)
+        builder.line()
+        builder.build()
+        builder.line()
+        builder.begin_subheading("Applications")
+        builder.begin_list()
+        for name, in self.applications.items():
+            builder.define(name, coll.url + ';help')
+        builder.end_list()
+        builder.end_subheading()
+        builder.end_subheading()
+        return builder.rst
+
     def lookup(self, url):
         if not url.startswith(self.base_url):
             return None
@@ -207,11 +301,12 @@ class Suite(Mapping):
     def schema(self):
         ret = {
             "name": self.base_url,
-            "description": self.__doc__,
-            "definitions": copy(BASIC_TYPES)
+            "description": self.description,
+            "definitions": copy(BASIC_TYPES),
+            "applications": {}
         }
 
         for app in self.applications.values():
-            ret['definitions'][app.name] = app.schema
+            ret['applications'][app.name] = app.schema
 
         return ret

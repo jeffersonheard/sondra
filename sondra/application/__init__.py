@@ -1,14 +1,13 @@
+from blinker import signal
 from collections.abc import Mapping
 from abc import ABCMeta
-from copy import copy
 
 import rethinkdb as r
 import logging
 import logging.config
 
-from sondra import utils
-from sondra.suite import BASIC_TYPES
 
+from sondra import help, utils
 from . import signals
 
 
@@ -17,15 +16,30 @@ class ApplicationException(Exception):
 
 
 class ApplicationMetaclass(ABCMeta):
-    def __init__(cls, name, bases, nmspc):
-        super(ApplicationMetaclass, cls).__init__(name, bases, nmspc)
+    """Inherit definitions from base classes, and let the subclass override any definitions from the base classes."""
+
+    def __new__(mcs, name, bases, attrs):
+        definitions = {}
+        for base in bases:
+            if hasattr(base, "definitions") and base.definitions:
+                definitions.update(base.definitions)
+
+        if "definitions" in attrs and attrs["definitions"] is not None:
+            attrs['definitions'].update(definitions)
+        else:
+            attrs['definitions'] = definitions
+
+        return super().__new__(mcs, name, bases, attrs)
+
+    def __init__(cls, name, bases, attrs):
+        super(ApplicationMetaclass, cls).__init__(name, bases, attrs)
         cls._collection_registry = {}
 
     def __iter__(cls):
         return (i for i in cls._collection_registry.items())
 
     def register_collection(cls, collection_class):
-        if collection_class.name not in cls._collection_registry:
+        if collection_class.slug not in cls._collection_registry:
             cls._collection_registry[collection_class.slug] = collection_class
         else:
             raise ApplicationException("{0} registered twice".format(collection_class.slug))
@@ -42,6 +56,60 @@ class Application(Mapping, metaclass=ApplicationMetaclass):
     slug = None
     collections = None
     anonymous_reads = True
+    definitions = None
+
+    @property
+    def url(self):
+        if self._url:
+            return self._url
+        elif self.suite:
+            return self.suite.url + "/" + self.slug
+        else:
+            return self.slug
+
+    @property
+    def schema_url(self):
+        return self.url + ";schema"
+
+    @property
+    def schema(self):
+        return {
+            "id": self.url + ";schema",
+            "type": "object",
+            "description": self.__doc__ or "*No description provided.*",
+            "definitions": self.definitions,
+            "collections": {name: coll.schema_url for name, coll in self.collections.items()}
+        }
+
+    @property
+    def full_schema(self):
+        return {
+            "id": self.url + ";schema",
+            "type": "object",
+            "description": self.__doc__ or "*No description provided.*",
+            "definitions": self.definitions,
+            "collections": {name: coll.schema for name, coll in self.collections.items()}
+        }
+
+    def help(self, out=None, initial_heading_level=0):
+        """Return full reStructuredText help for this class"""
+        builder = help.SchemaHelpBuilder(self.schema, self.url, out=out, initial_heading_level=initial_heading_level)
+        builder.begin_subheading(self.name)
+        builder.begin_list()
+        builder.define("Suite", self.suite.base_url + ';help')
+        builder.define("Schema URL", self.schema_url)
+        builder.define("Anonymous Reads", "yes" if self.anonymous_reads else "no")
+        builder.end_list()
+        builder.build()
+        builder.line()
+        builder.begin_subheading("Collections")
+        builder.begin_list()
+        for name, coll in self.collections.items():
+            builder.define(name, coll.url + ';help')
+        builder.end_list()
+        builder.end_subheading()
+        return builder.rst
+
 
     def __init__(self, suite, name=None):
         self.suite = suite
@@ -50,7 +118,7 @@ class Application(Mapping, metaclass=ApplicationMetaclass):
         self.db = utils.convert_camelcase(self.name)
         self.connection = suite.connections[self.connection]
         self.collections = {}
-        self.url = '/'.join((self.suite.base_url, self.slug))
+        self._url = '/'.join((self.suite.base_url, self.slug))
         self.log = logging.getLogger(self.name)
         self.application = self
 
@@ -108,16 +176,3 @@ class Application(Mapping, metaclass=ApplicationMetaclass):
             r.db_create(self.db).run(self.connection)
         except r.ReqlError as e:
             self.log.warning(str(e))
-
-    @property
-    def schema(self):
-        ret = {
-            "id": self.url + ";schema",
-            "description": self.__doc__ or "No description provided",
-            "definitions": copy(BASIC_TYPES)
-        }
-
-        for name, coll in self.collections.items():
-            ret['definitions'][name] = coll.schema
-
-        return ret

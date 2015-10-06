@@ -1,9 +1,11 @@
 from copy import copy
+import io
 import re
 import inspect
-from .document import Document
-from .collection import Collection
-from .ref import Reference
+from sondra.document import Document
+from sondra.collection import Collection
+from sondra.ref import Reference
+from sondra import help
 
 class ParseError(Exception):
     pass
@@ -11,6 +13,7 @@ class ParseError(Exception):
 def _schema(method):
     return {
         "id": method.__self__.url + '.' + method.slug + ';schema',
+        "title": method.__name__,
         "description": method.__doc__,
         "type": "object",
         "oneOf": ["#/definitions/request", "#/definitions/response"],
@@ -107,6 +110,13 @@ def _parse_arg(instance, arg):
         arg['description'] = description
     return arg
 
+def _help(method, out=None, initial_heading_level=0):
+    out = out or io.StringIO()
+    builder = help.SchemaHelpBuilder(method.schema(method), out=out, initial_heading_level=0)
+    builder.build()
+    builder.line()
+    return out.getvalue()
+
 
 def expose(method, help_is_public=True, schema_is_public=True, admin_required=False, anonymous=False, modifies_args=()):
     """Defines a method that is exposable as an API call on the defining class.
@@ -141,6 +151,7 @@ def expose(method, help_is_public=True, schema_is_public=True, admin_required=Fa
     method.modifies_args = modifies_args
     method.request_schema = _request_schema
     method.response_schema = _response_schema
+    method.help = _help
     method.schema = _schema
     method.slug = method.__name__.replace('_','-')
     method.exposed = True

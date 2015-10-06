@@ -4,6 +4,7 @@ from sondra.decorators import expose
 
 class ConcreteSuite(suite.Suite):
     base_url = "http://localhost:5000/api"
+    docstring_processor_name = "google"
 
 
 class TrackedItemTemplate(document.Document):

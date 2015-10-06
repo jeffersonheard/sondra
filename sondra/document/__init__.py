@@ -1,18 +1,20 @@
 """Core data document types.
 """
-
+from abc import ABCMeta
 from collections.abc import MutableMapping
+from datetime import date, datetime, timezone
 from functools import partial
-from shapely.geometry import mapping, shape
-from shapely.geometry.base import BaseGeometry
+import io
 import json
+
+import iso8601
 import jsonschema
 import rethinkdb as r
-from datetime import date, datetime, timezone
-import iso8601
+from shapely.geometry import mapping, shape
+from shapely.geometry.base import BaseGeometry
 
-from sondra import utils
-from sondra.suite import Suite
+from sondra import utils, help
+from sondra.utils import mapjson
 
 
 def _to_ref(doc):
@@ -24,12 +26,10 @@ def _to_ref(doc):
 references = partial(utils.mapjson, _to_ref)
 
 
-
-
-
 class ValidationError(Exception):
     """This kind of validation error is thrown whenever an :class:`Application` or :class:`Collection` is
     misconfigured."""
+
 
 class ValueHandler(object):
     """This is base class for transforming values to/from RethinkDB representations to standard representations.
@@ -99,8 +99,9 @@ class Geometry(ValueHandler):
 
 
 class Time(ValueHandler):
+    """A value handler for Python datetimes"""
+
     DEFAULT_TIMEZONE='Z'
-    """A valuehandler for Python datetimes"""
     def __init__(self, timezone='Z'):
         self.timezone = timezone
 
@@ -155,27 +156,64 @@ class Time(ValueHandler):
             return dt
 
 
-class Document(MutableMapping):
+class DocumentMetaclass(ABCMeta):
+    exposed_methods = {}
     schema = {
         "type": "object",
         "properties": {}
     }
 
+    def __new__(mcs, name, bases, attrs):
+        definitions = {}
+        for base in bases:
+            if hasattr(base, "definitions") and base.definitions:
+                definitions.update(base.definitions)
+
+        if "definitions" in attrs:
+            attrs['definitions'].update(definitions)
+        else:
+            attrs['definitions'] = definitions
+
+        return super().__new__(mcs, name, bases, attrs)
+
+    def __init__(cls, name, bases, nmspc):
+        super(DocumentMetaclass, cls).__init__(name, bases, nmspc)
+
+        for name, method in (n for n in nmspc.items() if hasattr(n[1], 'exposed')):
+            cls.exposed_methods['name'] = method
+
+        if 'description' not in cls.schema and cls.__doc__:
+            cls.schema['description'] = cls.__doc__
+
+        cls.defaults = {k: cls.schema['properties'][k]['default']
+                        for k in cls.schema['properties']
+                        if 'default' in cls.schema['properties'][k]}
+
+
+class Document(MutableMapping, metaclass=DocumentMetaclass):
     def __init__(self, obj, collection=None, parent=None):
         self.collection = collection
+        if self.collection:
+            self.schema = self.collection.schema  # this means it's only calculated once. helpful.
+        else:
+            self.schema = mapjson(lambda x: x(context=x) if callable(x) else x, self.schema)  # turn URL references into URLs
+
+        # todo add methods to the schema.
+
         if not self.collection and (parent and parent.collection):
             self.collection = parent.collection
 
         self.parent = parent
 
-        self.url = None
+        self._url = None
         if self.collection.primary_key in obj:
-            self.url = '/'.join((self.collection.url, obj[self.collection.primary_key]))
+            self._url = '/'.join((self.collection.url, obj[self.collection.primary_key]))
 
         self._referenced = True
         self.obj = {}
-        for k, v in obj.items():
-            self[k] = v
+        if obj:
+            for k, v in obj.items():
+                self[k] = v
 
     @property
     def application(self):
@@ -192,15 +230,28 @@ class Document(MutableMapping):
     @id.setter
     def id(self, v):
         self.obj[self.collection.primary_key] = v
-        self.url = '/'.join((self.collection.url, v))
+        self._url = '/'.join((self.collection.url, v))
 
     @property
     def name(self):
-        return self.id
+        return self.id or "<unsaved>"
+
+    @property
+    def url(self):
+        if self._url:
+            return self._url
+        elif self.collection:
+            return self.collection.url + "/" + self.slug
+        else:
+            return self.slug
+
+    @property
+    def schema_url(self):
+        return self.url + ";schema"
 
     @property
     def slug(self):
-        return self.id
+        return self.id or "<unsaved>"
 
     def __len__(self):
         return len(self.obj)
@@ -209,7 +260,12 @@ class Document(MutableMapping):
         return self.id and (self.id == other.id)
 
     def __getitem__(self, key):
-        return self.obj[key]
+        if key in self.obj:
+            return self.obj[key]
+        elif key in self.defaults:
+            return self.defaults[key]
+        else:
+            raise KeyError(key)
 
     def __setitem__(self, key, value):
         if isinstance(value, Document):
@@ -223,6 +279,19 @@ class Document(MutableMapping):
     def __iter__(self):
         return iter(self.obj)
 
+    def help(self, out=None, initial_heading_level=0):
+        """Return full reStructuredText help for this class"""
+        builder = help.SchemaHelpBuilder(self.schema, self.url, out=out, initial_heading_level=initial_heading_level)
+        builder.begin_subheading(self.name)
+        builder.begin_list()
+        builder.define("Collection", self.collection.url + ';help')
+        builder.define("Schema URL", self.schema_url)
+        builder.define("JSON URL", self.url)
+        builder.end_list()
+        builder.end_subheading()
+        builder.build()
+        return builder.rst
+
     def json(self, *args, **kwargs):
         if not self._referenced:
             self.reference()
@@ -233,7 +302,6 @@ class Document(MutableMapping):
 
     def delete(self, **kwargs):
         return  self.collection.delete(self.id, **kwargs)
-
 
     def _from_ref(self, doc):
         if isinstance(doc, str):
