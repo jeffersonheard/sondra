@@ -7,8 +7,26 @@
 Sondra
 ######
 
-* **Author**: Jefferson Heard
-* **Copyright**: 2015 Jefferson Heard
+Author
+  Jefferson Heard
+
+Copyright
+  2015 Jefferson Heard
+
+License
+  Apache 2.0
+
+Development home
+  https://github.com/JeffHeard/sondra
+
+Development status
+  pre-alpha
+
+Maintainer
+  Jefferson Heard
+
+Documentation
+  http://sondra.readthedocs.org/en/latest/
 
 Sondra is an "ORM" and REST-ful webservice framework for Python 3.x, Flask, and RethinkDB with some unique
 features. Sondra's goal is to aid full stack developers by letting them focus

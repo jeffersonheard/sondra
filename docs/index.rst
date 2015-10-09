@@ -25,6 +25,9 @@ Development status
 Maintainer
   Jefferson Heard
 
+Documentation
+  http://sondra.readthedocs.org/en/latest/
+
 
 Sondra is an "ORM" and REST-ful webservice framework for Python 3.x, Flask, and RethinkDB with some unique
 features. Sondra's goal is to aid full stack developers by letting them focus
