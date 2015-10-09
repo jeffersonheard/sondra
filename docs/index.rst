@@ -50,8 +50,6 @@ Features
 Installation
 ============
 
-
-
 ::
 
     $ python setup.py
@@ -172,6 +170,17 @@ Contents
 
    web-services.rst
    commands.rst
+
+
+Python API Documentation
+========================
+
+.. toctree::
+   :maxdepth: 3
+
+   api/sondra.rst
+
+
 
 Indices and tables
 ==================
