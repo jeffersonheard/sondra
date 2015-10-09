@@ -548,6 +548,8 @@ class AuthRequestProcessor(RequestProcessor):
             return 'read'
         elif request.method == 'POST':
             return 'write'
+        elif request.method == 'PUT':
+            return 'update'
         elif request.method == 'PATCH':
             return 'update'
         elif request.method == 'DELETE':

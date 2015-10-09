@@ -33,6 +33,13 @@ class ApplicationMetaclass(ABCMeta):
 
     def __init__(cls, name, bases, attrs):
         super(ApplicationMetaclass, cls).__init__(name, bases, attrs)
+        cls.exposed_methods = {}
+        for base in bases:
+            if hasattr(base, 'exposed_methods'):
+                cls.exposed_methods.update(base.exposed_methods)
+        for name, method in (n for n in nmspc.items() if hasattr(n[1], 'exposed')):
+                cls.exposed_methods[name] = method
+
         cls._collection_registry = {}
 
     def __iter__(cls):
@@ -78,7 +85,8 @@ class Application(Mapping, metaclass=ApplicationMetaclass):
             "type": "object",
             "description": self.__doc__ or "*No description provided.*",
             "definitions": self.definitions,
-            "collections": {name: coll.schema_url for name, coll in self.collections.items()}
+            "collections": {name: coll.schema_url for name, coll in self.collections.items()},
+            "methods": {m.slug: m.schema for m in self.exposed_methods}
         }
 
     @property
@@ -88,7 +96,8 @@ class Application(Mapping, metaclass=ApplicationMetaclass):
             "type": "object",
             "description": self.__doc__ or "*No description provided.*",
             "definitions": self.definitions,
-            "collections": {name: coll.schema for name, coll in self.collections.items()}
+            "collections": {name: coll.schema for name, coll in self.collections.items()},
+            "methods": {m.slug: m.schema for m in self.exposed_methods}
         }
 
     def help(self, out=None, initial_heading_level=0):

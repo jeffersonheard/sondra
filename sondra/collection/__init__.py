@@ -20,6 +20,7 @@ class CollectionException(Exception):
 
 
 class CollectionMetaclass(ABCMeta):
+
     def __new__(mcs, name, bases, attrs):
         definitions = {}
         for base in bases:
@@ -35,6 +36,14 @@ class CollectionMetaclass(ABCMeta):
 
     def __init__(cls, name, bases, nmspc):
         super(CollectionMetaclass, cls).__init__(name, bases, nmspc)
+        cls.exposed_methods = {}
+        for base in bases:
+            if hasattr(base, 'exposed_methods'):
+                cls.exposed_methods.update(base.exposed_methods)
+        for name, method in (n for n in nmspc.items() if hasattr(n[1], 'exposed')):
+                cls.exposed_methods[name] = method
+
+
         cls.name = utils.convert_camelcase(cls.__name__)
 
         cls.schema = deepcopy(cls.document_class.schema)
@@ -55,6 +64,9 @@ class CollectionMetaclass(ABCMeta):
 
         if not cls.primary_key:
             cls.schema['properties']['id'] = {"type": "string"}
+
+        cls.schema["methods"] = {m.slug: m.schema for m in cls.exposed_methods}
+        cls.schema["documentMethods"] = {m.slug: m.schema for m in cls.document_class.exposed_methods}
 
         _validator.check_schema(cls.schema)
 

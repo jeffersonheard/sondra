@@ -157,7 +157,6 @@ class Time(ValueHandler):
 
 
 class DocumentMetaclass(ABCMeta):
-    exposed_methods = {}
     schema = {
         "type": "object",
         "properties": {}
@@ -178,12 +177,17 @@ class DocumentMetaclass(ABCMeta):
 
     def __init__(cls, name, bases, nmspc):
         super(DocumentMetaclass, cls).__init__(name, bases, nmspc)
-
+        cls.exposed_methods = {}
+        for base in bases:
+            if hasattr(base, 'exposed_methods'):
+                cls.exposed_methods.update(base.exposed_methods)
         for name, method in (n for n in nmspc.items() if hasattr(n[1], 'exposed')):
-            cls.exposed_methods['name'] = method
+                cls.exposed_methods[name] = method
 
         if 'description' not in cls.schema and cls.__doc__:
             cls.schema['description'] = cls.__doc__
+
+        cls.schema['methods'] = {m.slug: m.schema for m in cls.document_class.exposed_methods}
 
         cls.defaults = {k: cls.schema['properties'][k]['default']
                         for k in cls.schema['properties']

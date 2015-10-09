@@ -22,8 +22,8 @@ In the meantime, here is the general combined URL format for calls on a collecti
 Furthermore there's a grammar for combining these, and a list of allowed HTTP methods for each
 grammar production
 
-Application Metadata
-====================
+Application Schema
+==================
 
 Form::
 
@@ -81,8 +81,8 @@ Listing
 
 **To be documented**
 
-Collection Metadata
-===================
+Collection Schema
+=================
 
 Form::
 
@@ -140,8 +140,14 @@ object.
 
 Query parameters accepted:
 
-* **offset**: Retrieve objects, starting with **offset**-th object
-* **count**: The number of objects to return.
+flt (JSON object or array)
+  Filer
+
+offset (int)
+  Retrieve objects, starting with **offset**-th object
+
+count (int)
+  The number of objects to return.
 
 ``POST`` Add/Update an object
 -----------------------------
@@ -184,7 +190,7 @@ Formats:
 - ``json``: Get the JSON corresponding to the object
 - ``jsonp``: Get the JSON corresopnding to the object as a JSON-P string
 
-``PUT`` and ``PATCH`` Behavior
+``PUT`` Behavior
 ------------------------------
 
 Accepts JSON in the request body.  The object of a PUT or PATCH request body is considered only to
@@ -329,7 +335,8 @@ class APIRequest(object):
                 'collection': {
                     'GET': partial(self.json_response, self.get_collection_items),
                     'POST': partial(self.json_response, self.add_collection_items),
-                    'PUT': partial(self.json_response, self.update_collection_items),
+                    'PUT': partial(self.json_response, self.replace_collection_items),
+                    'PATCH': partial(self.json_response, self.update_collection_items),
                     'DELETE': partial(self.json_response, self.delete_collection_items),
                 },
                 'collection_method': {
@@ -339,7 +346,8 @@ class APIRequest(object):
                 'document': {
                     'GET': partial(self.json_response, self.get_document),
                     'POST': partial(self.json_response, self.set_document),
-                    'PUT': partial(self.json_response, self.update_document),
+                    'PUT': partial(self.json_response, self.set_document),
+                    'PATCH': partial(self.json_response, self.update_document),
                     'DELETE': partial(self.json_response, self.delete_document),
                 },
                 'document_method': {
@@ -355,59 +363,15 @@ class APIRequest(object):
             },
             'geojson': {
                 'application': {},
-                'application_method': {
-                    'GET': partial(self.geojson_response, self.application_method),
-                    'POST': partial(self.geojson_response, self.application_method),
-                    },
                 'collection': {
                     'GET': partial(self.geojson_response, self.get_collection_items),
-                    },
-                'collection_method': {
-                    'GET': partial(self.geojson_response, self.collection_method),
                     },
                 'document': {
                     'GET': partial(self.geojson_response, self.get_document),
                     },
-                'document_method': {
-                    'GET': partial(self.geojson_response, self.document_method),
-                    'POST': partial(self.geojson_response, self.document_method),
-                },
                 'subdocument': {
                     'GET': partial(self.geojson_response, self.get_subdocument),
                     }
-            },
-            'jsonp': {
-                'application': {},
-                'application_method': {
-                    'GET': partial(self.jsonp_response, self.application_method),
-                    'POST': partial(self.jsonp_response, self.application_method),
-                },
-                'collection': {
-                    'GET': partial(self.jsonp_response, self.get_collection_items),
-                    'POST': partial(self.jsonp_response, self.add_collection_items),
-                    'PUT': partial(self.jsonp_response, self.update_collection_items),
-                    'DELETE': partial(self.jsonp_response, self.delete_collection_items),
-                },
-                'collection_method': {
-                    'GET': partial(self.jsonp_response, self.collection_method),
-                    'POST': partial(self.jsonp_response, self.collection_method),
-                },
-                'document': {
-                    'GET': partial(self.jsonp_response, self.get_document),
-                    'POST': partial(self.jsonp_response, self.set_document),
-                    'PUT': partial(self.jsonp_response, self.update_document),
-                    'DELETE': partial(self.jsonp_response, self.delete_document),
-                },
-                'document_method': {
-                    'GET': partial(self.jsonp_response, self.document_method),
-                    'POST': partial(self.jsonp_response, self.document_method),
-                },
-                'subdocument': {
-                    'GET': partial(self.jsonp_response, self.get_subdocument),
-                    'POST': partial(self.jsonp_response, self.replace_subdocument),
-                    'PUT': partial(self.jsonp_response, self.update_or_append_subdocument),
-                    'DELETE': partial(self.jsonp_response, self.delete_subdocument),
-                }
             },
             'schema': {
                 'application': {
@@ -435,39 +399,7 @@ class APIRequest(object):
                     'POST': partial(self.json_response, self.document_method_schema),
                 }
             },
-            'html': {
-                'application': {},
-                'application_method': {
-                    'GET': partial(self.html_response, self.application_method),
-                    'POST': partial(self.html_response, self.application_method),
-                },
-                'collection': {
-                    'GET': partial(self.html_response, self.get_collection_items),
-                    'POST': partial(self.html_response, self.add_collection_items),
-                    'PUT': partial(self.html_response, self.update_collection_items),
-                    'DELETE': partial(self.html_response, self.delete_collection_items),
-                },
-                'collection_method': {
-                    'GET': partial(self.html_response, self.collection_method),
-                    'POST': partial(self.html_response, self.collection_method),
-                },
-                'document': {
-                    'GET': partial(self.html_response, self.get_document),
-                    'POST': partial(self.html_response, self.set_document),
-                    'PUT': partial(self.html_response, self.update_document),
-                    'DELETE': partial(self.html_response, self.delete_document),
-                },
-                'document_method': {
-                    'GET': partial(self.html_response, self.document_method),
-                    'POST': partial(self.html_response, self.document_method),
-                },
-                'subdocument': {
-                    'GET': partial(self.html_response, self.get_subdocument),
-                    'POST': partial(self.html_response, self.replace_subdocument),
-                    'PUT': partial(self.html_response, self.update_or_append_subdocument),
-                    'DELETE': partial(self.html_response, self.delete_subdocument),
-                }
-            },
+
         }
 
     def __call__(self):
@@ -526,6 +458,10 @@ class APIRequest(object):
             if isinstance(body_args, list):
                 self.arguments.extend(body_args)
             else:
+                if "__q" in body_args:
+                    self.api_arguments.update(body_args['__q'])
+                    self.request_method = body_args.get('__method', self.request_method)
+                    body_args = body_args.get("__objs", [])
                 self.arguments.append(body_args)
 
         if self.files:
