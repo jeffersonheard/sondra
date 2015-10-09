@@ -278,7 +278,7 @@ class Suite(Mapping):
         builder.line()
         builder.begin_subheading("Applications")
         builder.begin_list()
-        for name, in self.applications.items():
+        for name, coll in self.applications.items():
             builder.define(name, coll.url + ';help')
         builder.end_list()
         builder.end_subheading()

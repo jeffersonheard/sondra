@@ -484,7 +484,10 @@ class APIRequest(object):
         """Return HTML help from a requested object (application, collection, document, method)"""
         # FIXME this should check read/execute permissions on all objects
         value = self.reference.value
-        return 'text/html', self.suite.docstring_processor(value.help())
+        if 'method' in self.reference.kind:
+            return 'text/html', self.suite.docstring_processor(value.help(value))
+        else:
+            return 'text/html', self.suite.docstring_processor(value.help())
 
     def json_response(self, method):
         result = method()

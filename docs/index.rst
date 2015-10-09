@@ -71,8 +71,8 @@ conventions that are already covered by Python idioms. This means that:
 * All URL features that `urllib.parse` recognizes are taken advantage of to
   create a regular URL scheme that encompasses all manner of calls.
 
-URL Scheme
-~~~~~~~~~~
+Web Services
+~~~~~~~~~~~~
 
 Sondra uses a regular URL scheme for its web services:
 

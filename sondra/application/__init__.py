@@ -37,8 +37,8 @@ class ApplicationMetaclass(ABCMeta):
         for base in bases:
             if hasattr(base, 'exposed_methods'):
                 cls.exposed_methods.update(base.exposed_methods)
-        for name, method in (n for n in nmspc.items() if hasattr(n[1], 'exposed')):
-                cls.exposed_methods[name] = method
+        for method in (n for n in attrs.values() if hasattr(n, 'exposed')):
+                cls.exposed_methods[method.slug] = method
 
         cls._collection_registry = {}
 
@@ -86,7 +86,7 @@ class Application(Mapping, metaclass=ApplicationMetaclass):
             "description": self.__doc__ or "*No description provided.*",
             "definitions": self.definitions,
             "collections": {name: coll.schema_url for name, coll in self.collections.items()},
-            "methods": {m.slug: m.schema for m in self.exposed_methods}
+            "methods": [m.slug for m in self.exposed_methods.values()]
         }
 
     @property
@@ -97,7 +97,7 @@ class Application(Mapping, metaclass=ApplicationMetaclass):
             "description": self.__doc__ or "*No description provided.*",
             "definitions": self.definitions,
             "collections": {name: coll.schema for name, coll in self.collections.items()},
-            "methods": {m.slug: m.schema for m in self.exposed_methods}
+            "methods": [m.slug for m in self.exposed_methods.values()]
         }
 
     def help(self, out=None, initial_heading_level=0):
@@ -105,18 +105,28 @@ class Application(Mapping, metaclass=ApplicationMetaclass):
         builder = help.SchemaHelpBuilder(self.schema, self.url, out=out, initial_heading_level=initial_heading_level)
         builder.begin_subheading(self.name)
         builder.begin_list()
-        builder.define("Suite", self.suite.base_url + ';help')
+        builder.define("Suite", self.suite.base_url + '/help')
         builder.define("Schema URL", self.schema_url)
         builder.define("Anonymous Reads", "yes" if self.anonymous_reads else "no")
         builder.end_list()
         builder.build()
         builder.line()
+
+        if self.exposed_methods:
+            builder.begin_subheading("Methods")
+            for name, method in self.exposed_methods.items():
+                new_builder = help.SchemaHelpBuilder(method.schema(getattr(self, method.__name__)), initial_heading_level=builder._heading_level)
+                new_builder.build()
+                builder.line(new_builder.rst)
+            builder.end_subheading()
+
         builder.begin_subheading("Collections")
         builder.begin_list()
         for name, coll in self.collections.items():
             builder.define(name, coll.url + ';help')
         builder.end_list()
         builder.end_subheading()
+
         return builder.rst
 
 

@@ -14,7 +14,7 @@ The following section describes conventions for making web-service requests and 
 
 Requests
 ~~~~~~~~
-Requests are made using standard HTTP and HTTPS calls. Most browsers, jQuery, and as well as cURL and `wget` should
+Requests are made using standard HTTP and HTTPS calls. Most browsers, jQuery, and as well as cURL and ``wget`` should
 support all manner of calls supported by these. When a body is required (or optional) for a call, the body is assumed to
 be JSON. All calls return JSON by default, if no format specifier is supplied as part of the call.
 
@@ -51,7 +51,7 @@ object according to their type::
   {"_": <value>}
 
 In addition, because empty responses are not handled well by most browsers, a null return from a service call will
-result in an empty JSON object, `{}`.
+result in an empty JSON object, ``{}``.
 
 In general, all webservices are self-describing with auto-generated help and JSON-schemas.  JSON-schemas are very
 slightly enhanced to improve the interpretation of linkages across collections.  See `Schemas`_ for more information.
@@ -89,7 +89,7 @@ Authentication
 ==============
 **Please make sure to expose and call APIs over HTTPS. JWT security relies on encryption to be effective.**
 
-APIs that support authentication as supplied by Sondra must include the `auth` app as part of their API. The auth app
+APIs that support authentication as supplied by Sondra must include the ``auth`` app as part of their API. The auth app
 has auto-generated documentation that covers it entirely, and it is not in the scope of this document to replicate that
 here.  However, there are a few basic points covered again here for login, logout, and making authenticated webservice
 calls.
@@ -111,7 +111,7 @@ username (str)
 password (str)
   The user's password.
 
-Returns an encoded JSON Web Token as a bare object `{"_": <jwt>}`
+Returns an encoded JSON Web Token as a bare object ``{"_": <jwt>}``
 
 Logging Out
 ~~~~~~~~~~~
@@ -126,7 +126,7 @@ URL Form::
 token (string, JWT)
   The currently valid JWT
 
-Returns an empty response, the blank object `{}`.
+Returns an empty response, the blank object ``{}``.
 
 Renewing a Token
 ~~~~~~~~~~~~~~~~
@@ -142,13 +142,13 @@ Making Authenticated Requests
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 Once you obtain a JWT by logging in, you may use this JWT to authenticate requests.  JWTs in Sondra by default must be
 renewed (see above, `Renewing a Token`_ every five minutes (300 seconds). This can be changed on the server by deriving
-a new subclass of the `Auth` app.
+a new subclass of the ``Auth`` app.
 
 **Query Parameters**
 
 _auth (string, JWT)
   This is valid on all requests for authenticated application, suites, collections, and documents. The JWT, as returned
-  by `auth.login` (`Logging In`_) is the value of _auth.
+  by ``auth.login`` (`Logging In`_) is the value of _auth.
 
 
 Authentication Service Exceptions
@@ -177,11 +177,11 @@ Schemas
 Schemas follow JSON-Schema format and use the `jsonschema`_ package to validate documents that will be added to
 persistent collections. JSON-Schema is strictly followed, with only a few minor additions.
 
-`refersTo`
+``refersTo``
   Applies to schema type "string" and provides a prefix for linking foreign keys to other API endpoints, specifically
-  other collections. The value of `refersTo` is itself a string in URL format and must refer to a collection.  Single
-  objects will be validated against this string in the same manner as JSON-schema's `pattern` specifier. The difference
-  between `refersTo` and `pattern` is that refersTo must be a valid URL and must also be a collection API endpoint. This
+  other collections. The value of ``refersTo`` is itself a string in URL format and must refer to a collection.  Single
+  objects will be validated against this string in the same manner as JSON-schema's ``pattern`` specifier. The difference
+  between ``refersTo`` and ``pattern`` is that refersTo must be a valid URL and must also be a collection API endpoint. This
   allows code to make certain assumptions (such as formats and metadata endpoints) about the endpoint, whereas a pattern
   can be any valid regular expression.
 
@@ -196,7 +196,7 @@ URL Form::
 The suite schema is a "dummy schema" that contains suite-wide definitions that are referenced by other schemas within a
 suite's set of enclosed applications. Additionally, it contains another property:
 
-* `applications` - whose value is a list of URLs to the schema of all applications in the suite.
+* ``applications`` - whose value is a list of URLs to the schema of all applications in the suite.
 
 
 Application schema
@@ -208,8 +208,8 @@ URL Form::
 The application schema is a "dummy schema" that contains application-wide definitions that are referenced by schemas
 within a application's set of enclosed collections and documents. Additionally, it contains two properties:
 
-* `collections` - whose value is a list of URLs to the schema of all collections in the suite.
-* `methods` - whose value is an object whose property names are method slugs, and whose property values are the request
+* ``collections`` - whose value is a list of URLs to the schema of all collections in the suite.
+* ``methods`` - whose value is an object whose property names are method slugs, and whose property values are the request
   and response schema of all methods that attach at the application level.
   
 Collection schema
@@ -221,9 +221,9 @@ URL Form::
 The collection schema defines the validation set for all documents within a single collection. Additionally, it contains 
 two properties:
 
-* `methods` - whose value is an object whose property names are method slugs, and whose property values are the request
+* ``methods`` - whose value is an object whose property names are method slugs, and whose property values are the request
   and response schema of all methods that attach at the collection level.
-* `documentMethods` - whose value is an object whose property names are method slugs that can be called at the 
+* ``documentMethods`` - whose value is an object whose property names are method slugs that can be called at the
   individual document level, and whose property values are the request
   and response schema of all methods that attach at the document level.
   
@@ -237,7 +237,7 @@ URL Form::
 The document schema mirrors the collection schema and mainly exists for completeness. Generally you should use the
 collection schema. In addition, it contains a property:
 
-* `methods` - whose value is an object whose property names are method slugs, and whose property values are the request
+* ``methods`` - whose value is an object whose property names are method slugs, and whose property values are the request
   and response schema of all methods that attach at the document level.
 
 Method schemas
@@ -264,7 +264,7 @@ URL Form::
   http://localhost:5000/application/collection/primary-key;help
   http://localhost:5000/application/collection/primary-key.method;help
   
-Help for every level of an API heirarchy can be retrieved by using the format specifier `;help` at the end of the URL.
+Help for every level of an API heirarchy can be retrieved by using the format specifier ``;help`` at the end of the URL.
 Help is completely auto-generated from docstrings (using Markdown, reStructuredText, or Google formats,
 `see suite docs`_) in the definition of each Python class definition and each schema that makes up the API. Help is
 available in HTML format. Currently localized help is *not* supported for APIs, but this may happen in the future.
@@ -278,8 +278,8 @@ URL Form::
 
     http://localhost:5000/application/collection;format
 
-`POST`: Create
-~~~~~~~~~~~~~~
+``POST``: Create
+~~~~~~~~~~~~~~~~
 
 Create a new document. Raises an error if the document already exists in the database.
 
@@ -298,8 +298,8 @@ Errors
 * **KeyError** if any of the POSTed documents already exist in the database by primary key.
 * **ValidationError** if any of the POSTed documents do not fit the collection schema.
 
-`GET`: List and Filter
-~~~~~~~~~~~~~~~~~~~~~~
+``GET``: List and Filter
+~~~~~~~~~~~~~~~~~~~~~~~~
 
 Retrieve a listing of documents in the given format, or retrieve an HTML form for entering a new
 document. Note that filtering parameters described here can also be accessed via POST using the
@@ -338,15 +338,15 @@ Each filter must conform to the following JSON specification::
 
 **Operators**
 
-* `==`: Equality check. Equivalent to `.filter(r.row(lhs).eq(rhs))`
-* `!=`: Inequality check. Equivalent to `.filter(r.row(lhs).eq(rhs))`
-* `>`: Strictly greater than. Equivalent to `.filter(r.row(lhs).gt(rhs))`
-* `>=`: Greater or equal to. Equivalent to `.filter(r.row(lhs).ge(rhs))`
-* `<`: Strictly less than. Equivalent to `.filter(r.row(lhs).lt(rhs))`
-* `<=`: Less than or equal to. Equivalent to `.filter(r.row(lhs).le(rhs))`
-* `match`: Regex match. Equivalent to `.filter(r.row(lhs).match(rhs))`
-* `contains`: Containment check. Equivalent to `.filter(r.row(lhs).contains(rhs))`
-* `has_fields`: Field presence check. Equivalent to `.filter(r.row(lhs).has_fields(rhs))`
+* ``==``: Equality check. Equivalent to ``.filter(r.row(lhs).eq(rhs))``
+* ``!=``: Inequality check. Equivalent to ``.filter(r.row(lhs).eq(rhs))``
+* ``>``: Strictly greater than. Equivalent to ``.filter(r.row(lhs).gt(rhs))``
+* ``>=``: Greater or equal to. Equivalent to ``.filter(r.row(lhs).ge(rhs))``
+* ``<``: Strictly less than. Equivalent to ``.filter(r.row(lhs).lt(rhs))``
+* ``<=``: Less than or equal to. Equivalent to ``.filter(r.row(lhs).le(rhs))``
+* ``match``: Regex match. Equivalent to ``.filter(r.row(lhs).match(rhs))``
+* ``contains``: Containment check. Equivalent to ``.filter(r.row(lhs).contains(rhs))``
+* ``has_fields``: Field presence check. Equivalent to ``.filter(r.row(lhs).has_fields(rhs))``
 
 Spatial filters
 ```````````````
@@ -419,11 +419,11 @@ Response
 --------
 
 Unless an aggregation was specified, the response is a list of documents that conform to the collection schema.  If an
-aggregation (or distance) was specified, then the result will be a bare JSON object, `{"_": <value>}`.
+aggregation (or distance) was specified, then the result will be a bare JSON object, ``{"_": <value>}``.
 
 
-`PUT`: Replace
-~~~~~~~~~~~~~~
+``PUT``. Replace
+~~~~~~~~~~~~~~~~
 Replace an document currently in the database with a new document.
 
 **Query Params**
@@ -441,7 +441,7 @@ document, then that document will be added.
 
 Response
 --------
-The response will be the same as the RethinkDB response to an `insert`.
+The response will be the same as the RethinkDB response to an ``insert``.
 
 Errors
 ------
@@ -449,8 +449,8 @@ Errors
 * **KeyError** if any of the PUT documents do not already exist in the database by primary key.
 * **ValidationError** if any of the PUT documents do not fit the collection schema.
 
-`PATCH`: Update
-~~~~~~~~~~~~~~~
+``PATCH``. Update
+~~~~~~~~~~~~~~~~~
 Update document(s) in place. Raises an error if a supplied document does not already exist in the database. The semantic
 difference between a PATCH and a PUT request is that the PATCH request retrieves the document first and updates that
 document with the values provided in the PATCH.  The primary key must be present in each replacement document for a lookup
@@ -471,7 +471,7 @@ is updated in turn. If it is an document, then that document will be updated.
 
 Response
 --------
-The response will be the same as the RethinkDB response to an `insert`.
+The response will be the same as the RethinkDB response to an ``insert``.
 
 Errors
 ------
@@ -480,8 +480,8 @@ Errors
   not supplied.
 * **ValidationError** if any of the PUT documents do not fit the collection schema.
 
-`DELETE`: Delete
-~~~~~~~~~~~~~~~~
+``DELETE``. Delete
+~~~~~~~~~~~~~~~~~~
 Delete documents in place. Raises an error if the document doesn't exist in the first place, or if the entire collection
 would be deleted, unless specifically requested to delete everything.
 
@@ -511,13 +511,13 @@ index (str index name)
 
 Response
 --------
-The same as the RethinkDB `delete` response.
+The same as the RethinkDB ``delete`` response.
 
 Errors
 ------
 * **KeyError** if any of the DELETE documents do not already exist in the database by primary key.
 * **PermissionError** if no filters or primary keys have been supplied (all documents in the collection would be deleted)
-  and `delete_all` is not true.
+  and ``delete_all`` is not true.
 
 
 Operations on Documents
@@ -528,8 +528,8 @@ URL Form::
 
     http://localhost:5000/application/collection/primary-key;format
 
-`POST` and `PUT`: Replace
-~~~~~~~~~~~~~~~~~~~~~~~~~
+``POST`` and ``PUT``. Replace
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Replace the referenced document with the given document. Raises an error if the primary key exists and conflicts with the
 primary key of the document.
@@ -549,7 +549,7 @@ return_changes (boolean=True)
 
 Response
 --------
-The response will be the same as RethinkDB's `save` method.
+The response will be the same as RethinkDB's ``save`` method.
 
 Errors
 ------
@@ -557,8 +557,8 @@ Errors
 * **KeyError** if the POSTed document already exists in the database by primary key.
 * **ValidationError** if the POSTed document does not fit the collection schema.
 
-`PATCH`: Update
-~~~~~~~~~~~~~~~
+``PATCH``. Update
+~~~~~~~~~~~~~~~~~
 
 Update document in place. Raises an error if a supplied document does not already exist in the database or if a primary key
 is present in the supplied document and conflicts with the document key. The semantic
@@ -579,7 +579,7 @@ Accepts a single JSON in the PATCH body.
 
 Response
 --------
-The response will be the same as the RethinkDB response to an `save`.
+The response will be the same as the RethinkDB response to an ``save``.
 
 Errors
 ------
@@ -588,8 +588,8 @@ Errors
   existing key.
 * **ValidationError** if the PATCH document does not fit the collection schema.
 
-`DELETE`: Delete
-~~~~~~~~~~~~~~~~
+``DELETE``. Delete
+~~~~~~~~~~~~~~~~~~
 Delete an document. Raises an error if the document doesn't exist to be deleted.
 
 Request
@@ -606,7 +606,7 @@ return_changes (boolean=True)
 
 Response
 --------
-The same as the RethinkDB `delete` response.
+The same as the RethinkDB ``delete`` response.
 
 Errors
 ------
@@ -615,69 +615,69 @@ Errors
 Complete URL scheme reference
 =============================
 
-`/schema`
-  `GET`. Suite-wide schema. Typically this includes definitions that are common for the entire suite, including valid
+``/schema``
+  ``GET``. Suite-wide schema. Typically this includes definitions that are common for the entire suite, including valid
   filter names, dates, times, geography, and localization.
 
-`/help`
-  `GET`. Suite-wide help with links to applications. Help is autogenerated from schema definitions and from docstrings in the class.
+``/help``
+  ``GET``. Suite-wide help with links to applications. Help is autogenerated from schema definitions and from docstrings in the class.
 
-`/{application};schema`
-  `GET`. Application-wide schema.
+``/{application};schema``
+  ``GET``. Application-wide schema.
 
-`/{application};help`
-  `GET`. Application-wide help with links to collections. Help is autogenerated from schema definitions and from docstrings in the class.
+``/{application};help``
+  ``GET``. Application-wide help with links to collections. Help is autogenerated from schema definitions and from docstrings in the class.
 
-`/{application}.{method-name};schema`
-  `GET`. Method schema for application.
+``/{application}.{method-name};schema``
+  ``GET``. Method schema for application.
 
-`/{application}.{method-name};help`
-  `GET`. Autogenerated help for the method.
+``/{application}.{method-name};help``
+  ``GET``. Autogenerated help for the method.
 
-`/{application}.{method-name};json`
-  `GET`, `POST`. Applicationlication method call.
+``/{application}.{method-name};json``
+  ``GET``, ``POST``. Applicationlication method call.
 
-`/{application}/{collection};schema`
-  `GET`. Collection schema.
+``/{application}/{collection};schema``
+  ``GET``. Collection schema.
 
-`/{application}/{collection};help`
-  `GET`. Autogenerated help for the collection.
+``/{application}/{collection};help``
+  ``GET``. Autogenerated help for the collection.
 
-`/{application}/{collection};json`
-  `GET`, `POST`, `PUT`, `DELETE`. Get, Add, Update, or Delete documents of the collection, respectively.
+``/{application}/{collection};json``
+  ``GET``, ``POST``, ``PUT``, ``DELETE``. Get, Add, Update, or Delete documents of the collection, respectively.
 
-`/{application}/{collection};geojson`
-  `GET`,  `DELETE`. Get or Delete documents of the collection, respectively, but as GeoJSON FeatureCollections.
+``/{application}/{collection};geojson``
+  ``GET``,  ``DELETE``. Get or Delete documents of the collection, respectively, but as GeoJSON FeatureCollections.
 
-`/{application}/{collection}.{method-name};schema`
-  `GET`. Method schemas for a collection-wide method.
+``/{application}/{collection}.{method-name};schema``
+  ``GET``. Method schemas for a collection-wide method.
 
-`/{application}/{collection}.{method-name};help`
-  `GET`. Autogenerated help for the collection method.
+``/{application}/{collection}.{method-name};help``
+  ``GET``. Autogenerated help for the collection method.
 
-`/{application}/{collection}.{method-name};json`
-  `GET`, `POST`. Call a collection method.
+``/{application}/{collection}.{method-name};json``
+  ``GET``, ``POST``. Call a collection method.
 
-`/{application}/{collection}/{document};schema`
-  `GET`. Same as `/{application}/{collection};schema`, generally speaking.
+``/{application}/{collection}/{document};schema``
+  ``GET``. Same as ``/{application}/{collection};schema``, generally speaking.
 
-`/{application}/{collection}/{document};help`
-  `GET`. Autogenerated help for document methods.
+``/{application}/{collection}/{document};help``
+  ``GET``. Autogenerated help for document methods.
 
-`/{application}/{collection}/{document};json`
-  `GET`, `POST`, `PUT`, `DELETE`. Get, Replace, Update, or Delete document, respectively.
+``/{application}/{collection}/{document};json``
+  ``GET``, ``POST``, ``PUT``, ``DELETE``. Get, Replace, Update, or Delete document, respectively.
 
-`/{application}/{collection}/{document};geojson`
-  `GET`, `DELETE`. Get or Delete document, respectively, but as a GeoJSON Feature.
+``/{application}/{collection}/{document};geojson``
+  ``GET``, ``DELETE``. Get or Delete document, respectively, but as a GeoJSON Feature.
 
-`/{application}/{collection}/{document}.{method-name};schema`
-  `GET`. Document method schema.
+``/{application}/{collection}/{document}.{method-name};schema``
+  ``GET``. Document method schema.
 
-`/{application}/{collection}/{document}.{method-name};help`
-  `GET`. Document method help.
+``/{application}/{collection}/{document}.{method-name};help``
+  ``GET``. Document method help.
 
-`/{application}/{collection}/{document}.{method-name};json`
-  `GET`, `POST`. Document method call.
+``/{application}/{collection}/{document}.{method-name};json``
+  ``GET``, ``POST``. Document method call.
 
 
 .. _ReQL API documentation: http://rethinkdb.com/api/javascript/
@@ -686,4 +686,4 @@ Complete URL scheme reference
 .. _see suite docs: ./suite.html
 
 .. [1] The following exceptions are not yet supported, but will be very soon.  Currently all authorization and
-   authentication errors raise a standard Python `PermissionError` on exception.
+   authentication errors raise a standard Python ``PermissionError`` on exception.

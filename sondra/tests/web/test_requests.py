@@ -45,8 +45,8 @@ def test_app_method():
     schema = schema.json()
     assert isinstance(schema, dict)
     assert 'definitions' in schema
-    assert 'request' in schema['definitions']
-    assert 'response' in schema['definitions']
+    assert 'test-app-method-request' in schema['definitions']
+    assert 'test-app-method-response' in schema['definitions']
     assert 'id' in schema
     assert schema['id'] == schema_url
 
@@ -88,8 +88,8 @@ def test_collection_method():
     schema = schema.json()
     assert isinstance(schema, dict)
     assert 'definitions' in schema
-    assert 'request' in schema['definitions']
-    assert 'response' in schema['definitions']
+    assert 'test-collection-method-request' in schema['definitions']
+    assert 'test-collection-method-response' in schema['definitions']
     assert 'id' in schema
     assert schema['id'] == schema_url
 
@@ -173,7 +173,7 @@ def test_add_delete_document():
     # get the schema for a document
     get_one = requests.get(tracked_item_templates + '/test_template' + ';schema')
     assert get_one.ok
-    assert get_one.json() == documents.TrackedItemTemplates.schema
+    assert get_one.json()['properties'] == documents.TrackedItemTemplates.schema['properties']
 
     # get all the docs added (one)
     get_all = requests.get(tracked_item_templates + ';json')
@@ -255,7 +255,7 @@ def test_add_delete_documents():
     # get the schema for a document
     get_one = requests.get(tracked_item_templates + '/test_template' + ';schema')
     assert get_one.ok
-    assert get_one.json() == documents.TrackedItemTemplates.schema
+    assert get_one.json()['properties'] == documents.TrackedItemTemplates.schema['properties']
 
     # get the first page of the docs added (one)
     get_all = requests.get(tracked_item_templates + ';json')

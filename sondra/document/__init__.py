@@ -187,7 +187,7 @@ class DocumentMetaclass(ABCMeta):
         if 'description' not in cls.schema and cls.__doc__:
             cls.schema['description'] = cls.__doc__
 
-        cls.schema['methods'] = {m.slug: m.schema for m in cls.document_class.exposed_methods}
+        cls.schema['methods'] = [m.slug for m in cls.exposed_methods.values()]
 
         cls.defaults = {k: cls.schema['properties'][k]['default']
                         for k in cls.schema['properties']
@@ -294,6 +294,14 @@ class Document(MutableMapping, metaclass=DocumentMetaclass):
         builder.end_list()
         builder.end_subheading()
         builder.build()
+        if self.exposed_methods:
+            builder.begin_subheading("Methods")
+            for name, method in self.exposed_methods.items():
+                new_builder = help.SchemaHelpBuilder(method.schema(getattr(self, method.__name__)), initial_heading_level=builder._heading_level)
+                new_builder.build()
+                builder.line(new_builder.rst)
+
+
         return builder.rst
 
     def json(self, *args, **kwargs):

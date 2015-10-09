@@ -12,21 +12,21 @@ class ParseError(Exception):
 
 def _schema(method):
     return {
-        "id": method.__self__.url + '.' + method.slug + ';schema',
-        "title": method.__name__,
-        "description": method.__doc__,
+        "id": method.__self__.url + '.' + method.slug + ';schema' if hasattr(method, '__self__') else method.slug + ';schema',
+        "title": method.slug,
+        "description": method.__doc__ or "*No description provided*",
         "type": "object",
-        "oneOf": ["#/definitions/request", "#/definitions/response"],
+        "oneOf": [{"$ref": "#/definitions/" + method.slug + "-request"}, {"$ref": "#/definitions/" + method.slug + "-response"}],
         "definitions": {
-            "request": method.request_schema(method),
-            "response": method.response_schema(method)
+            method.slug + "-request": method.request_schema(method),
+            method.slug + "-response": method.response_schema(method)
         }
     }
 
 def _response_schema(method):
     # parse the return schema
     metadata = inspect.signature(method)
-    instance = method.__self__
+    instance = method.__self__ if hasattr(method, '__self__') else None
     if metadata.return_annotation is not metadata.empty:
         argtype = _parse_arg(instance, metadata.return_annotation)
         if 'type' in argtype:
@@ -43,13 +43,13 @@ def _response_schema(method):
                 }
             }
     else:
-        return {"type": None}
+        return {"type": "object", "description": "no return value."}
 
 
 def _request_schema(method):
     required_args = []
     metadata = inspect.signature(method)
-    instance = method.__self__
+    instance = method.__self__ if hasattr(method, '__self__') else None
     properties = {}
 
     for i, (name, param) in enumerate(metadata.parameters.items()):
@@ -83,7 +83,7 @@ def _parse_arg(instance, arg):
     elif arg is str:
         arg = {"type": "string"}
     elif arg is int:
-        arg = {"type": "int"}
+        arg = {"type": "integer"}
     elif arg is float:
         arg = {"type": "number"}
     elif arg is bool:
@@ -99,7 +99,7 @@ def _parse_arg(instance, arg):
     elif isinstance(arg, dict):
         arg = {"type": "object", "properties": {k: _parse_arg(instance, v) for k, v in arg.items()}}
     elif issubclass(arg, Collection):
-        arg = {"$ref": instance.application[arg.slug].url + ";schema"}
+        arg = {"$ref": (instance.application[arg.slug].url if instance else "<application>") + ";schema"}
     elif issubclass(arg, Document):
         arg = copy(arg.schema)
         arg['id'] = arg.__module__ + "." + arg.__class__.__name__

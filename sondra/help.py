@@ -268,7 +268,7 @@ class SchemaHelpBuilder(RSTBuilder):
             self.line()
 
         if 'id' in frag:
-            self.define('Id', frag['id'])
+            self.define('Id', "``" + frag['id'] + "``")
             self.line()
 
         if not assigned_title:
@@ -457,20 +457,26 @@ class SchemaHelpBuilder(RSTBuilder):
 
         if "allOf" in typedef:
             self.begin("Inherits")
+            self.begin_list()
             for frag in typedef['allOf']:
                 self._write_link_or_fragment(frag)
+            self.end_list()
             self.end()
 
         if "anyOf" in typedef:
             self.begin("Any of")
+            self.begin_list()
             for frag in typedef['anyOf']:
                 self._write_link_or_fragment(frag)
+            self.end_list()
             self.end()
 
         if "oneOf" in typedef:
             self.begin("One of")
+            self.begin_list()
             for frag in typedef['oneOf']:
                 self._write_link_or_fragment(frag)
+            self.end_list()
             self.end()
 
         if "not" in typedef:

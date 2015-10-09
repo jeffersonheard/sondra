@@ -48,8 +48,8 @@ class CollectionMetaclass(ABCMeta):
 
         cls.schema = deepcopy(cls.document_class.schema)
 
-        if 'description' not in cls.schema:
-            cls.schema['description'] = cls.__doc__ or "No description provided"
+        if 'description' not in cls.schema and cls.__doc__:
+            cls.schema['description'] = cls.__doc__
 
         if "title" not in cls.schema:
             cls.schema['title'] = cls.__name__
@@ -65,8 +65,8 @@ class CollectionMetaclass(ABCMeta):
         if not cls.primary_key:
             cls.schema['properties']['id'] = {"type": "string"}
 
-        cls.schema["methods"] = {m.slug: m.schema for m in cls.exposed_methods}
-        cls.schema["documentMethods"] = {m.slug: m.schema for m in cls.document_class.exposed_methods}
+        cls.schema["methods"] = [m.slug for m in cls.exposed_methods.values()]
+        cls.schema["documentMethods"] = [m.slug for m in cls.document_class.exposed_methods.values()]
 
         _validator.check_schema(cls.schema)
 
@@ -131,6 +131,21 @@ class Collection(MutableMapping, metaclass=CollectionMetaclass):
         builder.end_list()
         builder.end_subheading()
         builder.build()
+        if self.exposed_methods:
+            builder.begin_subheading("Methods")
+            for name, method in self.exposed_methods.items():
+                new_builder = help.SchemaHelpBuilder(method.schema(getattr(self, method.__name__)), initial_heading_level=builder._heading_level)
+                new_builder.build()
+                builder.line(new_builder.rst)
+            builder.end_subheading()
+        if self.document_class.exposed_methods:
+            builder.begin_subheading("Document Instance Methods")
+            for name, method in self.document_class.exposed_methods.items():
+                new_builder = help.SchemaHelpBuilder(method.schema(getattr(self.document_class, method.__name__)), initial_heading_level=builder._heading_level)
+                new_builder.build()
+                builder.line(new_builder.rst)
+            builder.end_subheading()
+
         return builder.rst
 
     def create_table(self, *args, **kwargs):
