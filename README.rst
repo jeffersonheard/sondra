@@ -74,7 +74,7 @@ conventions that are already covered by Python idioms. This means that:
 Web Services
 ~~~~~~~~~~~~
 
-Sondra uses a regular URL scheme for its web services:
+Sondra uses a regular URL scheme for its web services. See the docs directory for more details:
 
 * Underscores in Python identifiers are replaced with more web-friendly dashes (slugs)
 * Paths address app / collection / instance (document)
