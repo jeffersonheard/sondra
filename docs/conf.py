@@ -17,6 +17,9 @@ import sys
 import os
 from unittest.mock import MagicMock
 
+sys.path.append('/home/docs/checkouts/readthedocs.org/user_builds/sondra/envs/latest')
+sys.path.append('..')
+
 class Mock(MagicMock):
     @classmethod
     def __getattr__(cls, name):
