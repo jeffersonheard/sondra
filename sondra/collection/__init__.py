@@ -299,6 +299,17 @@ class Collection(MutableMapping, metaclass=CollectionMetaclass):
                 doc[property] = special.to_rql_repr(doc[property])
 
     def __getitem__(self, key):
+        """Get an object from the database and populate an instance of self.document_class with its contents.
+
+        Args:
+            key (str or int): Primary key for the document.
+
+        Returns:
+            Document: An instance of self.document_class with data from the database.
+
+        Raises:
+            KeyError if the object is not found in the database.
+        """
         doc = self.table.get(key).run(self.application.connection)
         if doc:
             self._to_python_repr(doc)
@@ -307,9 +318,25 @@ class Collection(MutableMapping, metaclass=CollectionMetaclass):
             raise KeyError('{0} not found in {1}'.format(key, self.url))
 
     def __setitem__(self, key, value):
+        """Add or replace a document object to the database.
+
+        Sends pre- and post- save signals. See signals documentation for more details.
+
+        Args:
+            key (str or int): The primary key for the document.
+            value: (dict or Document): If a Document, it should be this collection's document_class.
+        """
+        value[self.primary_key] = key
         return self.save(value, conflict='replace').run(self.application.connection)
 
     def __delitem__(self, key):
+        """Delete an object from the database.
+
+        Sends pre- and post- delete signals. See signals documentation for more details.
+
+        Args:
+            key (str or int): The primary key for the document.
+        """
         doc_signals.pre_delete.send(self.document_class, key=key)
         results = self.table.get(key).delete().run(self.application.connection)
         doc_signals.post_delete.send(self.document_class, results=results)
@@ -320,6 +347,21 @@ class Collection(MutableMapping, metaclass=CollectionMetaclass):
             yield doc
 
     def __contains__(self, item):
+        """Checks to see if the primary key is in the database.
+
+        Args:
+            item (dict, Document, str, or int): If a dict or a document, then the primary key will be checked.  Str or
+              ints are assumed to be the primary key.
+
+        Returns:
+            True or False.
+        """
+
+        if isinstance(item, dict) or isinstance(item, Document):
+            key = item[self.primary_key]
+        else:
+            key = item
+
         doc = self.table.get(item).run(self.application.connection)
         return doc is not None
 
@@ -327,24 +369,69 @@ class Collection(MutableMapping, metaclass=CollectionMetaclass):
         return self.table.count().run(self.application.connection)
 
     def q(self, query):
+        """Perform a query on this collection's database connection.
+
+        Args:
+            query (ReQL): Should be a RethinkDB query that returns documents for this collection.
+
+        Yields:
+            Document instances.
+        """
         for doc in query.run(self.application.connection):
             self._to_python_repr(doc)
             yield self.document_class(doc, collection=self)
 
-    def doc(self, kwargs):
-        return self.document_class(kwargs, collection=self)
+    def doc(self, value):
+        """Return a document instance populated from a dict. Does **not** save document before returning.
 
-    def create(self,kwargs):
-        doc = self.document_class(kwargs, collection=self)
+        Args:
+            value (dict): The value to use for the document. Should conform to document_class's schema.
+
+        Returns:
+            Document instance.
+        """
+        return self.document_class(value, collection=self)
+
+    def create(self, value):
+        """Create a document from a dict. Saves document before returning, and thus also sends pre- and post- save
+        signals.
+
+        Args:
+            value (dict): The value to use for the new document.
+
+        Returns:
+            Document instance, guaranteed to have been saved.
+        """
+        doc = self.document_class(value, collection=self)
         ret = self.save(doc, conflict="error")
         if 'generated_keys' in ret:
             doc.id = ret['generated_keys'][0]
         return doc
 
     def validator(self, value):
+        """Override this method to do extra validation above and beyond a simple schema check.
+
+        Args:
+            value (Document): The value to validate.
+
+        Returns:
+            bool
+
+        Raises:
+            ValidationError if the document fails to validate.
+        """
         return True
 
     def delete(self, docs, **kwargs):
+        """Delete a document or list of documents from the database.
+
+        Args:
+            docs (Document or [Document] or [primary_key]): List of documents to delete.
+            **kwargs: Passed to rethinkdb.delete
+
+        Returns:
+            The result of RethinkDB delete.
+        """
         if not isinstance(docs, list):
             docs = [docs]
 
@@ -352,6 +439,15 @@ class Collection(MutableMapping, metaclass=CollectionMetaclass):
         return self.table.get_all(*values).delete(**kwargs).run(self.application.connection)
 
     def save(self, docs, **kwargs):
+        """Save a document or list of documents to the database.
+
+        Args:
+            docs (Document or [Document] or [dict]): List of documents to save.
+            **kwargs: Passed to rethinkdb.save
+
+        Returns:
+            The result of the RethinkDB save.
+        """
         if not isinstance(docs, list):
             docs = [docs]
 
