@@ -10,8 +10,13 @@ import json
 import iso8601
 import jsonschema
 import rethinkdb as r
-from shapely.geometry import mapping, shape
-from shapely.geometry.base import BaseGeometry
+import logging
+
+try:
+    from shapely.geometry import mapping, shape
+    from shapely.geometry.base import BaseGeometry
+except:
+    logging.warning("Shapely not imported. Geometry objects will not be supported.")
 
 from sondra import utils, help
 from sondra.utils import mapjson

@@ -20,6 +20,16 @@ class CollectionException(Exception):
 
 
 class CollectionMetaclass(ABCMeta):
+    """The metaclass sets name and schema and registers this collection with an application.
+
+    The schema description is updated with the docstring of the concrete collection class. The title is set to the name
+    of the class, if it is not already set.
+
+    This metaclass also post-processes inheritance, so that:
+
+    * definitions from base classes are included in subclasses.
+    * exposed methods in base classes are included in subclasses.
+    """
 
     def __new__(mcs, name, bases, attrs):
         definitions = {}
@@ -42,7 +52,6 @@ class CollectionMetaclass(ABCMeta):
                 cls.exposed_methods.update(base.exposed_methods)
         for name, method in (n for n in nmspc.items() if hasattr(n[1], 'exposed')):
                 cls.exposed_methods[name] = method
-
 
         cls.name = utils.convert_camelcase(cls.__name__)
 
@@ -71,15 +80,78 @@ class CollectionMetaclass(ABCMeta):
         _validator.check_schema(cls.schema)
 
         if not hasattr(cls, 'application') or cls.application is None:
-            raise CollectionException("{0} declared without application".format(name))
-        elif not cls.abstract:
+            cls.abstract = True
+        else:
+            cls.abstract = False
+
+        if not cls.abstract:
             cls.slug = utils.camelcase_slugify(cls.__name__)
             cls.application.register_collection(cls)
-        else:
-            pass
 
 
 class Collection(MutableMapping, metaclass=CollectionMetaclass):
+    """The collection is the workhorse of Sondra.
+
+    Collections are mutable mapping types, like dicts, whose keys are the keys in the database collection. The database
+    table, or collection, has the same name as the collection's slug with hyphens replaced by underscores for
+    compatibility.
+
+    Collections expand on a document schema, specifying:
+
+    * properties that should be treated specially.
+    * the primary key
+    * indexes that should be built
+    * relationships to other collections
+
+    Like applications, collections have webservice endpoints::
+
+        http://localhost:5000/application/collection;(schema|help|json|geojson)
+        http://localhost:5000/application/collection.method;(schema|help|json)
+
+    These endpoints allow the user to create, update, filter, list, and delete objects in the collection, which are
+    individual documents. Also, any methods that are exposed by the ``sondra.decorators.expose`` decorator are exposed
+    as method endpoints.
+
+    To use Python to retrieve individual Document instances, starting with the suite::
+
+        > suite['app-name']['collection-name']['primary-key']
+        ...
+        <sondra.document.Document object at 0x....>
+
+    Special properties
+    ------------------
+    The ``specials`` attribute is a dictionary of property names to ``sondra.document.ValueHandler`` instances, which
+    tell the collection how to handle properties containing objects that aren't standard JSON. This includes date-time
+    objects and geometry, which is handled via the `Shapely`_ library. Shapely is not supported by readthedocs, so you
+    must install it separately.  See the individual ValueHandler subclasses in sondra.document for more information.
+
+    Attributes:
+        name (str): read-only. The name of the collection, based on the classname.
+        slug (str): read-only. The hyphen separated name of the collection, based on the classname
+        schema (str): read-only. The collection's schema, based on the ``document_class``
+        suite (sondra.suite.Suite): read-only. The suite this collection's application is a part of. None for abstract
+          classes.
+        application (sondra.application.Application). The application this collection is a part of. None for abstract
+          classes.
+        document_class (sondra.document.Document): The document class this collection contains. The schema is derived
+          from this.
+        primary_key (str): The field (if different from id) to use as the primary key. Individual documents are
+          referenced by primary key, both in the Python interface and the webservice interface.
+        private (bool=False). If the collection is private, then it is not exposed by the webservice interface. This
+          can be very useful for collections whose data should never be available over the 'net.
+        specials (dict): A dictionary of properties to be treated specially.
+        indexes ([str])
+        relations (dict)
+        anonymous_reads (bool=True)
+        abstract (bool)
+        table (ReQL)
+        url (str)
+        schema_url (str)
+
+    .. _Shapely: https://pypi.python.org/pypi/Shapely
+
+    """
+
     name = None
     slug = None
     schema = None
@@ -92,6 +164,13 @@ class Collection(MutableMapping, metaclass=CollectionMetaclass):
     relations = []
     anonymous_reads = True
     abstract = False
+
+    @property
+    def suite(self):
+        if self.application:
+            return self.application.suite
+        else:
+            return None
 
     @property
     def table(self):
@@ -149,6 +228,9 @@ class Collection(MutableMapping, metaclass=CollectionMetaclass):
         return builder.rst
 
     def create_table(self, *args, **kwargs):
+        """Create the database table for this collection. Args and keyword args are sent along to the rethinkdb
+        table_create function.  Sends pre_table_creation and post_table_creation signals.
+        """
         signals.pre_table_creation.send(
             self.__class__, instance=self, table_name=self.name, db_name=self.application.db)
 
@@ -187,6 +269,9 @@ class Collection(MutableMapping, metaclass=CollectionMetaclass):
             self.__class__, instance=self, table_name=self.name, db_name=self.application.db)
 
     def drop_table(self):
+        """Delete the database table for this collection. Sends pre_table_deletion and post_table_deletion signals.
+        """
+
         signals.pre_table_deletion.send(
             self.__class__, instance=self, table_name=self.name, db_name=self.application.db)
 
