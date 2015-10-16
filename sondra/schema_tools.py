@@ -91,3 +91,19 @@ def lazy_refers_to(klass, **kwargs):
     if kwargs:
         ret.update(kwargs)
     return ret
+
+
+def lazy_definition(klass, name):
+    """
+    Create a ``$ref`` that lazily refers to the schema definition
+
+    Args:
+        klass (str or type): The class whose URL to search for. Must be a Collection, Application, or Suite.
+        name (str): the name of the definition to refer to in "definitions"
+
+    Returns:
+        callable: A function that takes a context and returns a JSON ref . The context is an *instance* of Collection,
+            Application, Document, or Suite. Optionally, the context can also be None, in which case the class's ``slug`` is
+            returned.
+    """
+    return partial(_deferred_url_for, klass=klass, fmt='schema', fragment="#/definitions/"+ name)

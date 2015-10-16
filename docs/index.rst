@@ -181,7 +181,7 @@ Python API Documentation
 .. toctree::
    :maxdepth: 3
 
-   api/sondra.rst
+   api/modules.rst
 
 
 
