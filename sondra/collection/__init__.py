@@ -1,17 +1,21 @@
-from collections.abc import MutableMapping, Mapping
+from datetime import datetime, date, timezone
+from collections.abc import MutableMapping
 from abc import ABCMeta
 from copy import deepcopy, copy
+import iso8601
 import jsonschema
 import rethinkdb as r
 import logging
 import logging.config
+from slugify import slugify
+from shapely.geometry import mapping, shape
+from shapely.geometry.base import BaseGeometry
 
-from sondra import utils
+from sondra import help, utils
 from sondra.application import Application
-from sondra.document import Document, references, signals as doc_signals
+from sondra.document import Document, references, signals as doc_signals, ValidationError
 
 from . import signals
-from sondra import help
 
 _validator = jsonschema.Draft4Validator
 
@@ -56,6 +60,9 @@ class CollectionMetaclass(ABCMeta):
         cls.name = utils.convert_camelcase(cls.__name__)
 
         cls.schema = deepcopy(cls.document_class.schema)
+
+        if (not cls.__doc__) and cls.document_class.__doc__:
+            cls.__doc__ = cls.document_class.__doc__
 
         if 'description' not in cls.schema and cls.__doc__:
             cls.schema['description'] = cls.__doc__
@@ -164,6 +171,7 @@ class Collection(MutableMapping, metaclass=CollectionMetaclass):
     relations = []
     anonymous_reads = True
     abstract = False
+    processors = []
 
     @property
     def suite(self):
@@ -470,3 +478,149 @@ class Collection(MutableMapping, metaclass=CollectionMetaclass):
 
         return ret
 
+
+class ValueHandler(object):
+    """This is base class for transforming values to/from RethinkDB representations to standard representations.
+
+    Attributes:
+        is_geometry (bool): Does this handle geometry/geographical values. Indicates to Sondra that indexing should
+            be handled differently.
+    """
+    is_geometry = False
+
+    def to_rql_repr(self, value):
+        """Transform the object value into a ReQL object for storage.
+
+        Args:
+            value: The value to transform
+
+        Returns:
+            object: A ReQL object.
+        """
+        return value
+
+    def to_json_repr(self, value):
+        """Transform the object from a ReQL value into a standard value.
+
+        Args:
+            value (ReQL): The value to transform
+
+        Returns:
+            dict: A Python object representing the value.
+        """
+        return value
+
+    def to_python_repr(self, value):
+        """Transform the object from a ReQL value into a standard value.
+
+        Args:
+            value (ReQL): The value to transform
+
+        Returns:
+            dict: A Python object representing the value.
+        """
+        return value
+
+
+class DocumentProcessor(object):
+    def is_necessary(self, changed_props):
+        """Override this method to determine whether the processor should run."""
+        return False
+
+    def run(self, document):
+        """Override this method to post-process a document after it has changed."""
+        return document
+
+
+class SlugPropertyProcessor(DocumentProcessor):
+    def __init__(self, source_prop, dest_prop='slug'):
+        self.dest_prop = dest_prop
+        self.source_prop = source_prop
+
+    def is_necessary(self, changed_props):
+        return self.source_prop in changed_props
+
+    def run(self, document):
+        document[self.dest_prop] = slugify(document[self.source_prop])
+
+
+class Geometry(ValueHandler):
+    """A value handler for GeoJSON"""
+    is_geometry = True
+
+    def __init__(self, *allowed_types):
+        self.allowed_types = set(x.lower() for x in allowed_types) if allowed_types else None
+
+    def to_rql_repr(self, value):
+        if self.allowed_types:
+            if value['type'].lower() not in self.allowed_types:
+                raise ValidationError('value not in ' + ','.join(t for t in self.allowed_types))
+        return r.geojson(value)
+
+    def to_json_repr(self, value):
+        if isinstance(value, BaseGeometry):
+            return mapping(value)
+        else:
+            return value
+
+    def to_python_repr(self, value):
+        del value['$reql_type$']
+        return shape(value)
+
+
+class Time(ValueHandler):
+    """A value handler for Python datetimes"""
+
+    DEFAULT_TIMEZONE='Z'
+    def __init__(self, timezone='Z'):
+        self.timezone = timezone
+
+    def from_rql_tz(self, tz):
+        if tz == 'Z':
+            return 0
+        else:
+            posneg = -1 if tz[0] == '-' else 1
+            hours, minutes = map(int, tz.split(":"))
+            offset = posneg*(hours*60 + minutes)
+            return offset
+
+    def to_rql_repr(self, value):
+        if isinstance(value, str):
+            return r.iso8601(value, default_timezone=self.DEFAULT_TIMEZONE).in_timezone(self.timezone)
+        elif isinstance(value, int) or isinstance(value, float):
+            return datetime.fromtimestamp(value).isoformat()
+        elif isinstance(value, dict):
+            return r.time(
+                value.get('year', None),
+                value.get('month', None),
+                value.get('day', None),
+                value.get('hour', None),
+                value.get('minute', None),
+                value.get('second', None),
+                value.get('timezone', self.timezone),
+            ).in_timezone(self.timezone)
+        else:
+            return r.iso8601(value.isoformat(), default_timezone=self.DEFAULT_TIMEZONE).as_timezone(self.timezone)
+
+    def to_json_repr(self, value):
+        if isinstance(value, date) or isinstance(value, datetime):
+            return value.isoformat()
+        elif hasattr(value, 'to_epoch_time'):
+            return value.to_iso8601()
+        elif isinstance(value, int) or isinstance(value, float):
+            return datetime.fromtimestamp(value).isoformat()
+        else:
+            return value
+
+    def to_python_repr(self, value):
+        if isinstance(value, str):
+            return iso8601.parse_date(value)
+        elif isinstance(value, datetime):
+            return value
+        elif hasattr(value, 'to_epoch_time'):
+            timestamp = value.to_epoch_time()
+            tz = value.timezone()
+            offset = self.from_rql_tz(tz)
+            offset_tz = timezone(offset)
+            dt = datetime.fromtimestamp(timestamp, tz=offset_tz)
+            return dt
