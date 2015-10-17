@@ -239,6 +239,11 @@ class Suite(Mapping):
         self.applications[app.slug] = app
         self.log.info('Registered application {0} to {1}'.format(app.__class__.__name__, app.url))
 
+    def ensure_database_objects(self):
+        for app in self.values():
+            app.create_databases()
+            app.create_tables()
+
     def __getitem__(self, item):
         """Application objects are indexed by "slug." Every Application object registered has its name slugified.
 
