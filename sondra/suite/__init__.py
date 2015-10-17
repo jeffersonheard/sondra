@@ -46,45 +46,14 @@ DOCSTRING_PROCESSORS['preformatted'] = lambda x: "<pre>" + str(x) + "</pre>"
 
 
 BASIC_TYPES = {
-    "date": {
-        "type": "object",
-        "required": ["year"],
-        "properties": {
-            "year": {"type": "integer"},
-            "month": {"type": "integer"},
-            "day": {"type": "integer"}
-        }
-    },
-    "datetime": {
-        "type": "object",
-        "allOf": [{"$ref": "#/definitions/date"}],
-        "required": ["year","month","day","hour"],
-        "properties": {
-            "hour": {"type": "integer"},
-            "minute": {"type": "integer"},
-            "second": {"type": "number"},
-            "timezone": {"type": "string", "default": "Z"}
-        }
-    },
     "timedelta": {
         "type": "object",
         "required": ["start", "end"],
         "properties": {
-            "start": {"$ref": "#/definitions/datetime"},
-            "end": {"$ref": "#/definitions/datetime"},
-        },
-        "definitions": {
-            "datetime": {
-                "type": "object",
-                "allOf": [{"$ref": "#/definitions/date"}],
-                "required": ["year","month","day","hour"],
-                "properties": {
-                    "hour": {"type": "integer"},
-                    "minute": {"type": "integer"},
-                    "second": {"type": "number"},
-                    "timezone": {"type": "string", "default": "Z"}
-                }
-            }
+            "days": {"type": "integer"},
+            "hours": {"type": "integer"},
+            "minutes": {"type": "integer"},
+            "seconds": {"type": "number"}
         }
     },
     "filterOps": {
@@ -111,6 +80,74 @@ BASIC_TYPES = {
             'get_intersecting',
             'get_nearest',
         ]
+    },
+    "geojsonGeometry": {
+        "type": "object",
+        "oneOf": [
+            {"$ref": "#/definitions/point"},
+            {"$ref": "#/definitions/lineString"},
+            {"$ref": "#/definitions/polygon"},
+        ],
+        "definitions": {
+            "pointCoordinates": {
+                "type": "array",
+                "items": {"type": "number"},
+                "minLength": 2,
+                "maxLength": 3
+            },
+            "point": {
+                "type": "object",
+                "properties": {
+                    "type": {"enum": ["Point"]},
+                    "coordinates": {"$ref": "#/definitions/pointCoordinates"}
+                }
+            },
+            "lineStringCoordinates": {
+                "type": "array",
+                "items": {
+                    "type": "array",
+                    "items": {"$ref": "#/definitions/pointCoordinates"}
+                },
+                "minLength": 2
+            },
+            "lineString": {
+                "type": "object",
+                "properties": {
+                    "type": {"enum": ["Point"]},
+                    "coordinates": {"$ref": "#/definitions/lineStringCoordinates"}
+                }
+            },
+            "polygonCoordinates": {
+                "type": "array",
+                "items": {
+                    "type": "array",
+                    "items": {"$ref": "#/definitions/lineStringCoordinates"}
+                },
+                "minLength": 4
+            },
+            "polygon": {
+                "type": "object",
+                "properties": {
+                    "type": {"enum": ["Point"]},
+                    "coordinates": {"$ref": "#/definitions/polygonCoordinates"}
+                }
+            }
+        }
+    },
+    "geojsonFeature": {
+        "type": "object",
+        "properties": {
+            "type": {"enum": ["Feature"]},
+            "geometry": {"$ref": "#/definitions/geojsonGeometry"},
+            "properties": {"type": "object"},
+        }
+    },
+    "geojsonFeatureCollection": {
+        "type": "object",
+        "properties": {
+            "type": {"enum": ["FeatureCollection"]},
+            "features": {"type": "array", "items": {"$ref": "#/definitions/geojsonFeature"}}
+        }
     }
 }
 
