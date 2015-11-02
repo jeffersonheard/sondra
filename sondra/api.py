@@ -225,12 +225,13 @@ import rethinkdb as r
 
 from .ref import Reference
 from . import document
+import sondra.collection
 from .suite import BASIC_TYPES
 from .utils import mapjson
 
 def to_reql_types(doc):
     jsonschema.validate(doc, BASIC_TYPES['datetime'])
-    return document.Time().to_rql_repr(doc)
+    return sondra.collection.Time().to_rql_repr(doc)
 
 _parse_query = partial(mapjson, to_reql_types)
 
@@ -507,7 +508,7 @@ class APIRequest(object):
             if isinstance(doc, document.Document):
                 if doc.collection and doc.collection.specials:
                     for s, t in doc.collection.specials.items():
-                        if isinstance(t, document.Geometry):
+                        if isinstance(t, sondra.collection.Geometry):
                             result = mapjson(fun, doc.obj)
                             result = {
                                 "type": "Feature",

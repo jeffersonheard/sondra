@@ -2,6 +2,8 @@ import pytest
 
 from sondra import document, suite, collection, application
 from shapely.geometry import mapping, shape
+import sondra.collection
+
 
 class ConcreteSuite(suite.Suite):
     pass
@@ -19,18 +21,11 @@ class TrackedItemTemplate(document.Document):
         }
     }
 
-class OtherApplication(application.Application):
-    pass
-
-class TerraHubBase(application.Application):
-    pass
-
 class TrackedItemTemplates(collection.Collection):
     document_class = TrackedItemTemplate
-    application = TerraHubBase
     primary_key = 'name'
     specials = {
-        'baseGeometry': document.Geometry()
+        'baseGeometry': sondra.collection.Geometry()
     }
 
 class TrackedItem(document.Document):
@@ -47,10 +42,9 @@ class TrackedItem(document.Document):
 
 class TrackedItems(collection.Collection):
     document_class = TrackedItem
-    application = TerraHubBase
     primary_key = "barcode"
     specials = {
-        "location": document.Geometry("point")
+        "location": sondra.collection.Geometry("point")
     }
     references = [("template", TrackedItemTemplates)]
     indexes = ("template","location")
@@ -70,9 +64,8 @@ class TrackedItemHistory(document.Document):
     
 class TrackedItemHistories(collection.Collection):
     document_class = TrackedItemHistory
-    application = TerraHubBase
     specials = {
-        "location": document.Geometry("point")
+        "location": sondra.collection.Geometry("point")
     }
     references = [("item", TrackedItem)]
     indexes = ("item", "location", "timestamp")
@@ -93,11 +86,25 @@ class ItemGroup(document.Document):
 
 class ItemGroups(collection.Collection):
     document_class = ItemGroup
-    application = TerraHubBase
     specials = {
-        "geometry": document.Geometry('polygon')
+        "geometry": sondra.collection.Geometry('polygon')
     }
     references = [("parent", "self"), {"items": TrackedItems}]
+
+
+
+class OtherApplication(application.Application):
+    pass
+
+
+class TerraHubBase(application.Application):
+    collections = (
+        TrackedItemTemplates,
+        TrackedItems,
+        TrackedItemHistories,
+        ItemGroups,
+    )
+
 
 @pytest.fixture(scope='module')
 def s(request):

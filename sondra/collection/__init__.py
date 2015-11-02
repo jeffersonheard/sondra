@@ -16,6 +16,7 @@ from sondra.application import Application
 from sondra.document import Document, references, signals as doc_signals, ValidationError
 
 from . import signals
+from sondra.utils import mapjson
 
 _validator = jsonschema.Draft4Validator
 
@@ -58,6 +59,7 @@ class CollectionMetaclass(ABCMeta):
                 cls.exposed_methods[name] = method
 
         cls.name = utils.convert_camelcase(cls.__name__)
+        logging.debug("Registered " + cls.name)
 
         cls.schema = deepcopy(cls.document_class.schema)
 
@@ -86,14 +88,8 @@ class CollectionMetaclass(ABCMeta):
 
         _validator.check_schema(cls.schema)
 
-        if not hasattr(cls, 'application') or cls.application is None:
-            cls.abstract = True
-        else:
-            cls.abstract = False
-
         if not cls.abstract:
             cls.slug = utils.camelcase_slugify(cls.__name__)
-            cls.application.register_collection(cls)
 
 
 class Collection(MutableMapping, metaclass=CollectionMetaclass):
@@ -202,6 +198,7 @@ class Collection(MutableMapping, metaclass=CollectionMetaclass):
         self.application = application
         self._url = '/'.join((self.application.url, self.slug))
         self.schema['id'] = self.url + ";schema"
+        self.schema = mapjson(lambda x: x(context=self.application.suite) if callable(x) else x, self.schema)
         self.log = logging.getLogger(self.application.name + "." + self.name)
         signals.post_init.send(self.__class__, instance=self)
 
@@ -568,7 +565,7 @@ class Geometry(ValueHandler):
         return shape(value)
 
 
-class Time(ValueHandler):
+class DateTime(ValueHandler):
     """A value handler for Python datetimes"""
 
     DEFAULT_TIMEZONE='Z'
@@ -624,3 +621,15 @@ class Time(ValueHandler):
             offset_tz = timezone(offset)
             dt = datetime.fromtimestamp(timestamp, tz=offset_tz)
             return dt
+
+
+class Now(DateTime):
+    """Return a timestamp for right now if the value is null."""
+
+    def from_rql_tz(self, tz):
+        return 0
+
+    def to_rql_repr(self, value):
+        value = value or datetime.utcnow()
+        return super(Now, self).to_rql_repr(value)
+

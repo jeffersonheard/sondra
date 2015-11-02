@@ -236,7 +236,7 @@ class SchemaHelpBuilder(RSTBuilder):
 
         self._write_fragment(self.schema)
 
-        if "definitions" in self.schema:
+        if "definitions" in self.schema and self.schema['definitions']:
             self.begin_subheading("Definitions")
             for name, ref in self.schema["definitions"].items():
                 self._write_fragment(ref, name=name)
@@ -495,11 +495,14 @@ class SchemaHelpBuilder(RSTBuilder):
             pass
 
     def _link_name(self, reference):
-        target = self._refs[reference]
-        if "title" in target:
-            return target["title"]
-        else:
-            return reference.rsplit('/', 1)[-1]
+        try:
+            target = self._refs[reference]
+            if "title" in target:
+                return target["title"]
+            else:
+                return reference.rsplit('/', 1)[-1]
+        except KeyError:
+            return reference
 
     def _deref(self, reference):
         if reference in self._refs:

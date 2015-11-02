@@ -1,4 +1,5 @@
 from blinker import signal
+from collections import OrderedDict
 from collections.abc import Mapping
 from abc import ABCMeta
 
@@ -9,6 +10,7 @@ import logging.config
 
 from sondra import help, utils
 from . import signals
+from sondra.utils import mapjson
 
 
 class ApplicationException(Exception):
@@ -39,17 +41,6 @@ class ApplicationMetaclass(ABCMeta):
                 cls.exposed_methods.update(base.exposed_methods)
         for method in (n for n in attrs.values() if hasattr(n, 'exposed')):
                 cls.exposed_methods[method.slug] = method
-
-        cls._collection_registry = {}
-
-    def __iter__(cls):
-        return (i for i in cls._collection_registry.items())
-
-    def register_collection(cls, collection_class):
-        if collection_class.slug not in cls._collection_registry:
-            cls._collection_registry[collection_class.slug] = collection_class
-        else:
-            raise ApplicationException("{0} registered twice".format(collection_class.slug))
 
 
 class Application(Mapping, metaclass=ApplicationMetaclass):
@@ -93,7 +84,7 @@ class Application(Mapping, metaclass=ApplicationMetaclass):
     db = 'default'
     connection = 'default'
     slug = None
-    collections = None
+    collections = ()
     anonymous_reads = True
     definitions = None
 
@@ -112,14 +103,16 @@ class Application(Mapping, metaclass=ApplicationMetaclass):
 
     @property
     def schema(self):
-        return {
+        ret = {
             "id": self.url + ";schema",
             "type": "object",
             "description": self.__doc__ or "*No description provided.*",
             "definitions": self.definitions,
-            "collections": {name: coll.schema_url for name, coll in self.collections.items()},
+            "collections": {name: coll.schema_url for name, coll in self._collections.items()},
             "methods": [m.slug for m in self.exposed_methods.values()]
         }
+        ret = mapjson(lambda x: x(context=self.suite) if callable(x) else x, ret)
+        return ret
 
     @property
     def full_schema(self):
@@ -128,7 +121,7 @@ class Application(Mapping, metaclass=ApplicationMetaclass):
             "type": "object",
             "description": self.__doc__ or "*No description provided.*",
             "definitions": self.definitions,
-            "collections": {name: coll.schema for name, coll in self.collections.items()},
+            "collections": {name: coll.schema for name, coll in self._collections.items()},
             "methods": [m.slug for m in self.exposed_methods.values()]
         }
 
@@ -155,7 +148,7 @@ class Application(Mapping, metaclass=ApplicationMetaclass):
 
         if self.exposed_methods:
             builder.begin_subheading("Methods")
-            for name, method in self.exposed_methods.items():
+            for name, method in sorted(self.exposed_methods.items(), key=lambda x: x[0]):
                 new_builder = help.SchemaHelpBuilder(method.schema(getattr(self, method.__name__)), initial_heading_level=builder._heading_level)
                 new_builder.build()
                 builder.line(new_builder.rst)
@@ -163,7 +156,7 @@ class Application(Mapping, metaclass=ApplicationMetaclass):
 
         builder.begin_subheading("Collections")
         builder.begin_list()
-        for name, coll in self.collections.items():
+        for name, coll in sorted(self._collections.items(), key=lambda x: x[0]):
             builder.define(name, coll.url + ';help')
         builder.end_list()
         builder.end_subheading()
@@ -184,31 +177,34 @@ class Application(Mapping, metaclass=ApplicationMetaclass):
         self.slug = utils.camelcase_slugify(self.name)
         self.db = utils.convert_camelcase(self.name)
         self.connection = suite.connections[self.connection]
-        self.collections = {}
+        self._collections = {}
         self._url = '/'.join((self.suite.base_url, self.slug))
         self.log = logging.getLogger(self.name)
         self.application = self
 
         signals.pre_registration.send(self.__class__, instance=self)
+        self.log.warning("Registering application {0}".format(self.slug))
         suite.register_application(self)
         signals.post_registration.send(self.__class__, instance=self)
 
         signals.pre_init.send(self.__class__, instance=self)
-        for name, collection_class in self.__class__:
-            self.collections[name] = collection_class(self)
+        for collection_class in self.collections:
+            name = collection_class.slug
+            self.log.warning("Creating collection for {0}/{1}".format(self.slug, collection_class.slug))
+            self._collections[name] = collection_class(self)
         signals.post_init.send(self.__class__, instance=self)
 
     def __len__(self):
-        return len(self.collections)
+        return len(self._collections)
 
     def __getitem__(self, item):
-        return self.collections[item]
+        return self._collections[item]
 
     def __iter__(self):
-        return iter(self.collections)
+        return iter(self._collections)
 
     def __contains__(self, item):
-        return item in self.collections
+        return item in self._collections
 
     def create_tables(self, *args, **kwargs):
         """Create tables in the db for all collections in the application.
@@ -232,7 +228,7 @@ class Application(Mapping, metaclass=ApplicationMetaclass):
         """
         signals.pre_create_tables.send(self.__class__, instance=self, args=args, kwargs=kwargs)
 
-        for collection_class in self.collections.values():
+        for collection_class in self._collections.values():
             try:
                 collection_class.create_table(*args, **kwargs)
             except Exception as e:
@@ -263,7 +259,7 @@ class Application(Mapping, metaclass=ApplicationMetaclass):
 
         signals.pre_delete_tables.send(self.__class__, instance=self, args=args, kwargs=kwargs)
 
-        for collection_class in self.collections.values():
+        for collection_class in self._collections.values():
             try:
                 collection_class.drop_table(*args, **kwargs)
             except Exception as e:

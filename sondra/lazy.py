@@ -35,20 +35,23 @@ def _deferred_url_for(klass, context, fmt='schema', fragment=None):
 
     ret = ""
     if issubclass(klass, Document):
-        for app in suite.applications.values():
-            for coll in app.collections.values():
+        for app in suite.values():
+            for coll in app.values():
                 if coll.document_class is klass:
                     ret = coll.url + ';' + fmt
-                    break
-            else:
-                raise KeyError("Cannot find document in a registered application")
+                    if fragment:
+                        return ret + ';schema' + fragment
+                    else:
+                        return ret + ';schema'
+        else:
+            raise KeyError("Cannot find document in a registered collection {0}".format(klass))
     elif issubclass(klass, Collection):
         for app in suite.applications.values():
             if slug in app:
                 ret = app[slug].url
                 break
         else:
-            raise KeyError("Cannot find collection in a registered application")
+            raise KeyError("Cannot find collection in a registered application {0}".format(klass))
     elif issubclass(klass, Application):
         ret = suite[slug].url + ';' + fmt
     elif issubclass(klass, Suite):
@@ -57,9 +60,9 @@ def _deferred_url_for(klass, context, fmt='schema', fragment=None):
         raise ValueError("Target class must be an Application, Document, Collection, or Suite")
 
     if fragment:
-        return ret + "#" + fragment
+        return ret + ";schema" + fragment
     else:
-        return ret
+        return ret + ';schema'
 
 
 def url_for(klass, fmt='schema'):
@@ -76,7 +79,7 @@ def url_for(klass, fmt='schema'):
     return partial(_deferred_url_for, klass=klass, fmt=fmt)
 
 
-def lazy_refers_to(klass, **kwargs):
+def fk(klass, **kwargs):
     """
     Create a schema fragment that lazily refers to the schema of a Collection, Application, or Suite.
 
@@ -87,13 +90,16 @@ def lazy_refers_to(klass, **kwargs):
     Returns:
         dict: A schema fragment containing a callable returned by :py:func:`url_for`
     """
-    ret = {"type": "string", "refersTo": url_for(klass)}
+    ret = {
+        "type": "string",
+        "foreignKey": url_for(klass)
+    }
     if kwargs:
         ret.update(kwargs)
     return ret
 
 
-def lazy_definition(klass, name):
+def lazy_definition(klass, name=None, **kwargs):
     """
     Create a ``$ref`` that lazily refers to the schema definition
 
@@ -106,4 +112,21 @@ def lazy_definition(klass, name):
             Application, Document, or Suite. Optionally, the context can also be None, in which case the class's ``slug`` is
             returned.
     """
-    return partial(_deferred_url_for, klass=klass, fmt='schema', fragment="#/definitions/"+ name)
+    ret = {}
+    ret.update(kwargs)
+
+    if name:
+        ret.update({"$ref": partial(_deferred_url_for, klass=klass, fmt='schema', fragment="#/definitions/"+ name)})
+    else:
+        ret.update({"$ref": url_for(klass)})
+
+    return ret
+
+
+def ref(klass='self', name=None, **kwargs):
+    if klass != "self":
+        return lazy_definition(klass, name, **kwargs)
+    else:
+        ret = {"$ref": ("#/definitions/" + name) if name else url_for(klass)}
+        ret.update(**kwargs)
+        return ret

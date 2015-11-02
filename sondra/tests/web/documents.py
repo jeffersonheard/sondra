@@ -1,4 +1,6 @@
 from sondra import document, suite, collection, application
+import sondra.collection
+import sondra.document
 
 from sondra.decorators import expose
 
@@ -36,22 +38,11 @@ class TrackedItemTemplate(document.Document):
 class OtherApplication(application.Application):
     pass
 
-class BaseApp(application.Application):
-    @expose
-    def test_app_method(self, int_arg: int=0, str_arg: str='', list_arg: list=[], dict_arg: dict={}) -> dict:
-        return {
-            "int_arg": int_arg,
-            "str_arg": str_arg,
-            "list_arg": list_arg,
-            "dict_arg": dict_arg
-        }
-
 class TrackedItemTemplates(collection.Collection):
     document_class = TrackedItemTemplate
-    application = BaseApp
     primary_key = 'name'
     specials = {
-        'baseGeometry': document.Geometry()
+        'baseGeometry': sondra.collection.Geometry()
     }
 
     @expose
@@ -79,10 +70,9 @@ class TrackedItem(document.Document):
 
 class TrackedItems(collection.Collection):
     document_class = TrackedItem
-    application = BaseApp
     primary_key = "barcode"
     specials = {
-        "location": document.Geometry("Point")
+        "location": sondra.collection.Geometry("Point")
     }
     relations = [("template", TrackedItemTemplates)]
     indexes = ("template","location")
@@ -102,10 +92,9 @@ class TrackedItemHistory(document.Document):
 
 class TrackedItemHistories(collection.Collection):
     document_class = TrackedItemHistory
-    application = BaseApp
     specials = {
-        "location": document.Geometry("Point"),
-        "timestamp": document.Time(),
+        "location": sondra.collection.Geometry("Point"),
+        "timestamp": sondra.collection.DateTime(),
     }
     references = [("item", TrackedItem)]
     indexes = ("item", "location", "timestamp")
@@ -129,8 +118,26 @@ class ItemGroup(document.Document):
 
 class ItemGroups(collection.Collection):
     document_class = ItemGroup
-    application = BaseApp
     specials = {
-        "geometry": document.Geometry('Polygon')
+        "geometry": sondra.collection.Geometry('Polygon')
     }
     references = [("parent", "self"), {"items": TrackedItems}]
+
+
+
+class BaseApp(application.Application):
+    collections = (
+        TrackedItemTemplates,
+        TrackedItemHistories,
+        TrackedItems,
+        ItemGroups
+    )
+
+    @expose
+    def test_app_method(self, int_arg: int=0, str_arg: str='', list_arg: list=[], dict_arg: dict={}) -> dict:
+        return {
+            "int_arg": int_arg,
+            "str_arg": str_arg,
+            "list_arg": list_arg,
+            "dict_arg": dict_arg
+        }

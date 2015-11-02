@@ -1,7 +1,7 @@
 from functools import reduce
 from sondra.application import Application
-from sondra.collection import Collection
-from sondra.document import Document, Time
+from sondra.collection import Collection, DateTime
+from sondra.document import Document
 from sondra.decorators import expose
 import datetime
 import bcrypt
@@ -501,6 +501,10 @@ class AuthRequestProcessor(RequestProcessor):
 
     def process_api_request(self, request):
         auth_token = request.api_arguments.get('_auth', None)
+        if not auth_token:
+            bearer = request.headers.get('Authorization', None)
+            if bearer:
+                auth_token = bearer[7:]  # skip "Bearer "
         if auth_token:
             user = request.suite['auth'].check(auth_token)
         else:
@@ -554,131 +558,6 @@ class AuthRequestProcessor(RequestProcessor):
             return 'update'
         elif request.method == 'DELETE':
             return 'delete'
-
-
-class Auth(AuthorizableApplication):
-    SECONDS_CREDENTIALS_VALID = 3600
-
-    db = 'auth'
-
-    def get_expiration_claims(self):
-        now = datetime.datetime.now()
-        expires_at = now + datetime.timedelta(seconds=Auth.SECONDS_CREDENTIALS_VALID)
-
-        claims = {
-            'nbf': int(now.timestamp()),
-            'exp': int(expires_at.timestamp())
-        }
-        return claims
-
-    @expose
-    def login(self, username: str, password: str) -> str:
-        """Log the user in and get a JWT (JSON Web Token).
-
-        Args:
-            username (str): The username
-            password (str): The password
-
-        Returns:
-            str: A JWT String.
-
-        Raises:
-            PermissionError: if the password is invalid or the user does not exist
-        """
-        try:
-            user = self['users'][username].dereference()
-        except KeyError:
-            self.log.warning("Failed login attempt by fake user: {0}".format(username))
-            raise PermissionError("Login not valid")
-
-        credentials = user['credentials']
-        hashed_real_password = credentials['password'].encode('utf-8')
-        hashed_given_password = bcrypt.hashpw(password.encode('utf-8'), credentials['salt'].encode('utf-8'))
-        if hashed_real_password == hashed_given_password:
-            return self.issue(username, credentials)
-        else:
-            self.log.warning("Failed login attempt by registered user: {0}".format(username))
-            raise PermissionError("Login not valid")
-
-    @expose
-    def logout(self, token: str) -> None:
-        del self['logged-in-users'][token]
-
-    @expose
-    def renew(self, token: str) -> str:
-        """Renew a currently logged in user's token.
-
-        Args:
-            token (str): A JSON Web Token (JWT) that is currently valid
-
-        Returns:
-            str: A JWT String.
-
-        Raises:
-            PermissionError: if the current token is not the user's valid token.
-        """
-
-        logged_in_user = self['logged-in-users'].for_token(token)
-        secret = logged_in_user['secret'].encode('utf-8')
-        claims = jwt.decode(token.encode('utf-8'), secret, issuer=self.url, verify=True)
-        claims.update(self.get_expiration_claims())  # make sure this token expires
-        token = jwt.encode(claims, secret).decode('utf-8')
-        logged_in_user['expires'] = claims['exp']
-        logged_in_user['token'] = token
-        logged_in_user.save(conflict='replace')
-        return token
-
-    def issue(self, username, credentials):
-        """Issue a JWT for the given user.
-
-        Args:
-            username (str): The username to issue the ticket to.
-            credentials (Credentials): The user's credentials object
-
-        Returns:
-            str: A JWT String.
-
-        """
-        claims = {
-            'iss': self.url,
-            'user': username
-        }
-        claims.update(self.get_expiration_claims())  # make sure this token expires
-        if 'extraClaims' in credentials:
-            claims.update(credentials['extraClaims'])
-        token = jwt.encode(claims, credentials['secret']).decode('utf-8')
-        self['logged-in-users'].save({
-            "token": token,
-            "secret": credentials['secret'],
-            "expires": claims['exp']
-        }, conflict='replace')
-        return token
-
-    def check(self, token, **claims):
-        """Check a user's JWT for validity and against any extra claims.
-
-        Args:
-            token (str): the JWT token to check against.
-            **claims: a dictionary of extra claims to check
-        Returns:
-            User: the user the token came from.
-        Raisees:
-            DecodeError: if the JWT token is out of date, not issued by this authority, or otherwise invalid.
-            PermissionError: if a claim is not present, or if claims differ.
-        """
-
-        try:
-            logged_in_user = self['logged-in-users'].for_token(token)
-            secret = logged_in_user['secret'].encode('utf-8')
-            decoded = jwt.decode(token.encode('utf-8'), secret, issuer=self.url, verify=True)
-            for name, value in claims.items():
-                if name not in decoded:
-                    raise PermissionError("Claim not present in {0}: {1}".format(decoded['user'], name))
-                elif decoded[name] != value:
-                    raise PermissionError("Claims differ for {0}: {1}".format(decoded['user'], name))
-            return self['users'][decoded['user']]
-        except KeyError:
-            raise PermissionError("Token not present in system")
 
 
 class Role(AuthorizableDocument):
@@ -916,7 +795,6 @@ class User(AuthorizableDocument):
 class Roles(AuthorizableCollection):
     primary_key = 'name'
     document_class = Role
-    application = Auth
     relations = [
         ('includes', 'self')
     ]
@@ -924,16 +802,14 @@ class Roles(AuthorizableCollection):
 
 class UserCredentials(Collection):
     document_class = Credentials
-    application = Auth
     private = True
 
 
 class Users(AuthorizableCollection):
     document_class = User
-    application = Auth
     primary_key = 'username'
     specials = {
-        'created': Time()
+        'created': DateTime()
     }
     relations = [
         ('credentials', UserCredentials),
@@ -1060,11 +936,10 @@ class LoggedInUser(Document):
 
 class LoggedInUsers(Collection):
     primary_key = 'secret'
-    application = Auth
     document_class = LoggedInUser
     indexes = ['token', 'time']
     specials = {
-        "expires": Time()
+        "expires": DateTime()
     }
     private = True
 
@@ -1078,3 +953,134 @@ class LoggedInUsers(Collection):
         self.q(
             self.table.filter(r.row['expires'] <= r.now())
         )
+
+class Auth(AuthorizableApplication):
+    SECONDS_CREDENTIALS_VALID = 3600
+
+    db = 'auth'
+    collections = (
+        Users,
+        UserCredentials,
+        LoggedInUsers,
+        Roles
+    )
+
+    def get_expiration_claims(self):
+        now = datetime.datetime.now()
+        expires_at = now + datetime.timedelta(seconds=Auth.SECONDS_CREDENTIALS_VALID)
+
+        claims = {
+            'nbf': int(now.timestamp()),
+            'exp': int(expires_at.timestamp())
+        }
+        return claims
+
+    @expose
+    def login(self, username: str, password: str) -> str:
+        """Log the user in and get a JWT (JSON Web Token).
+
+        Args:
+            username (str): The username
+            password (str): The password
+
+        Returns:
+            str: A JWT String.
+
+        Raises:
+            PermissionError: if the password is invalid or the user does not exist
+        """
+        try:
+            user = self['users'][username].dereference()
+        except KeyError:
+            self.log.warning("Failed login attempt by fake user: {0}".format(username))
+            raise PermissionError("Login not valid")
+
+        credentials = user['credentials']
+        hashed_real_password = credentials['password'].encode('utf-8')
+        hashed_given_password = bcrypt.hashpw(password.encode('utf-8'), credentials['salt'].encode('utf-8'))
+        if hashed_real_password == hashed_given_password:
+            return self.issue(username, credentials)
+        else:
+            self.log.warning("Failed login attempt by registered user: {0}".format(username))
+            raise PermissionError("Login not valid")
+
+    @expose
+    def logout(self, token: str) -> None:
+        del self['logged-in-users'][token]
+
+    @expose
+    def renew(self, token: str) -> str:
+        """Renew a currently logged in user's token.
+
+        Args:
+            token (str): A JSON Web Token (JWT) that is currently valid
+
+        Returns:
+            str: A JWT String.
+
+        Raises:
+            PermissionError: if the current token is not the user's valid token.
+        """
+
+        logged_in_user = self['logged-in-users'].for_token(token)
+        secret = logged_in_user['secret'].encode('utf-8')
+        claims = jwt.decode(token.encode('utf-8'), secret, issuer=self.url, verify=True)
+        claims.update(self.get_expiration_claims())  # make sure this token expires
+        token = jwt.encode(claims, secret).decode('utf-8')
+        logged_in_user['expires'] = claims['exp']
+        logged_in_user['token'] = token
+        logged_in_user.save(conflict='replace')
+        return token
+
+    def issue(self, username, credentials):
+        """Issue a JWT for the given user.
+
+        Args:
+            username (str): The username to issue the ticket to.
+            credentials (Credentials): The user's credentials object
+
+        Returns:
+            str: A JWT String.
+
+        """
+        claims = {
+            'iss': self.url,
+            'user': username
+        }
+        claims.update(self.get_expiration_claims())  # make sure this token expires
+        if 'extraClaims' in credentials:
+            claims.update(credentials['extraClaims'])
+        token = jwt.encode(claims, credentials['secret']).decode('utf-8')
+        self['logged-in-users'].save({
+            "token": token,
+            "secret": credentials['secret'],
+            "expires": claims['exp']
+        }, conflict='replace')
+        return token
+
+
+    def check(self, token, **claims):
+        """Check a user's JWT for validity and against any extra claims.
+
+        Args:
+            token (str): the JWT token to check against.
+            **claims: a dictionary of extra claims to check
+        Returns:
+            User: the user the token came from.
+        Raisees:
+            DecodeError: if the JWT token is out of date, not issued by this authority, or otherwise invalid.
+            PermissionError: if a claim is not present, or if claims differ.
+        """
+
+        try:
+            logged_in_user = self['logged-in-users'].for_token(token)
+            secret = logged_in_user['secret'].encode('utf-8')
+            decoded = jwt.decode(token.encode('utf-8'), secret, issuer=self.url, verify=True)
+            for name, value in claims.items():
+                if name not in decoded:
+                    raise PermissionError("Claim not present in {0}: {1}".format(decoded['user'], name))
+                elif decoded[name] != value:
+                    raise PermissionError("Claims differ for {0}: {1}".format(decoded['user'], name))
+            return self['users'][decoded['user']]
+        except KeyError:
+            raise PermissionError("Token not present in system")

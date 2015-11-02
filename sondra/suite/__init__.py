@@ -18,10 +18,26 @@ try:
     from sphinxcontrib import napoleon
 
     def google_processor(s):
-        return publish_string(str(napoleon.GoogleDocstring(s)), writer_name='html', settings_overrides={"stylesheet_path": "sondra/css/flasky.css"})
+        return publish_string(
+            str(napoleon.GoogleDocstring(s)),
+            writer_name='html',
+            settings_overrides={
+                "stylesheet_path": "/static/css/flasky.css",
+                "embed_stylesheet": False,
+                'report_level': 5
+            }
+        )
 
     def numpy_processor(s):
-        return publish_string(str(napoleon.NumpyDocstring(s)), writer_name='html', settings_overrides={"stylesheet_path": "sondra/css/flasky.css"})
+        return publish_string(
+            str(napoleon.NumpyDocstring(s)),
+            writer_name='html',
+            settings_overrides={
+                "stylesheet_path": "/static/css/flasky.css",
+                "embed_stylesheet": False,
+                'report_level': 5
+            }
+        )
 
     DOCSTRING_PROCESSORS['google'] = google_processor
     DOCSTRING_PROCESSORS['numpy'] = numpy_processor
@@ -87,52 +103,7 @@ BASIC_TYPES = {
             {"$ref": "#/definitions/point"},
             {"$ref": "#/definitions/lineString"},
             {"$ref": "#/definitions/polygon"},
-        ],
-        "definitions": {
-            "pointCoordinates": {
-                "type": "array",
-                "items": {"type": "number"},
-                "minLength": 2,
-                "maxLength": 3
-            },
-            "point": {
-                "type": "object",
-                "properties": {
-                    "type": {"enum": ["Point"]},
-                    "coordinates": {"$ref": "#/definitions/pointCoordinates"}
-                }
-            },
-            "lineStringCoordinates": {
-                "type": "array",
-                "items": {
-                    "type": "array",
-                    "items": {"$ref": "#/definitions/pointCoordinates"}
-                },
-                "minLength": 2
-            },
-            "lineString": {
-                "type": "object",
-                "properties": {
-                    "type": {"enum": ["Point"]},
-                    "coordinates": {"$ref": "#/definitions/lineStringCoordinates"}
-                }
-            },
-            "polygonCoordinates": {
-                "type": "array",
-                "items": {
-                    "type": "array",
-                    "items": {"$ref": "#/definitions/lineStringCoordinates"}
-                },
-                "minLength": 4
-            },
-            "polygon": {
-                "type": "object",
-                "properties": {
-                    "type": {"enum": ["Point"]},
-                    "coordinates": {"$ref": "#/definitions/polygonCoordinates"}
-                }
-            }
-        }
+        ]
     },
     "geojsonFeature": {
         "type": "object",
@@ -147,6 +118,49 @@ BASIC_TYPES = {
         "properties": {
             "type": {"enum": ["FeatureCollection"]},
             "features": {"type": "array", "items": {"$ref": "#/definitions/geojsonFeature"}}
+        }
+    },
+    "pointCoordinates": {
+        "type": "array",
+        "items": {"type": "number"},
+        "minLength": 2,
+        "maxLength": 3
+    },
+    "point": {
+        "type": "object",
+        "properties": {
+            "type": {"enum": ["Point"]},
+            "coordinates": {"$ref": "#/definitions/pointCoordinates"}
+        }
+    },
+    "lineStringCoordinates": {
+        "type": "array",
+        "items": {
+            "type": "array",
+            "items": {"$ref": "#/definitions/pointCoordinates"}
+        },
+        "minLength": 2
+    },
+    "lineString": {
+        "type": "object",
+        "properties": {
+            "type": {"enum": ["Point"]},
+            "coordinates": {"$ref": "#/definitions/lineStringCoordinates"}
+        }
+    },
+    "polygonCoordinates": {
+        "type": "array",
+        "items": {
+            "type": "array",
+            "items": {"$ref": "#/definitions/lineStringCoordinates"}
+        },
+        "minLength": 4
+    },
+    "polygon": {
+        "type": "object",
+        "properties": {
+            "type": {"enum": ["Point"]},
+            "coordinates": {"$ref": "#/definitions/polygonCoordinates"}
         }
     }
 }
@@ -192,22 +206,29 @@ class Suite(Mapping):
         docstring_processor (callable): A ``lambda (str)`` that returns HTML for a docstring.
         logging (dict): A dict-config for logging.
         log (logging.Logger): A logger object configured with the above dictconfig.
+        cross_origin (bool=False): Allow cross origin API requests from the browser.
         schema (dict): The schema of a suite is a dict where the keys are the names of :class:`Application` objects
             registered to the suite. The values are the schemas of the named app.  See :class:`Application` for more
             details on application schemas.
     """
     name = None
+    debug = False
     applications = {}
     async = False
-    base_url = "http://localhost:8000"
+    base_url = "http://localhost:5000/api"
     logging = None
     docstring_processor_name = 'preformatted'
+    cross_origin = False
     allow_anonymous_formats = {'help', 'schema'}
     api_request_processors = ()
     definitions = BASIC_TYPES
     connection_config = {
         'default': {}
     }
+
+    @property
+    def slug(self):
+        return self.base_url_path
 
     @property
     def url(self):
@@ -243,7 +264,7 @@ class Suite(Mapping):
         if self.logging:
             logging.config.dictConfig(self.logging)
         else:
-            logging.basicConfig()
+            logging.basicConfig(level=logging.DEBUG if self.debug else logging.WARNING)
 
         self.log = logging.getLogger(self.__class__.__name__)  # use root logger for the environment
 
@@ -278,7 +299,7 @@ class Suite(Mapping):
 
     def ensure_database_objects(self):
         for app in self.values():
-            app.create_databases()
+            app.create_database()
             app.create_tables()
 
     def __getitem__(self, item):

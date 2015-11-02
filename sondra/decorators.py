@@ -32,6 +32,13 @@ def _response_schema(method):
         if 'type' in argtype:
             if argtype['type'] in {'list', 'object'}:
                 return argtype
+            else:
+                return {
+                    "type": "object",
+                    "properties": {
+                        "_": argtype
+                    }
+                }
         elif "$ref" in argtype:
             coll = Reference(argtype['$ref'])
             return coll.get_collection().schema
@@ -39,7 +46,7 @@ def _response_schema(method):
             return {
                 "type": "object",
                 "properties": {
-                    "v": argtype
+                    "_": argtype
                 }
             }
     else:
@@ -56,17 +63,19 @@ def _request_schema(method):
         if i == 0:
             continue
         schema = _parse_arg(instance, param.annotation)
-        if param.default:
+        if param.default is not metadata.empty:
             schema['default'] = param.default
         else:
             required_args.append(name)
         properties[name] = schema
 
-    return {
+    ret = {
         "type": "object",
-        "required": required_args,
         "properties": properties
     }
+    if required_args:
+        ret['required'] = required_args
+    return ret
 
 
 def _parse_arg(instance, arg):
@@ -75,8 +84,10 @@ def _parse_arg(instance, arg):
     else:
         description = None
 
+    if arg is None:
+        return {"type": "null"}
     if isinstance(arg, str):
-        if arg in {'object', 'int', 'float', 'number', 'array'}:
+        if arg in {'object', 'integer', 'number', 'array'}:
             arg = {"type": arg}
         else:
             raise ParseError("string args must be of type object, int, float, number, array. Got {0}".format(arg))
@@ -92,8 +103,8 @@ def _parse_arg(instance, arg):
         arg = {"type": "array"}
     elif arg is dict:
         arg = {"type": "object"}
-    elif isinstance(arg, re.RegexObject):
-        arg = {"type": "str", "pattern": arg.pattern}
+    elif isinstance(arg, re._pattern_type):
+        arg = {"type": "string", "pattern": arg.pattern}
     elif isinstance(arg, list):
         arg = {"type": "array", "items": _parse_arg(instance, arg[0])}
     elif isinstance(arg, dict):
@@ -108,6 +119,7 @@ def _parse_arg(instance, arg):
 
     if description:
         arg['description'] = description
+
     return arg
 
 def _help(method, out=None, initial_heading_level=0):
