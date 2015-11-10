@@ -1,9 +1,15 @@
 from flask import request, Blueprint, current_app, Response
+from flask.ext.cors import CORS
 import json
 
 from .api import APIRequest
 
 api_tree = Blueprint('api', __name__)
+
+def init(app):
+    if app.suite.cross_origin:
+        CORS(api_tree, intercept_exceptions=True)
+
 
 @api_tree.route('/schema')
 @api_tree.route(';schema')
@@ -13,9 +19,6 @@ def suite_schema():
         status=200,
         mimetype='application/json'
     )
-    if current_app.suite.cross_origin:
-        resp.headers['Access-Control-Allow-Origin'] = '*'
-
     return resp
 
 @api_tree.route('/help')
@@ -29,40 +32,37 @@ def suite_help():
         status=200,
         mimetype='text/html'
     )
-    if current_app.suite.cross_origin:
-        resp.headers['Access-Control-Allow-Origin'] = '*'
-
     return resp
 
 @api_tree.route('/<path:path>', methods=['GET','POST','PUT','PATCH', 'DELETE'])
 def api_request(path):
-    args = dict(request.args)
-    if 'q' not in args:
-        if request.form:
-            args['q'] = [json.dumps({k: v for k, v in request.form})]
+    if request.method == 'HEAD':
+        resp = Response(status=200)
+    else:
+        args = dict(request.args)
+        if 'q' not in args:
+            if request.form:
+                args['q'] = [json.dumps({k: v for k, v in request.form.items()})]
 
-    r = APIRequest(
-        current_app.suite,
-        request.headers,
-        request.data,
-        request.method,
-        None,
-        current_app.suite.base_url + '/' + path,
-        args,
-        request.files
-    )
+        r = APIRequest(
+            current_app.suite,
+            request.headers,
+            request.data,
+            request.method,
+            None,
+            current_app.suite.base_url + '/' + path,
+            args,
+            request.files
+        )
 
-    # Run any number of post-processing steps on this request, including
-    for p in current_app.suite.api_request_processors:
-        r = p(r)
+        # Run any number of post-processing steps on this request, including
+        for p in current_app.suite.api_request_processors:
+            r = p(r)
 
-    mimetype, response = r()
-    resp = Response(
-        response=response,
-        status=200,
-        mimetype=mimetype)
-
-    if current_app.suite.cross_origin:
-        resp.headers['Access-Control-Allow-Origin'] = '*'
+        mimetype, response = r()
+        resp = Response(
+            response=response,
+            status=200,
+            mimetype=mimetype)
 
     return resp

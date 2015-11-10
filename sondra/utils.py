@@ -1,3 +1,4 @@
+import importlib
 import inspect
 import re
 from copy import deepcopy
@@ -49,3 +50,31 @@ def schema_sans_definitions(original, *properties):
     for property in (p for p in properties if p in new_schema['definitions']):
         del new_schema['definitions'][property]
     return new_schema
+
+
+def resolve_class(obj, required_superclass=object, required_metaclass=type):
+    if isinstance(obj, str):
+        modulename, classname = obj.rsplit('.', 1)
+        module = importlib.import_module(modulename)
+        klass = getattr(module, classname)
+    else:
+        klass = obj
+
+    if not issubclass(klass, required_superclass):
+        raise TypeError("{0} is not of type {1}".format(
+            klass.__name__,
+            required_superclass.__name__
+        ))
+
+    if not isinstance(klass, required_metaclass):
+        raise TypeError("{0} must use {1} metaclass".format(
+            klass.__name__,
+            required_metaclass.__name__
+        ))
+
+    return obj
+
+# if isinstance(attrs['document_class'], str):
+#                 modulename, classname = attrs['document_class'].rsplit('.', 1)
+#                 module = importlib.import_module(modulename)
+#                 klass =

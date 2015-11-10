@@ -2,6 +2,7 @@ from datetime import datetime, date, timezone
 from collections.abc import MutableMapping
 from abc import ABCMeta
 from copy import deepcopy, copy
+import importlib
 import iso8601
 import jsonschema
 import rethinkdb as r
@@ -16,7 +17,7 @@ from sondra.application import Application
 from sondra.document import Document, references, signals as doc_signals, ValidationError
 
 from . import signals
-from sondra.utils import mapjson
+from sondra.utils import mapjson, resolve_class
 
 _validator = jsonschema.Draft4Validator
 
@@ -46,6 +47,10 @@ class CollectionMetaclass(ABCMeta):
             attrs['definitions'].update(definitions)
         else:
             attrs['definitions'] = definitions
+
+        if 'document_class' in attrs:
+            if isinstance(attrs['document_class'], str):
+                attrs['document_class'] = resolve_class(attrs['document_class'], required_superclass=Document)
 
         return super().__new__(mcs, name, bases, attrs)
 

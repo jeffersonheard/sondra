@@ -86,7 +86,7 @@ class AuthorizableDocument(Document):
             
             user_can_write = None
             if my_permissions:
-                user_can_write = my_permissions['_p'].get('write', None)
+                user_can_write = my_permissions['_p'].get('add', None)
             
             if user_can_write is None:
                 user_can_write = self.collection.can_write(user)
@@ -116,7 +116,7 @@ class AuthorizableDocument(Document):
             
             user_can_update = None
             if my_permissions:
-                user_can_update = my_permissions['_p'].get('update', None)
+                user_can_update = my_permissions['_p'].get('write', None)
             
             if user_can_update is None:
                 user_can_update = self.collection.can_update(user)
@@ -267,7 +267,7 @@ class AuthorizableCollection(Collection):
 
             user_can_write = None
             if coll_permissions:
-                user_can_write = coll_permissions['_p'].get('write', None)
+                user_can_write = coll_permissions['_p'].get('add', None)
 
             if user_can_write is None:
                 user_can_write = self.application.can_write(user)
@@ -293,7 +293,7 @@ class AuthorizableCollection(Collection):
 
             user_can_update = None
             if coll_permissions:
-                user_can_update = coll_permissions['_p'].get('update', None)
+                user_can_update = coll_permissions['_p'].get('write', None)
 
             if user_can_update is None:
                 user_can_update = self.application.can_update(user)
@@ -419,7 +419,7 @@ class AuthorizableApplication(Application):
             
             user_can_read = None
             if app_permissions:
-                user_can_read = app_permissions['_p'].get('read', None)
+                user_can_read = app_permissions['_p'].get('write', None)
 
             return user_can_read is True
         
@@ -437,7 +437,7 @@ class AuthorizableApplication(Application):
             
             user_can_read = None
             if app_permissions:
-                user_can_read = app_permissions['_p'].get('read', None)
+                user_can_read = app_permissions['_p'].get('add', None)
 
             return user_can_read is True
         
@@ -455,7 +455,7 @@ class AuthorizableApplication(Application):
             
             user_can_read = None
             if app_permissions:
-                user_can_read = app_permissions['_p'].get('read', None)
+                user_can_read = app_permissions['_p'].get('delete', None)
 
             return user_can_read is True
 
@@ -644,6 +644,11 @@ class Role(AuthorizableDocument):
 
     @expose
     def inherit(self, application=None, collection=None, document=None, method=None, action=None) -> None:
+        """
+        Cause a role to inherit a permission from the object up the URL tree. This effectively restores the
+         default permission to this object.
+        """
+
         app = application.slug
         perms = self['permissions']
         if app not in perms:
@@ -843,7 +848,7 @@ class Users(AuthorizableCollection):
         Raises:
             ValueError if the password doesn't pass muster.
         """
-        if len(password) < 8:
+        if len(password) < 6:
             raise ValueError("Password too short")
 
     @expose

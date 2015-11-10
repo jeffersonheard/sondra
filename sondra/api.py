@@ -492,6 +492,7 @@ class APIRequest(object):
 
     def json_response(self, method):
         result = method()
+
         def fun(doc):
             if isinstance(doc, document.Document):
                 return mapjson(fun, doc.obj)
@@ -499,6 +500,9 @@ class APIRequest(object):
                 return doc
 
         result = mapjson(fun, result)  # make sure to serialize a full Document structure if we have one.
+
+        if not (isinstance(result, dict) or isinstance(result, list)):
+            result = {"_": result}
 
         return 'application/json', json.dumps(result, indent=4)
 

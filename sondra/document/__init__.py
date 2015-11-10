@@ -17,6 +17,11 @@ except:
 from sondra import utils, help
 from sondra.utils import mapjson
 
+__all__ = (
+    "ValidationError",
+    "Document",
+    "DocumentMetaclass"
+)
 
 def _to_ref(doc):
     if isinstance(doc, Document):

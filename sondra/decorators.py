@@ -87,12 +87,11 @@ def _parse_arg(instance, arg):
     if arg is None:
         return {"type": "null"}
     if isinstance(arg, str):
-        if arg in {'object', 'integer', 'number', 'array'}:
-            arg = {"type": arg}
-        else:
-            raise ParseError("string args must be of type object, int, float, number, array. Got {0}".format(arg))
+        arg = {"type": "string", "foreignKey": arg}
     elif arg is str:
         arg = {"type": "string"}
+    elif arg is bytes:
+        arg = {"type": "string", "format": "attachment"}
     elif arg is int:
         arg = {"type": "integer"}
     elif arg is float:

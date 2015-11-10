@@ -15,10 +15,14 @@ def _deferred_url_for(klass, context, fmt='schema', fragment=None):
     from sondra.collection import Collection
 
     if isinstance(klass, str):
-        modulename, classname = klass.rsplit(klass, 1)
-        klass = getattr(importlib.import_module(modulename), classname)
-
-    slug = klass.slug
+        if "/" in klass or ('.' not in klass):
+            slug = klass
+        else:
+            modulename, classname = klass.rsplit(klass, 1)
+            klass = getattr(importlib.import_module(modulename), classname)
+            slug = klass.slug
+    else:
+        slug = klass.slug
 
     if isinstance(context, Suite):
         suite = context
