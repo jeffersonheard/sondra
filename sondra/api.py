@@ -495,14 +495,14 @@ class APIRequest(object):
 
         def fun(doc):
             if isinstance(doc, document.Document):
-                return mapjson(fun, doc.obj)
+                return mapjson(fun, doc.collection.json(doc))
             else:
                 return doc
 
         result = mapjson(fun, result)  # make sure to serialize a full Document structure if we have one.
 
         if not (isinstance(result, dict) or isinstance(result, list)):
-            result = {"_": result}
+            result, = {"_": result}
 
         return 'application/json', json.dumps(result, indent=4)
 

@@ -480,6 +480,26 @@ class Collection(MutableMapping, metaclass=CollectionMetaclass):
 
         return ret
 
+    def json(self, docs):
+        pop = False
+        if not isinstance(docs, list):
+            docs = [docs]
+            pop = True
+
+        values = []
+        for value in docs:
+            if isinstance(value, Document):
+                value = copy(value.obj)
+
+            value = references(value)  # get rid of Document objects and turn them into URLs
+            self._to_json_repr(value)
+            values.append(value)
+
+        if pop:
+            return values[0]
+        else:
+            return values
+
 
 class ValueHandler(object):
     """This is base class for transforming values to/from RethinkDB representations to standard representations.
@@ -607,12 +627,12 @@ class DateTime(ValueHandler):
     def to_json_repr(self, value):
         if isinstance(value, date) or isinstance(value, datetime):
             return value.isoformat()
-        elif hasattr(value, 'to_epoch_time'):
-            return value.to_iso8601()
+        elif isinstance(value, str):
+            return value
         elif isinstance(value, int) or isinstance(value, float):
             return datetime.fromtimestamp(value).isoformat()
         else:
-            return value
+            return value.to_iso8601()
 
     def to_python_repr(self, value):
         if isinstance(value, str):
