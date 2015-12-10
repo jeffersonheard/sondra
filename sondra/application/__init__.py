@@ -83,6 +83,7 @@ class Application(Mapping, metaclass=ApplicationMetaclass):
     """
     db = 'default'
     connection = 'default'
+    title = None
     slug = None
     collections = ()
     anonymous_reads = True
@@ -105,6 +106,7 @@ class Application(Mapping, metaclass=ApplicationMetaclass):
     def schema(self):
         ret = {
             "id": self.url + ";schema",
+            "title": self.title or self.__class__.__name__,
             "type": "object",
             "description": self.__doc__ or "*No description provided.*",
             "definitions": self.definitions,

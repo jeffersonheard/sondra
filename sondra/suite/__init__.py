@@ -211,6 +211,7 @@ class Suite(Mapping):
             registered to the suite. The values are the schemas of the named app.  See :class:`Application` for more
             details on application schemas.
     """
+    title = "Sondra-Based API"
     name = None
     debug = False
     applications = {}
@@ -232,17 +233,17 @@ class Suite(Mapping):
 
     @property
     def url(self):
-        return self.base_url_path
+        return self.base_url
 
     @property
     def schema_url(self):
-        return self.base_url_path + "/schema"
+        return self.base_url + ";schema"
 
     @property
     def schema(self):
         return {
-            "id": self.url + "/schema",
-            "name": self.name,
+            "id": self.url + ";schema",
+            "title": self.title,
             "type": None,
             "description": self.__doc__ or "*No description provided.*",
             "applications": {k: v.schema_url for k, v in self.applications.items()},
@@ -253,7 +254,7 @@ class Suite(Mapping):
     def full_schema(self):
         return {
             "id": self.url + ";schema",
-            "name": self.name,
+            "title": self.title,
             "type": None,
             "description": self.__doc__ or "*No description provided.*",
             "applications": {k: v.full_schema for k, v in self.applications.items()},
