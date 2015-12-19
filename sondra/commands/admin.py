@@ -1,7 +1,7 @@
 import click
 import importlib
 import json
-from sondra.auth import Auth, Users, Roles
+from sondra.auth import Auth
 
 suite = None
 auth = None
@@ -59,152 +59,152 @@ def update_user(username, json_value):
 def delete_user(username):
     del auth['users'][username]
 
-
-@cli.command()
-@click.argument('username')
-@click.argument('roles', nargs=-1)
-def add_user_roles(username, roles):
-    u = auth['users'][username]
-    old_roles = set(u['roles'])
-    new_roles = old_roles.union(set(roles))
-    u['roles'] = list(new_roles)
-    u.save()
-
-
-@cli.command()
-@click.argument('username')
-@click.argument('roles', nargs=-1)
-def delete_user_roles(username, roles):
-    u = auth['users'][username]
-    old_roles = set(u['roles'])
-    new_roles = old_roles.difference(set(roles))
-    u['roles'] = list(new_roles)
-    u.save()
-
-
-
-@cli.command()
-@click.argument('name')
-@click.argument('includes', nargs=-1)
-def create_role(name, includes):
-    auth['roles'].create({
-        "name": name,
-        "includes": includes
-    })
-
-
-@cli.command()
-@click.option("--role", "-r")
-@click.option("--application", "-a")
-@click.option("--collection", "-c", default=None)
-@click.option("--document", "-c", default=None)
-@click.option("--method", "-m", default=None)
-@click.option("--read", default=True)
-@click.option("--add", default=False)
-@click.option("--update", default=False)
-@click.option("--delete", default=False)
-@click.option("--schema", default=False)
-@click.option("--help", default=False)
-def grant(role, application, collection, document, method, read, update, add, delete, schema, help):
-    r = auth['roles'][role]
-
-    app = suite[application]
-    coll = app[collection] if collection else None
-    doc = coll[document] if document else None
-
-    if method:
-        r.grant(application=app, collection=coll, document=doc, method=method)
-    if read or add or update or delete:
-        r.grant(application=app, collection=coll, document=doc, action='help')
-        r.grant(application=app, collection=coll, document=doc, action='schema')
-    if read:
-        r.grant(application=app, collection=coll, document=doc, action='read')
-    if add:
-        r.grant(application=app, collection=coll, document=doc, action='add')
-    if update:
-        r.grant(application=app, collection=coll, document=doc, action='update')
-    if delete:
-        r.grant(application=app, collection=coll, document=doc, action='delete')
-    if schema:
-        r.grant(application=app, collection=coll, document=doc, action='schema')
-    if help:
-        r.grant(application=app, collection=coll, document=doc, action='help')
-
-
-@cli.command()
-@click.option("--role", "-r")
-@click.option("--application", "-a")
-@click.option("--collection", "-c", default=None)
-@click.option("--document", "-c", default=None)
-@click.option("--method", "-m", default=None)
-@click.option("--read", default=True)
-@click.option("--add", default=False)
-@click.option("--update", default=False)
-@click.option("--delete", default=False)
-@click.option("--schema", default=False)
-@click.option("--help", default=False)
-def revoke(role, application, collection, document, method, read, update, add, delete, schema, help):
-    r = auth['roles'][role]
-
-    app = suite[application]
-    coll = app[collection] if collection else None
-    doc = coll[document] if document else None
-
-    if method:
-        r.revoke(application=app, collection=coll, document=doc, method=method)
-    if read or add or update or delete:
-        r.revoke(application=app, collection=coll, document=doc, action='help')
-        r.revoke(application=app, collection=coll, document=doc, action='schema')
-    if read:
-        r.revoke(application=app, collection=coll, document=doc, action='read')
-    if add:
-        r.revoke(application=app, collection=coll, document=doc, action='add')
-    if update:
-        r.revoke(application=app, collection=coll, document=doc, action='update')
-    if delete:
-        r.revoke(application=app, collection=coll, document=doc, action='delete')
-    if schema:
-        r.revoke(application=app, collection=coll, document=doc, action='schema')
-    if help:
-        r.revoke(application=app, collection=coll, document=doc, action='help')
-
-
-@cli.command()
-@click.option("--role", "-r")
-@click.option("--application", "-a")
-@click.option("--collection", "-c", default=None)
-@click.option("--document", "-c", default=None)
-@click.option("--method", "-m", default=None)
-@click.option("--read", default=True)
-@click.option("--add", default=False)
-@click.option("--update", default=False)
-@click.option("--delete", default=False)
-@click.option("--schema", default=False)
-@click.option("--help", default=False)
-def inherit(role, application, collection, document, method, read, update, add, delete, schema, help):
-    r = auth['roles'][role]
-
-    app = suite[application]
-    coll = app[collection] if collection else None
-    doc = coll[document] if document else None
-
-    if method:
-        r.inherit(application=app, collection=coll, document=doc, method=method)
-    if read or add or update or delete:
-        r.inherit(application=app, collection=coll, document=doc, action='help')
-        r.inherit(application=app, collection=coll, document=doc, action='schema')
-    if read:
-        r.inherit(application=app, collection=coll, document=doc, action='read')
-    if add:
-        r.inherit(application=app, collection=coll, document=doc, action='add')
-    if update:
-        r.inherit(application=app, collection=coll, document=doc, action='update')
-    if delete:
-        r.inherit(application=app, collection=coll, document=doc, action='delete')
-    if schema:
-        r.inherit(application=app, collection=coll, document=doc, action='schema')
-    if help:
-        r.inherit(application=app, collection=coll, document=doc, action='help')
+#
+# @cli.command()
+# @click.argument('username')
+# @click.argument('roles', nargs=-1)
+# def add_user_roles(username, roles):
+#     u = auth['users'][username]
+#     old_roles = set(u['roles'])
+#     new_roles = old_roles.union(set(roles))
+#     u['roles'] = list(new_roles)
+#     u.save()
+#
+#
+# @cli.command()
+# @click.argument('username')
+# @click.argument('roles', nargs=-1)
+# def delete_user_roles(username, roles):
+#     u = auth['users'][username]
+#     old_roles = set(u['roles'])
+#     new_roles = old_roles.difference(set(roles))
+#     u['roles'] = list(new_roles)
+#     u.save()
+#
+#
+#
+# @cli.command()
+# @click.argument('name')
+# @click.argument('includes', nargs=-1)
+# def create_role(name, includes):
+#     auth['roles'].create({
+#         "name": name,
+#         "includes": includes
+#     })
+#
+#
+# @cli.command()
+# @click.option("--role", "-r")
+# @click.option("--application", "-a")
+# @click.option("--collection", "-c", default=None)
+# @click.option("--document", "-c", default=None)
+# @click.option("--method", "-m", default=None)
+# @click.option("--read", default=True)
+# @click.option("--add", default=False)
+# @click.option("--update", default=False)
+# @click.option("--delete", default=False)
+# @click.option("--schema", default=False)
+# @click.option("--help", default=False)
+# def grant(role, application, collection, document, method, read, update, add, delete, schema, help):
+#     r = auth['roles'][role]
+#
+#     app = suite[application]
+#     coll = app[collection] if collection else None
+#     doc = coll[document] if document else None
+#
+#     if method:
+#         r.grant(application=app, collection=coll, document=doc, method=method)
+#     if read or add or update or delete:
+#         r.grant(application=app, collection=coll, document=doc, action='help')
+#         r.grant(application=app, collection=coll, document=doc, action='schema')
+#     if read:
+#         r.grant(application=app, collection=coll, document=doc, action='read')
+#     if add:
+#         r.grant(application=app, collection=coll, document=doc, action='add')
+#     if update:
+#         r.grant(application=app, collection=coll, document=doc, action='update')
+#     if delete:
+#         r.grant(application=app, collection=coll, document=doc, action='delete')
+#     if schema:
+#         r.grant(application=app, collection=coll, document=doc, action='schema')
+#     if help:
+#         r.grant(application=app, collection=coll, document=doc, action='help')
+#
+#
+# @cli.command()
+# @click.option("--role", "-r")
+# @click.option("--application", "-a")
+# @click.option("--collection", "-c", default=None)
+# @click.option("--document", "-c", default=None)
+# @click.option("--method", "-m", default=None)
+# @click.option("--read", default=True)
+# @click.option("--add", default=False)
+# @click.option("--update", default=False)
+# @click.option("--delete", default=False)
+# @click.option("--schema", default=False)
+# @click.option("--help", default=False)
+# def revoke(role, application, collection, document, method, read, update, add, delete, schema, help):
+#     r = auth['roles'][role]
+#
+#     app = suite[application]
+#     coll = app[collection] if collection else None
+#     doc = coll[document] if document else None
+#
+#     if method:
+#         r.revoke(application=app, collection=coll, document=doc, method=method)
+#     if read or add or update or delete:
+#         r.revoke(application=app, collection=coll, document=doc, action='help')
+#         r.revoke(application=app, collection=coll, document=doc, action='schema')
+#     if read:
+#         r.revoke(application=app, collection=coll, document=doc, action='read')
+#     if add:
+#         r.revoke(application=app, collection=coll, document=doc, action='add')
+#     if update:
+#         r.revoke(application=app, collection=coll, document=doc, action='update')
+#     if delete:
+#         r.revoke(application=app, collection=coll, document=doc, action='delete')
+#     if schema:
+#         r.revoke(application=app, collection=coll, document=doc, action='schema')
+#     if help:
+#         r.revoke(application=app, collection=coll, document=doc, action='help')
+#
+#
+# @cli.command()
+# @click.option("--role", "-r")
+# @click.option("--application", "-a")
+# @click.option("--collection", "-c", default=None)
+# @click.option("--document", "-c", default=None)
+# @click.option("--method", "-m", default=None)
+# @click.option("--read", default=True)
+# @click.option("--add", default=False)
+# @click.option("--update", default=False)
+# @click.option("--delete", default=False)
+# @click.option("--schema", default=False)
+# @click.option("--help", default=False)
+# def inherit(role, application, collection, document, method, read, update, add, delete, schema, help):
+#     r = auth['roles'][role]
+#
+#     app = suite[application]
+#     coll = app[collection] if collection else None
+#     doc = coll[document] if document else None
+#
+#     if method:
+#         r.inherit(application=app, collection=coll, document=doc, method=method)
+#     if read or add or update or delete:
+#         r.inherit(application=app, collection=coll, document=doc, action='help')
+#         r.inherit(application=app, collection=coll, document=doc, action='schema')
+#     if read:
+#         r.inherit(application=app, collection=coll, document=doc, action='read')
+#     if add:
+#         r.inherit(application=app, collection=coll, document=doc, action='add')
+#     if update:
+#         r.inherit(application=app, collection=coll, document=doc, action='update')
+#     if delete:
+#         r.inherit(application=app, collection=coll, document=doc, action='delete')
+#     if schema:
+#         r.inherit(application=app, collection=coll, document=doc, action='schema')
+#     if help:
+#         r.inherit(application=app, collection=coll, document=doc, action='help')
 
 
 if __name__=='__main__':

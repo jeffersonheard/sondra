@@ -3,6 +3,7 @@ from abc import ABCMeta
 from copy import copy
 from functools import partial
 from urllib.parse import urlparse
+import requests
 import rethinkdb as r
 import logging
 import logging.config
@@ -298,10 +299,18 @@ class Suite(Mapping):
         self.applications[app.slug] = app
         self.log.info('Registered application {0} to {1}'.format(app.__class__.__name__, app.url))
 
+    def drop_database_objects(self):
+        for app in self.values():
+            app.drop_database()
+
     def ensure_database_objects(self):
         for app in self.values():
             app.create_database()
             app.create_tables()
+
+    def clear_databases(self):
+        self.drop_database_objects()
+        self.ensure_database_objects()
 
     def __getitem__(self, item):
         """Application objects are indexed by "slug." Every Application object registered has its name slugified.
@@ -351,13 +360,13 @@ class Suite(Mapping):
 
     def lookup(self, url):
         if not url.startswith(self.base_url):
-            return None
+            return requests.get(url).json()  # TODO replace with client.
         else:
             return Reference(self, url).value
 
     def lookup_document(self, url):
         if not url.startswith(self.base_url):
-            return None
+            return requests.get(url).json()  # TODO replace with client.
         else:
             return Reference(self, url).get_document()
 

@@ -1,4 +1,4 @@
-from datetime import datetime, date, timezone
+from datetime import datetime, date, timezone, timedelta
 from collections.abc import MutableMapping
 from abc import ABCMeta
 from copy import deepcopy, copy
@@ -14,7 +14,8 @@ from shapely.geometry.base import BaseGeometry
 
 from sondra import help, utils
 from sondra.application import Application
-from sondra.document import Document, references, signals as doc_signals, ValidationError
+from sondra.document import Document, signals as doc_signals
+from sondra.exceptions import ValidationError
 
 from . import signals
 from sondra.utils import mapjson, resolve_class
@@ -323,7 +324,7 @@ class Collection(MutableMapping, metaclass=CollectionMetaclass):
         doc = self.table.get(key).run(self.application.connection)
         if doc:
             self._to_python_repr(doc)
-            return self.document_class(doc, collection=self)
+            return self.document_class(doc, collection=self, from_db=True)
         else:
             raise KeyError('{0} not found in {1}'.format(key, self.url))
 
@@ -354,7 +355,7 @@ class Collection(MutableMapping, metaclass=CollectionMetaclass):
     def __iter__(self):
         for doc in self.table.run(self.application.connection):
             self._to_python_repr(doc)
-            yield doc
+            yield self.document_class(doc, collection=self, from_db=True)
 
     def __contains__(self, item):
         """Checks to see if the primary key is in the database.
@@ -372,7 +373,7 @@ class Collection(MutableMapping, metaclass=CollectionMetaclass):
         else:
             key = item
 
-        doc = self.table.get(item).run(self.application.connection)
+        doc = self.table.get(key).run(self.application.connection)
         return doc is not None
 
     def __len__(self):
@@ -389,7 +390,7 @@ class Collection(MutableMapping, metaclass=CollectionMetaclass):
         """
         for doc in query.run(self.application.connection):
             self._to_python_repr(doc)
-            yield self.document_class(doc, collection=self)
+            yield self.document_class(doc, collection=self, from_db=True)
 
     def doc(self, value):
         """Return a document instance populated from a dict. Does **not** save document before returning.
@@ -412,11 +413,21 @@ class Collection(MutableMapping, metaclass=CollectionMetaclass):
         Returns:
             Document instance, guaranteed to have been saved.
         """
-        doc = self.document_class(value, collection=self)
-        ret = self.save(doc, conflict="error")
+
+        if isinstance(value, list):
+            docs = [(self.document_class(v, collection=self) if not isinstance(v, self.document_class) else v) for v in value]
+        else:
+            docs = [self.document_class(value, collection=self)]
+
+        ret = self.save(docs, conflict="error")
         if 'generated_keys' in ret:
-            doc.id = ret['generated_keys'][0]
-        return doc
+            for i, k in enumerate(ret['generated_keys']):
+                docs[i].id = k
+
+        if isinstance(value, list):
+            return docs
+        else:
+            return docs[0]
 
     def validator(self, value):
         """Override this method to do extra validation above and beyond a simple schema check.
@@ -465,15 +476,16 @@ class Collection(MutableMapping, metaclass=CollectionMetaclass):
         doc_signals.pre_save.send(self.document_class, docs=docs)
         for value in docs:
             if isinstance(value, Document):
+                value._saved = True
                 value = copy(value.obj)
 
-            value = references(value)  # get rid of Document objects and turn them into URLs
             self._to_json_repr(value)
             jsonschema.validate(value, self.schema)
             self.validator(value)
 
             self._to_rql_repr(value)
             values.append(value)
+
 
         ret = self.table.insert(values, **kwargs).run(self.application.connection)
         doc_signals.post_save.send(self.document_class, results=ret)
@@ -491,7 +503,6 @@ class Collection(MutableMapping, metaclass=CollectionMetaclass):
             if isinstance(value, Document):
                 value = copy(value.obj)
 
-            value = references(value)  # get rid of Document objects and turn them into URLs
             self._to_json_repr(value)
             values.append(value)
 
@@ -544,26 +555,7 @@ class ValueHandler(object):
         return value
 
 
-class DocumentProcessor(object):
-    def is_necessary(self, changed_props):
-        """Override this method to determine whether the processor should run."""
-        return False
 
-    def run(self, document):
-        """Override this method to post-process a document after it has changed."""
-        return document
-
-
-class SlugPropertyProcessor(DocumentProcessor):
-    def __init__(self, source_prop, dest_prop='slug'):
-        self.dest_prop = dest_prop
-        self.source_prop = source_prop
-
-    def is_necessary(self, changed_props):
-        return self.source_prop in changed_props
-
-    def run(self, document):
-        document[self.dest_prop] = slugify(document[self.source_prop])
 
 
 class Geometry(ValueHandler):
@@ -639,13 +631,8 @@ class DateTime(ValueHandler):
             return iso8601.parse_date(value)
         elif isinstance(value, datetime):
             return value
-        elif hasattr(value, 'to_epoch_time'):
-            timestamp = value.to_epoch_time()
-            tz = value.timezone()
-            offset = self.from_rql_tz(tz)
-            offset_tz = timezone(offset)
-            dt = datetime.fromtimestamp(timestamp, tz=offset_tz)
-            return dt
+        else:
+            return iso8601.parse_date(value.to_iso8601())
 
 
 class Now(DateTime):

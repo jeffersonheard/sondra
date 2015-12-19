@@ -23,7 +23,7 @@ def classes(format, destpath, classnames):
         module_name, classname = c.rsplit('.', 1)
         mod = importlib.import_module(module_name)
         klass = getattr(mod, classname)
-    #try:
+    try:
         with open(output_filename, 'w') as output:
             tmp = io.StringIO()
             tmp.write("#" * len(klass.__name__))
@@ -44,8 +44,8 @@ def classes(format, destpath, classnames):
             elif format == 'rst':
                 output.write(tmp.getvalue())
         logging.info("Wrote {0} to {1}".format(c, output_filename))
-    #except Exception as e:
-    #    logging.error(str(e))
+    except Exception as e:
+        logging.error(str(e))
 
 
 @cli.command()

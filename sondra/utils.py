@@ -3,6 +3,11 @@ import inspect
 import re
 from copy import deepcopy
 
+
+def split_camelcase(name):
+    return re.sub('([A-Z]+)', r' \1', name).title()
+
+
 def convert_camelcase(name):
     s1 = re.sub('(.)([A-Z][a-z]+)', r'\1_\2', name)
     return re.sub('([a-z0-9])([A-Z])', r'\1_\2', s1).lower()
@@ -20,6 +25,14 @@ def mapjson(fun, doc):
         return [mapjson(fun, v) for v in doc]
     else:
         return fun(doc)
+
+
+def qiter(o):
+    if o is not None:
+        for x in o:
+            yield x
+    else:
+        raise StopIteration
 
 
 def is_exposed(fun):

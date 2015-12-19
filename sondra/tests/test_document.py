@@ -46,7 +46,6 @@ class TrackedItems(collection.Collection):
     specials = {
         "location": sondra.collection.Geometry("point")
     }
-    references = [("template", TrackedItemTemplates)]
     indexes = ("template","location")
 
 
@@ -67,7 +66,6 @@ class TrackedItemHistories(collection.Collection):
     specials = {
         "location": sondra.collection.Geometry("point")
     }
-    references = [("item", TrackedItem)]
     indexes = ("item", "location", "timestamp")
 
 
@@ -89,7 +87,6 @@ class ItemGroups(collection.Collection):
     specials = {
         "geometry": sondra.collection.Geometry('polygon')
     }
-    references = [("parent", "self"), {"items": TrackedItems}]
 
 
 
@@ -97,7 +94,7 @@ class OtherApplication(application.Application):
     pass
 
 
-class TerraHubBase(application.Application):
+class ItemTrackingBase(application.Application):
     collections = (
         TrackedItemTemplates,
         TrackedItems,
@@ -108,38 +105,14 @@ class TerraHubBase(application.Application):
 
 @pytest.fixture(scope='module')
 def s(request):
-    return ConcreteSuite()
+    v = ConcreteSuite()
+    return v
 
 @pytest.fixture(scope='module')
 def apps(request, s):
-    customer_jeff = TerraHubBase(s, 'jeff')
-    customer_steve = TerraHubBase(s, 'steve')
-
-    try:
-        customer_jeff.create_database()
-        customer_steve.create_database()
-    except:
-        pass
-
-    try:
-        customer_jeff.create_tables()
-        customer_steve.create_tables()
-    except:
-        pass
-
-    def fin():
-        try:
-            customer_jeff.drop_tables()
-            customer_steve.drop_tables()
-        except:
-            pass
-
-        try:
-            customer_jeff.drop_database()
-            customer_steve.drop_database()
-        except:
-            pass
-    request.addfinalizer(fin)
+    customer_jeff = ItemTrackingBase(s, 'jeff')
+    customer_steve = ItemTrackingBase(s, 'steve')
+    s.clear_databases()
     return (customer_jeff, customer_steve)
 
 
@@ -270,13 +243,11 @@ def test_single_reference(tracked_items, tracked_item_templates):
     chint300, ae_inverter = tracked_item_templates
     ae_inverter_0001, chint300_0001, chint300_0002 = tracked_items
 
-    ae_inverter_0001.reference()
     assert ae_inverter_0001['template'] == ae_inverter.url
     assert ae_inverter.url == ae_inverter.collection.url + '/' + ae_inverter.id
     assert ae_inverter.id == ae_inverter['name']
 
-    ae_inverter_0001.dereference()
-    assert ae_inverter_0001['template'] == ae_inverter
+    assert ae_inverter_0001.fetch('template') == ae_inverter
 
 
     
