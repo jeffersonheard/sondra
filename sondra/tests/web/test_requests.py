@@ -79,7 +79,7 @@ def test_app_method():
     assert get_noargs.json() == post_noargs.json()
 
 
-def test_collection_method():
+def test_collection_method_schema():
     test_method_url = _url('api/base-app/tracked-item-templates.test-collection-method')
 
     schema_url = test_method_url + ';schema'
@@ -93,10 +93,16 @@ def test_collection_method():
     assert 'id' in schema
     assert schema['id'] == schema_url
 
+def test_collection_method_help():
+    test_method_url = _url('api/base-app/tracked-item-templates.test-collection-method')
+
     help_url = test_method_url + ';help'
     help = requests.get(help_url)
     assert help.ok
     assert help.text
+
+def test_collection_method_call():
+    test_method_url = _url('api/base-app/tracked-item-templates.test-collection-method')
 
     args = json.dumps({
         'int_arg': 10,

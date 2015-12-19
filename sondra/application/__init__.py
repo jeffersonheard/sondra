@@ -151,7 +151,7 @@ class Application(Mapping, metaclass=ApplicationMetaclass):
         if self.exposed_methods:
             builder.begin_subheading("Methods")
             for name, method in sorted(self.exposed_methods.items(), key=lambda x: x[0]):
-                new_builder = help.SchemaHelpBuilder(method.schema(getattr(self, method.__name__)), initial_heading_level=builder._heading_level)
+                new_builder = help.SchemaHelpBuilder(method.schema(), initial_heading_level=builder._heading_level)
                 new_builder.build()
                 builder.line(new_builder.rst)
             builder.end_subheading()

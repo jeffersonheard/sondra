@@ -33,7 +33,6 @@ class Role(Document):
     processors = [
         SlugPropertyProcessor('title')
     ]
-
     
     def authorizes(self, reference, perm=None):
         if isinstance(reference, str):
@@ -44,7 +43,7 @@ class Role(Document):
             meth = reference.get_application_method()
             for permission in self['permissions']:
                 if permission.get('application', None) == application.slug:
-                    return meth.slug in permission
+                    return meth.slug in permission['allowed']
             else:
                 return False
 
@@ -54,7 +53,7 @@ class Role(Document):
             for permission in self['permissions']:
                 if permission.get('collection', None) == collection.slug and \
                         permission.get('application', None) == collection.application.slug:
-                    return meth.slug in permission
+                    return meth.slug in permission['allowed']
             else:
                 return False
 
@@ -65,7 +64,7 @@ class Role(Document):
                 if permission.get('collection', None) == doc.collection.slug and \
                         permission.get('application', None) == doc.collection.application.slug and \
                         permission.get('document', None) == doc.id:
-                    return meth.slug in permission
+                    return meth.slug in permission['allowed']
             else:
                 return False
 
@@ -73,7 +72,7 @@ class Role(Document):
             application = reference.get_application()
             for permission in self['permissions']:
                 if permission.get('application', None) == application.slug:
-                    return perm in permission
+                    return perm in permission['allowed']
             else:
                 return False
 
@@ -82,7 +81,7 @@ class Role(Document):
             for permission in self['permissions']:
                 if permission.get('collection', None) == collection.slug and \
                         permission.get('application', None) == collection.application.slug:
-                    return perm in permission
+                    return perm in permission['allowed']
             else:
                 return False
 
@@ -92,14 +91,12 @@ class Role(Document):
                 if permission.get('collection', None) == doc.collection.slug and \
                         permission.get('application', None) == doc.collection.application.slug and \
                         permission.get('document', None) == doc.id:
-                    return perm in permission
+                    return perm in permission['allowed']
             else:
                 return False
 
         else:
             return False
-
-
                         
 
 class User(Document):

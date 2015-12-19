@@ -224,14 +224,14 @@ class Collection(MutableMapping, metaclass=CollectionMetaclass):
         if self.exposed_methods:
             builder.begin_subheading("Methods")
             for name, method in self.exposed_methods.items():
-                new_builder = help.SchemaHelpBuilder(method.schema(getattr(self, method.__name__)), initial_heading_level=builder._heading_level)
+                new_builder = help.SchemaHelpBuilder(method.schema(), initial_heading_level=builder._heading_level)
                 new_builder.build()
                 builder.line(new_builder.rst)
             builder.end_subheading()
         if self.document_class.exposed_methods:
             builder.begin_subheading("Document Instance Methods")
             for name, method in self.document_class.exposed_methods.items():
-                new_builder = help.SchemaHelpBuilder(method.schema(getattr(self.document_class, method.__name__)), initial_heading_level=builder._heading_level)
+                new_builder = help.SchemaHelpBuilder(method.schema(), initial_heading_level=builder._heading_level)
                 new_builder.build()
                 builder.line(new_builder.rst)
             builder.end_subheading()

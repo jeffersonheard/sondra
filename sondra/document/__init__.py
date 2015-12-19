@@ -34,6 +34,7 @@ def _reference(v):
         return v
 
 
+
 class DocumentMetaclass(ABCMeta):
     """
     The metaclass for all documents merges definitions and schema into a single schema attribute and makes sure that
@@ -197,9 +198,9 @@ class Document(MutableMapping, metaclass=DocumentMetaclass):
         """Return the value of the property interpreting it as a reference to another document"""
         if key in self.obj:
             if isinstance(self.obj[key], list):
-                return [self.suite.from_doc(ref) for ref in self.obj[key]]
+                return [Reference(self.suite, ref).value for ref in self.obj[key]]
             elif isinstance(self.obj[key], dict):
-                return {k: self.suite.from_doc(ref) for k, ref in self.obj[key].items()}
+                return {k: Reference(self.suite, ref).value for k, ref in self.obj[key].items()}
             if self.obj[key] is not None:
                 return Reference(self.suite, self.obj[key]).value
             else:
@@ -242,7 +243,7 @@ class Document(MutableMapping, metaclass=DocumentMetaclass):
         if self.exposed_methods:
             builder.begin_subheading("Methods")
             for name, method in self.exposed_methods.items():
-                new_builder = help.SchemaHelpBuilder(method.schema(getattr(self, method.__name__)), initial_heading_level=builder._heading_level)
+                new_builder = help.SchemaHelpBuilder(method.schema(), initial_heading_level=builder._heading_level)
                 new_builder.build()
                 builder.line(new_builder.rst)
 

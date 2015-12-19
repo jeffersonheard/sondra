@@ -36,7 +36,7 @@ def qiter(o):
 
 
 def is_exposed(fun):
-    return inspect.ismethod(fun) and hasattr(fun, 'exposed')
+    return hasattr(fun, 'exposed')
 
 
 def schema_with_properties(original, **updates):

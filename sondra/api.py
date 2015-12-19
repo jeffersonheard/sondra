@@ -417,7 +417,7 @@ class APIRequest(object):
         target = self.reference.value
 
         if self.reference.kind.endswith('method'):
-            schema = target.request_schema(target)
+            schema = target.request_schema()
         elif self.reference.kind in ['collection', 'application']:
             schema = target.schema
         else:
@@ -485,10 +485,7 @@ class APIRequest(object):
         """Return HTML help from a requested object (application, collection, document, method)"""
         # FIXME this should check read/execute permissions on all objects
         value = self.reference.value
-        if 'method' in self.reference.kind:
-            return 'text/html', self.suite.docstring_processor(value.help(value))
-        else:
-            return 'text/html', self.suite.docstring_processor(value.help())
+        return 'text/html', self.suite.docstring_processor(value.help())
 
     def json_response(self, method):
         result = method()
@@ -826,21 +823,21 @@ class APIRequest(object):
 
     def application_method_schema(self):
         method = self.reference.get_application_method()
-        return method.schema(method)
+        return method.schema()
 
     def collection_schema(self):
         return self.reference.get_collection().schema
 
     def collection_method_schema(self):
         method = self.reference.get_collection_method()
-        return method.schema(method)
+        return method.schema()
 
     def document_schema(self):
         return self.reference.get_document().schema
 
     def document_method_schema(self):
         method = self.reference.get_document_method()
-        return method.schema(method)
+        return method.schema()
 
     def exceptional_request(self):
         raise ValidationError(self.reference.url)

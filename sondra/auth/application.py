@@ -58,7 +58,7 @@ class Auth(Application):
     @authenticated_method
     @expose
     def logout(self, token: str) -> None:
-        del self['logged-in-users'][token]
+        self['logged-in-users'].for_token(token).delete()
 
     @authenticated_method
     @expose
@@ -80,7 +80,11 @@ class Auth(Application):
         claims = jwt.decode(token.encode('utf-8'), secret, issuer=self.url, verify=True)
         claims.update(self.get_expiration_claims())  # make sure this token expires
         token = jwt.encode(claims, secret).decode('utf-8')
-        logged_in_user['expires'] = claims['exp']
+
+        if 'expires' in logged_in_user:
+            del logged_in_user['expires']
+        if 'exp' in claims:
+            logged_in_user['expires'] = claims['exp']
         logged_in_user['token'] = token
         logged_in_user.save(conflict='replace')
         return token
@@ -104,11 +108,15 @@ class Auth(Application):
         if 'extraClaims' in credentials:
             claims.update(credentials['extraClaims'])
         token = jwt.encode(claims, credentials['secret']).decode('utf-8')
-        self['logged-in-users'].save({
+
+        logged_in_user = {
             "token": token,
-            "secret": credentials['secret'],
-            "expires": claims['exp']
-        }, conflict='replace')
+            "secret": credentials['secret']
+        }
+        if 'exp' in claims:
+            logged_in_user['exp'] = claims['exp']
+
+        self['logged-in-users'].save(logged_in_user, conflict='replace')
         return token
 
     def check(self, token, **claims):

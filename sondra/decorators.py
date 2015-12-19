@@ -176,17 +176,25 @@ class expose(object):
     def __init__(self, method):
         self.method = method
         self.slug = method.__name__.replace('_','-')
+        self.obj = None
+        self.__name__ = method.__name__
+
+    def __get__(self, instance, owner):
+        # Save a ptr to the object being decorated
+        self.cls = owner
+        self.obj = instance
+        return self
 
     def __call__(self, *args, **kwargs):
-        return self.method(*args, **kwargs)
+        return self.method.__call__(self.obj, *args, **kwargs)
 
     @property
     def _instance(self):
-        return self.method.__self__ if hasattr(self.method, '__self__') else None
+        return self.obj
 
     @property
     def url(self):
-        return self.method.__self__.url + '.' + self.slug if hasattr(self.method, '__self__') else self.slug
+        return self._instance.url + '.' + self.slug if self._instance else self.slug
 
     def schema(self):
         return {
@@ -196,8 +204,8 @@ class expose(object):
             "type": "object",
             "oneOf": [{"$ref": "#/definitions/" + self.slug + "-request"}, {"$ref": "#/definitions/" + self.slug + "-response"}],
             "definitions": {
-                self.slug + "-request": self.request_schema(self.method),
-                self.slug + "-response": self.response_schema(self.method)
+                self.slug + "-request": self.request_schema(),
+                self.slug + "-response": self.response_schema()
             }
         }
 

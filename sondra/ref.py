@@ -301,7 +301,7 @@ class Reference(object):
             A DocumentCollection object
         """
         try:
-            return self.get_application()[self.coll]
+            return self.environment[self.app][self.coll]
         except KeyError:
             raise EndpointError("{0} does not refer to a collection.".format(self.url))
 
@@ -352,6 +352,7 @@ class Reference(object):
         if not method:
             raise EndpointError("{0} is not a method of {1}".format(
                                         self.app_method, self.app))
+        print(method)
         if is_exposed(method):
             return method
         else:

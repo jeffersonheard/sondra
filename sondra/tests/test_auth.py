@@ -72,7 +72,7 @@ def role(request):
         r.delete()
     request.addfinalizer(teardown)
 
-    return r
+    return s['auth']['roles']['test-role']
 
 
 def test_credentials(local_calvin):
@@ -87,14 +87,14 @@ def test_credentials(local_calvin):
 def test_role(role):
     assert role['slug'] == 'test-role'
     assert 'test-role' in s['auth']['roles']
-    assert role.authorizes('http://localhost:5000/api/auth/roles/test-role', 'write')
-    assert role.authorizes('http://localhost:5000/api/auth/roles/test-role', 'read')
-    assert role.authorizes('http://localhost:5000/api/auth/roles/test-role', 'delete')
-    assert not role.authorizes('http://localhost:5000/api/auth/roles/test-role', 'add')
+    assert (role.authorizes('http://localhost:5000/api/auth/roles', 'write') == True)
+    assert (role.authorizes('http://localhost:5000/api/auth/roles', 'read') == True)
+    assert (role.authorizes('http://localhost:5000/api/auth/roles', 'delete') == True)
+    assert (role.authorizes('http://localhost:5000/api/auth/roles', 'add') == False)
 
 
 def test_user_role(local_calvin):
-    assert isinstance(local_calvin.fetch(local_calvin['roles'][0]), Role)
+    assert isinstance(local_calvin.fetch('roles')[0], Role)
 
 
 def test_login_local(local_calvin):
@@ -112,6 +112,7 @@ def test_login_local(local_calvin):
 
     # Test logout
     s['auth'].logout(token)
-    assert token not in s['auth']['logged-in-users']
+    creds = s['auth']['user-credentials'][local_calvin.url]
+    assert creds['secret'] not in s['auth']['logged-in-users']
 
 
