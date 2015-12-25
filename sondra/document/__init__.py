@@ -5,9 +5,15 @@ import logging
 
 from abc import ABCMeta
 from collections.abc import MutableMapping
-from functools import partial
+from datetime import datetime, date
+
+import iso8601
 import jsonschema
+import rethinkdb as r
 from slugify import slugify
+
+from sondra.exceptions import ValidationError
+from sondra.expose import method_schema
 
 try:
     from shapely.geometry import mapping, shape
@@ -110,8 +116,11 @@ class Document(MutableMapping, metaclass=DocumentMetaclass):
         definitions (dict): A JSON-serializable object that holds the schemas of all referenced object subtypes.
         exposed_methods (list): A list of method slugs of all the exposed methods in the document.
     """
+    title = None
+    defaults = {}
     template = "{id}"
     processors = []
+    specials = {}
 
     def __init__(self, obj, collection=None, from_db=False):
         self.collection = collection
@@ -125,12 +134,27 @@ class Document(MutableMapping, metaclass=DocumentMetaclass):
         self._url = None
         if self.collection.primary_key in obj:
             self._url = '/'.join((self.collection.url, _reference(obj[self.collection.primary_key])))
+        if '_url' in obj:
+            del obj['_url']
 
         self._referenced = True
         self.obj = {}
         if obj:
             for k, v in obj.items():
                 self[k] = v
+
+        for k in self.defaults:
+            if k not in self:
+                self[k] = self.defaults[k]
+
+        for k, vh in self.specials.items():
+            if k not in self:
+                if vh.has_default:
+                    self[k] = vh.default_value()
+
+    def __str__(self):
+        return str(self.obj)
+
 
     @property
     def application(self):
@@ -214,10 +238,15 @@ class Document(MutableMapping, metaclass=DocumentMetaclass):
         if isinstance(value, list) or isinstance(value, dict):
             value = mapjson(_reference, value)
 
+        if key in self.specials:
+            value = self.specials[key].to_json_repr(value)
+
         self.obj[key] = value
+
         for p in self.processors:
             if p.is_necessary(key):
                 p.run(self.obj)
+
 
     def __delitem__(self, key):
         del self.obj[key]
@@ -243,7 +272,7 @@ class Document(MutableMapping, metaclass=DocumentMetaclass):
         if self.exposed_methods:
             builder.begin_subheading("Methods")
             for name, method in self.exposed_methods.items():
-                new_builder = help.SchemaHelpBuilder(method.schema(), initial_heading_level=builder._heading_level)
+                new_builder = help.SchemaHelpBuilder(method_schema(self, method), initial_heading_level=builder._heading_level)
                 new_builder.build()
                 builder.line(new_builder.rst)
 
@@ -282,3 +311,157 @@ class SlugPropertyProcessor(DocumentProcessor):
 
     def run(self, document):
         document[self.dest_prop] = slugify(document[self.source_prop])
+
+
+
+class ValueHandler(object):
+    """This is base class for transforming values to/from RethinkDB representations to standard representations.
+
+    Attributes:
+        is_geometry (bool): Does this handle geometry/geographical values. Indicates to Sondra that indexing should
+            be handled differently.
+    """
+    is_geometry = False
+    has_default = False
+
+    def to_rql_repr(self, value):
+        """Transform the object value into a ReQL object for storage.
+
+        Args:
+            value: The value to transform
+
+        Returns:
+            object: A ReQL object.
+        """
+        return value
+
+    def to_json_repr(self, value):
+        """Transform the object from a ReQL value into a standard value.
+
+        Args:
+            value (ReQL): The value to transform
+
+        Returns:
+            dict: A Python object representing the value.
+        """
+        return value
+
+    def to_python_repr(self, value):
+        """Transform the object from a ReQL value into a standard value.
+
+        Args:
+            value (ReQL): The value to transform
+
+        Returns:
+            dict: A Python object representing the value.
+        """
+        return value
+
+    def default_value(self):
+        raise NotImplemented()
+
+
+class Geometry(ValueHandler):
+    """A value handler for GeoJSON"""
+    is_geometry = True
+
+    def __init__(self, *allowed_types):
+        self.allowed_types = set(x.lower() for x in allowed_types) if allowed_types else None
+
+    def to_rql_repr(self, value):
+        if self.allowed_types:
+            if value['type'].lower() not in self.allowed_types:
+                raise ValidationError('value not in ' + ','.join(t for t in self.allowed_types))
+        return r.geojson(value)
+
+    def to_json_repr(self, value):
+        if isinstance(value, BaseGeometry):
+            return mapping(value)
+        elif '$reql_type$' in value:
+            del value['$reql_type$']
+            return value
+        else:
+            return value
+
+    def to_python_repr(self, value):
+        if isinstance(value, BaseGeometry):
+            return value
+        if '$reql_type$' in value:
+            del value['$reql_type$']
+        return shape(value)
+
+
+class DateTime(ValueHandler):
+    """A value handler for Python datetimes"""
+
+    DEFAULT_TIMEZONE='Z'
+    def __init__(self, timezone='Z'):
+        self.timezone = timezone
+
+    def from_rql_tz(self, tz):
+        if tz == 'Z':
+            return 0
+        else:
+            posneg = -1 if tz[0] == '-' else 1
+            hours, minutes = map(int, tz.split(":"))
+            offset = posneg*(hours*60 + minutes)
+            return offset
+
+    def to_rql_repr(self, value):
+        if isinstance(value, str):
+            return r.iso8601(value, default_timezone=self.DEFAULT_TIMEZONE).in_timezone(self.timezone)
+        elif isinstance(value, int) or isinstance(value, float):
+            return datetime.fromtimestamp(value).isoformat()
+        elif isinstance(value, dict):
+            return r.time(
+                value.get('year', None),
+                value.get('month', None),
+                value.get('day', None),
+                value.get('hour', None),
+                value.get('minute', None),
+                value.get('second', None),
+                value.get('timezone', self.timezone),
+            ).in_timezone(self.timezone)
+        else:
+            return r.iso8601(value.isoformat(), default_timezone=self.DEFAULT_TIMEZONE).as_timezone(self.timezone)
+
+    def to_json_repr(self, value):
+        if isinstance(value, date) or isinstance(value, datetime):
+            return value.isoformat()
+        elif isinstance(value, str):
+            return value
+        elif isinstance(value, int) or isinstance(value, float):
+            return datetime.fromtimestamp(value).isoformat()
+        else:
+            return value.to_iso8601()
+
+    def to_python_repr(self, value):
+        if isinstance(value, str):
+            return iso8601.parse_date(value)
+        elif isinstance(value, datetime):
+            return value
+        else:
+            return iso8601.parse_date(value.to_iso8601())
+
+
+class Now(DateTime):
+    """Return a timestamp for right now if the value is null."""
+    has_default = True
+
+    def from_rql_tz(self, tz):
+        return 0
+
+    def to_rql_repr(self, value):
+        value = value or datetime.utcnow()
+        return super(Now, self).to_rql_repr(value)
+
+    def to_json_repr(self, value):
+        value = value or datetime.utcnow()
+        return super(Now, self).to_json_repr(value)
+
+    def to_python_repr(self, value):
+        value = value or datetime.utcnow()
+        return super(Now, self).to_python_repr(value)
+
+    def default_value(self):
+        return datetime.utcnow()

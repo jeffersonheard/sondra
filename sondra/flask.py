@@ -50,7 +50,7 @@ def api_request(path):
             request.data,
             request.method,
             None,
-            current_app.suite.base_url + '/' + path,
+            current_app.suite.url + '/' + path,
             args,
             request.files
         )

@@ -170,6 +170,7 @@ BASIC_TYPES = {
 class SuiteException(Exception):
     """Represents a misconfiguration in a :class:`Suite` class"""
 
+
 class SuiteMetaclass(ABCMeta):
     def __new__(mcs, name, bases, attrs):
         definitions = {}
@@ -184,8 +185,22 @@ class SuiteMetaclass(ABCMeta):
 
         return super().__new__(mcs, name, bases, attrs)
 
+    def __init__(self, name, bases, attrs):
+        super(SuiteMetaclass, self).__init__(name, bases, attrs)
+        url = "http://localhost:5000/api"
+        for base in bases:
+            if hasattr(base, 'url'):
+                url = base.url
 
-class Suite(Mapping):
+        attrs['url'] = attrs.get('url', url)
+        p_base_url = urlparse(attrs['url'])
+        self.base_url_scheme = p_base_url.scheme
+        self.base_url_netloc = p_base_url.netloc
+        self.base_url_path = p_base_url.path
+        self.slug = self.base_url_path[1:] if self.base_url_path  else ""
+
+
+class Suite(Mapping, metaclass=SuiteMetaclass):
     """This is the "environment" for Sondra. Similar to a `settings.py` file in Django, it defines the
     environment in which all :class:`Application`s exist.
 
@@ -196,7 +211,6 @@ class Suite(Mapping):
         always_allowed_formats (set): A set of formats where a
         applications (dict): A mapping from application name to Application objects. Suite itself implements a mapping
             protocol and this is its backend.
-        async (dict): (Unsupported)
         base_url (str): The base URL for the API. The Suite will be mounted off of here.
         base_url_scheme (str): http or https, automatically set.
         base_url_netloc (str): automatically set hostname of the suite.
@@ -216,8 +230,7 @@ class Suite(Mapping):
     name = None
     debug = False
     applications = {}
-    async = False
-    base_url = "http://localhost:5000/api"
+    url = "http://localhost:5000/api"
     logging = None
     docstring_processor_name = 'preformatted'
     cross_origin = False
@@ -229,25 +242,17 @@ class Suite(Mapping):
     }
 
     @property
-    def slug(self):
-        return self.base_url_path
-
-    @property
-    def url(self):
-        return self.base_url
-
-    @property
     def schema_url(self):
-        return self.base_url + ";schema"
+        return self.url + ";schema"
 
     @property
     def schema(self):
         return {
             "id": self.url + ";schema",
             "title": self.title,
-            "type": None,
+            "type": "object",
             "description": self.__doc__ or "*No description provided.*",
-            "applications": {k: v.schema_url for k, v in self.applications.items()},
+            "applications": {k: v.url for k, v in self.applications.items()},
             "definitions": self.definitions
         }
 
@@ -276,11 +281,7 @@ class Suite(Mapping):
         for name in self.connections:
             self.log.warning("Connection established to '{0}'".format(name))
 
-        p_base_url = urlparse(self.base_url)
-        self.base_url_scheme = p_base_url.scheme
-        self.base_url_netloc = p_base_url.netloc
-        self.base_url_path = p_base_url.path
-        self.log.warning("Suite base url is: '{0}".format(self.base_url))
+        self.log.warning("Suite base url is: '{0}".format(self.url))
 
         self.docstring_processor = DOCSTRING_PROCESSORS[self.docstring_processor_name]
         self.log.info('Docstring processor is {0}')
@@ -359,27 +360,13 @@ class Suite(Mapping):
         return builder.rst
 
     def lookup(self, url):
-        if not url.startswith(self.base_url):
+        if not url.startswith(self.url):
             return requests.get(url).json()  # TODO replace with client.
         else:
             return Reference(self, url).value
 
     def lookup_document(self, url):
-        if not url.startswith(self.base_url):
+        if not url.startswith(self.url):
             return requests.get(url).json()  # TODO replace with client.
         else:
             return Reference(self, url).get_document()
-
-    @property
-    def schema(self):
-        ret = {
-            "name": self.base_url,
-            "description": self.description,
-            "definitions": copy(BASIC_TYPES),
-            "applications": {}
-        }
-
-        for app in self.applications.values():
-            ret['applications'][app.name] = app.schema
-
-        return ret

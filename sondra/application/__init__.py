@@ -9,6 +9,7 @@ import logging.config
 
 
 from sondra import help, utils
+from sondra.expose import method_schema
 from . import signals
 from sondra.utils import mapjson
 
@@ -26,10 +27,20 @@ class ApplicationMetaclass(ABCMeta):
             if hasattr(base, "definitions") and base.definitions:
                 definitions.update(base.definitions)
 
+        collections = tuple()
+        for base in bases:
+            if hasattr(base, "collections") and base.collections:
+                collections = collections + base.collections
+
         if "definitions" in attrs and attrs["definitions"] is not None:
             attrs['definitions'].update(definitions)
         else:
             attrs['definitions'] = definitions
+
+        if "collections" in attrs and attrs["collections"] is not None:
+            attrs['collections'] = collections + attrs['collections']
+        else:
+            attrs['collections'] = collections
 
         return super().__new__(mcs, name, bases, attrs)
 
@@ -106,11 +117,11 @@ class Application(Mapping, metaclass=ApplicationMetaclass):
     def schema(self):
         ret = {
             "id": self.url + ";schema",
-            "title": self.title or self.__class__.__name__,
+            "title": self.title,
             "type": "object",
             "description": self.__doc__ or "*No description provided.*",
             "definitions": self.definitions,
-            "collections": {name: coll.schema_url for name, coll in self._collections.items()},
+            "collections": {name: coll.url for name, coll in self._collections.items()},
             "methods": [m.slug for m in self.exposed_methods.values()]
         }
         ret = mapjson(lambda x: x(context=self.suite) if callable(x) else x, ret)
@@ -141,7 +152,7 @@ class Application(Mapping, metaclass=ApplicationMetaclass):
         builder = help.SchemaHelpBuilder(self.schema, self.url, out=out, initial_heading_level=initial_heading_level)
         builder.begin_subheading(self.name)
         builder.begin_list()
-        builder.define("Suite", self.suite.base_url + '/help')
+        builder.define("Suite", self.suite.url + '/help')
         builder.define("Schema URL", self.schema_url)
         builder.define("Anonymous Reads", "yes" if self.anonymous_reads else "no")
         builder.end_list()
@@ -151,7 +162,7 @@ class Application(Mapping, metaclass=ApplicationMetaclass):
         if self.exposed_methods:
             builder.begin_subheading("Methods")
             for name, method in sorted(self.exposed_methods.items(), key=lambda x: x[0]):
-                new_builder = help.SchemaHelpBuilder(method.schema(), initial_heading_level=builder._heading_level)
+                new_builder = help.SchemaHelpBuilder(method_schema(self, method), initial_heading_level=builder._heading_level)
                 new_builder.build()
                 builder.line(new_builder.rst)
             builder.end_subheading()
@@ -176,11 +187,12 @@ class Application(Mapping, metaclass=ApplicationMetaclass):
         """
         self.suite = suite
         self.name = name or self.__class__.__name__
+        self.title = utils.split_camelcase(self.name)
         self.slug = utils.camelcase_slugify(self.name)
         self.db = utils.convert_camelcase(self.name)
         self.connection = suite.connections[self.connection]
         self._collections = {}
-        self._url = '/'.join((self.suite.base_url, self.slug))
+        self._url = '/'.join((self.suite.url, self.slug))
         self.log = logging.getLogger(self.name)
         self.application = self
 
@@ -193,6 +205,8 @@ class Application(Mapping, metaclass=ApplicationMetaclass):
         for collection_class in self.collections:
             name = collection_class.slug
             self.log.warning("Creating collection for {0}/{1}".format(self.slug, collection_class.slug))
+            if name in self._collections:
+                raise ApplicationException(name + " already exists in " + self.name)
             self._collections[name] = collection_class(self)
         signals.post_init.send(self.__class__, instance=self)
 
@@ -293,6 +307,6 @@ class Application(Mapping, metaclass=ApplicationMetaclass):
         """
 
         try:
-            r.db_create(self.db).run(self.connection)
+            r.db_drop(self.db).run(self.connection)
         except r.ReqlError as e:
             self.log.warning(str(e))

@@ -3,7 +3,7 @@ import bcrypt
 import jwt
 
 from sondra.application import Application
-from sondra.decorators import expose
+from sondra.expose import expose_method
 from .collections import Users, UserCredentials, LoggedInUsers, Roles
 from .decorators import authenticated_method
 
@@ -26,7 +26,7 @@ class Auth(Application):
         }
         return claims
 
-    @expose
+    @expose_method
     def login(self, username: str, password: str) -> str:
         """Log the user in and get a JWT (JSON Web Token).
 
@@ -56,12 +56,12 @@ class Auth(Application):
             raise PermissionError("Login not valid")
 
     @authenticated_method
-    @expose
+    @expose_method
     def logout(self, token: str) -> None:
         self['logged-in-users'].for_token(token).delete()
 
     @authenticated_method
-    @expose
+    @expose_method
     def renew(self, token: str) -> str:
         """Renew a currently logged in user's token.
 

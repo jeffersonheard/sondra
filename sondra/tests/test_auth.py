@@ -5,7 +5,7 @@ from sondra import suite
 from sondra.ref import Reference
 
 class ConcreteSuite(suite.Suite):
-    base_url = "http://localhost:5000/api"
+    url = "http://localhost:5000/api"
 
 
 s = ConcreteSuite()

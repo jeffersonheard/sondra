@@ -3,8 +3,8 @@ import datetime
 import rethinkdb as r
 
 from sondra.auth.decorators import authorized_method, authorization_required, authentication_required
-from sondra.decorators import expose
-from sondra.collection import Collection, DateTime
+from sondra.expose import expose_method
+from sondra.collection import Collection
 from .documents import Credentials, Role, User, LoggedInUser
 
 
@@ -26,13 +26,6 @@ class UserCredentials(Collection):
 class Users(Collection):
     document_class = User
     primary_key = 'username'
-    specials = {
-        'created': DateTime()
-    }
-    relations = [
-        ('credentials', UserCredentials),
-        ('roles', Roles)
-    ]
 
     def __init__(self, application):
         super(Users, self).__init__(application)
@@ -65,7 +58,7 @@ class Users(Collection):
             raise ValueError("Password too short")
 
     @authorized_method
-    @expose
+    @expose_method
     def create_user(
             self,
             username: str,
@@ -151,9 +144,7 @@ class LoggedInUsers(Collection):
     primary_key = 'secret'
     document_class = LoggedInUser
     indexes = ['token', 'time']
-    specials = {
-        "expires": DateTime()
-    }
+
     private = True
 
     def for_token(self, token):

@@ -1,7 +1,9 @@
-from sondra.decorators import expose
-from sondra.document import Document, SlugPropertyProcessor
+from sondra.expose import expose_method
+from sondra.document import Document, SlugPropertyProcessor, DateTime, Now
 from sondra.ref import Reference
 from sondra.lazy import fk
+import operator
+import functools
 
 
 class Role(Document):
@@ -33,6 +35,10 @@ class Role(Document):
     processors = [
         SlugPropertyProcessor('title')
     ]
+    specials = {
+        'created': DateTime()
+    }
+
     
     def authorizes(self, reference, perm=None):
         if isinstance(reference, str):
@@ -160,10 +166,13 @@ class User(Document):
             }
         }
     }
+    specials = {
+        "created": DateTime()
+    }
 
-    @expose
-    def permissions(self) -> [str]:
-        pass
+    @expose_method
+    def permissions(self) -> [dict]:
+        return functools.reduce(operator.add, [role['permissions'] for role in self.fetch('roles')], [])
 
     def __str__(self):
         return self['username']
@@ -205,6 +214,8 @@ class LoggedInUser(Document):
             "expires": {"type": "string"}
         }
     }
-
+    specials = {
+        "expires": DateTime()
+    }
 
 

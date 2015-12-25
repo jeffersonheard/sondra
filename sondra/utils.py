@@ -5,7 +5,7 @@ from copy import deepcopy
 
 
 def split_camelcase(name):
-    return re.sub('([A-Z]+)', r' \1', name).title()
+    return re.sub('([A-Z]+)', r' \1', name).title().strip()
 
 
 def convert_camelcase(name):

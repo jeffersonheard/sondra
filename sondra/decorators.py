@@ -176,21 +176,19 @@ class expose(object):
     def __init__(self, method):
         self.method = method
         self.slug = method.__name__.replace('_','-')
-        self.obj = None
+        self._instance = None
         self.__name__ = method.__name__
 
     def __get__(self, instance, owner):
-        # Save a ptr to the object being decorated
-        self.cls = owner
-        self.obj = instance
+        self._owner = owner
+        self._instance = instance
+        print(self._owner)
+        print(self._instance)
+
         return self
 
     def __call__(self, *args, **kwargs):
-        return self.method.__call__(self.obj, *args, **kwargs)
-
-    @property
-    def _instance(self):
-        return self.obj
+        return self.method.__call__(self._instance, *args, **kwargs)
 
     @property
     def url(self):
