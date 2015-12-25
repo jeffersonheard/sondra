@@ -3,6 +3,7 @@ from abc import ABCMeta
 from copy import copy
 from functools import partial
 from urllib.parse import urlparse
+import requests
 import rethinkdb as r
 import logging
 import logging.config
@@ -169,6 +170,7 @@ BASIC_TYPES = {
 class SuiteException(Exception):
     """Represents a misconfiguration in a :class:`Suite` class"""
 
+
 class SuiteMetaclass(ABCMeta):
     def __new__(mcs, name, bases, attrs):
         definitions = {}
@@ -183,8 +185,22 @@ class SuiteMetaclass(ABCMeta):
 
         return super().__new__(mcs, name, bases, attrs)
 
+    def __init__(self, name, bases, attrs):
+        super(SuiteMetaclass, self).__init__(name, bases, attrs)
+        url = "http://localhost:5000/api"
+        for base in bases:
+            if hasattr(base, 'url'):
+                url = base.url
 
-class Suite(Mapping):
+        attrs['url'] = attrs.get('url', url)
+        p_base_url = urlparse(attrs['url'])
+        self.base_url_scheme = p_base_url.scheme
+        self.base_url_netloc = p_base_url.netloc
+        self.base_url_path = p_base_url.path
+        self.slug = self.base_url_path[1:] if self.base_url_path  else ""
+
+
+class Suite(Mapping, metaclass=SuiteMetaclass):
     """This is the "environment" for Sondra. Similar to a `settings.py` file in Django, it defines the
     environment in which all :class:`Application`s exist.
 
@@ -195,7 +211,6 @@ class Suite(Mapping):
         always_allowed_formats (set): A set of formats where a
         applications (dict): A mapping from application name to Application objects. Suite itself implements a mapping
             protocol and this is its backend.
-        async (dict): (Unsupported)
         base_url (str): The base URL for the API. The Suite will be mounted off of here.
         base_url_scheme (str): http or https, automatically set.
         base_url_netloc (str): automatically set hostname of the suite.
@@ -211,11 +226,11 @@ class Suite(Mapping):
             registered to the suite. The values are the schemas of the named app.  See :class:`Application` for more
             details on application schemas.
     """
+    title = "Sondra-Based API"
     name = None
     debug = False
     applications = {}
-    async = False
-    base_url = "http://localhost:5000/api"
+    url = "http://localhost:5000/api"
     logging = None
     docstring_processor_name = 'preformatted'
     cross_origin = False
@@ -227,25 +242,17 @@ class Suite(Mapping):
     }
 
     @property
-    def slug(self):
-        return self.base_url_path
-
-    @property
-    def url(self):
-        return self.base_url_path
-
-    @property
     def schema_url(self):
-        return self.base_url_path + "/schema"
+        return self.url + ";schema"
 
     @property
     def schema(self):
         return {
-            "id": self.url + "/schema",
-            "name": self.name,
-            "type": None,
+            "id": self.url + ";schema",
+            "title": self.title,
+            "type": "object",
             "description": self.__doc__ or "*No description provided.*",
-            "applications": {k: v.schema_url for k, v in self.applications.items()},
+            "applications": {k: v.url for k, v in self.applications.items()},
             "definitions": self.definitions
         }
 
@@ -253,7 +260,7 @@ class Suite(Mapping):
     def full_schema(self):
         return {
             "id": self.url + ";schema",
-            "name": self.name,
+            "title": self.title,
             "type": None,
             "description": self.__doc__ or "*No description provided.*",
             "applications": {k: v.full_schema for k, v in self.applications.items()},
@@ -274,11 +281,7 @@ class Suite(Mapping):
         for name in self.connections:
             self.log.warning("Connection established to '{0}'".format(name))
 
-        p_base_url = urlparse(self.base_url)
-        self.base_url_scheme = p_base_url.scheme
-        self.base_url_netloc = p_base_url.netloc
-        self.base_url_path = p_base_url.path
-        self.log.warning("Suite base url is: '{0}".format(self.base_url))
+        self.log.warning("Suite base url is: '{0}".format(self.url))
 
         self.docstring_processor = DOCSTRING_PROCESSORS[self.docstring_processor_name]
         self.log.info('Docstring processor is {0}')
@@ -297,10 +300,18 @@ class Suite(Mapping):
         self.applications[app.slug] = app
         self.log.info('Registered application {0} to {1}'.format(app.__class__.__name__, app.url))
 
+    def drop_database_objects(self):
+        for app in self.values():
+            app.drop_database()
+
     def ensure_database_objects(self):
         for app in self.values():
             app.create_database()
             app.create_tables()
+
+    def clear_databases(self):
+        self.drop_database_objects()
+        self.ensure_database_objects()
 
     def __getitem__(self, item):
         """Application objects are indexed by "slug." Every Application object registered has its name slugified.
@@ -349,27 +360,13 @@ class Suite(Mapping):
         return builder.rst
 
     def lookup(self, url):
-        if not url.startswith(self.base_url):
-            return None
+        if not url.startswith(self.url):
+            return requests.get(url).json()  # TODO replace with client.
         else:
             return Reference(self, url).value
 
     def lookup_document(self, url):
-        if not url.startswith(self.base_url):
-            return None
+        if not url.startswith(self.url):
+            return requests.get(url).json()  # TODO replace with client.
         else:
             return Reference(self, url).get_document()
-
-    @property
-    def schema(self):
-        ret = {
-            "name": self.base_url,
-            "description": self.description,
-            "definitions": copy(BASIC_TYPES),
-            "applications": {}
-        }
-
-        for app in self.applications.values():
-            ret['applications'][app.name] = app.schema
-
-        return ret

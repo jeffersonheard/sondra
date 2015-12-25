@@ -1,4 +1,6 @@
 from urllib.parse import urlencode, urlparse, parse_qs
+
+from sondra.expose import method_schema
 from .utils import is_exposed
 
 
@@ -12,7 +14,7 @@ class EndpointError(Exception):
 
 class Reference(object):
     """Contains the application, collection, document, methods, and fragment the URL refers to"""
-    FORMATS = {'help', 'schema', 'json', 'jsonp', 'html'}
+    FORMATS = {'help', 'schema', 'json', 'geojson'}
 
     def __init__(self, env, url=None, **kw):
         self.environment = env
@@ -21,7 +23,7 @@ class Reference(object):
             url = url[:-1]
 
         self.url = url
-        self.app =  kw.get("app")
+        self.app = kw.get("app")
         self.app_method = kw.get("app_method")
         self.coll = kw.get("coll")
         self.coll_method = kw.get("coll_method")
@@ -62,7 +64,7 @@ class Reference(object):
         if path.startswith('/'):
             path = path[1:]
 
-        app = app, *rest = path.split('/')
+        app, *rest = path.split('/')
         app_method = None
         coll = None
         coll_method = None
@@ -98,7 +100,6 @@ class Reference(object):
         fragment = p_url.fragment.split('/') if p_url.fragment else None
         if fragment:
             fragment[-1], *fragment_method = fragment[-1].split('.')
-            fragment_method = fragment_method[0] if fragment_method else None
             fragment = tuple(fragment)
 
         # parse params
@@ -173,11 +174,11 @@ class Reference(object):
             subd = self.get_subdocument()[-1]
             return Reference.dereference(self.environment, subd)
         elif self.is_application_method_call():
-            return self.get_application_method()
+            return (self.get_application(), self.get_application_method())
         elif self.is_collection_method_call():
-            return self.get_collection_method()
+            return (self.get_collection(), self.get_collection_method())
         elif self.is_document_method_call():
-            return self.get_document_method()
+            return (self.get_document(), self.get_document_method())
         else:
             raise EndpointError("Endpoint {0} cannot be dereferenced. This is likely a bug.".format(self.url))
 
@@ -192,11 +193,11 @@ class Reference(object):
         elif self.is_subdocument():
             return self.get_document().collection.schema
         elif self.is_application_method_call():
-            return self.get_application_method().schema
+            return method_schema(self.get_application(), self.get_application_method())
         elif self.is_collection_method_call():
-            return self.get_collection_method().schema
+            return method_schema(self.get_collection(), self.get_collection_method())
         elif self.is_document_method_call():
-            return self.get_document_method().schema
+            return method_schema(self.get_document(), self.get_document_method())
         else:
             raise EndpointError("Endpoint {0} cannot be dereferenced. This is likely a bug.".format(self.url))
 
@@ -301,7 +302,7 @@ class Reference(object):
             A DocumentCollection object
         """
         try:
-            return self.get_application()[self.coll]
+            return self.environment[self.app][self.coll]
         except KeyError:
             raise EndpointError("{0} does not refer to a collection.".format(self.url))
 

@@ -2,7 +2,17 @@ from distutils.core import setup
 
 setup(
     name='sondra',
-    packages='sondra',
+    packages=[
+       'sondra',
+       'sondra.commands',
+       'sondra.application',
+       'sondra.collection',
+       'sondra.document',
+       'sondra.suite',
+       'sondra.format',
+       'sondra.tests',
+       'sondra.tests.web',
+    ],
     version='0.0.1',
     description='JSON-Schema-based ORM for RethinkDB',
     author="Jefferson Heard",

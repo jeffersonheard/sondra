@@ -695,7 +695,7 @@ class Credentials(AuthorizableDocument):
             },
             'secret': {
                 'type': 'string',
-                'description': "The user's secret key, used in JWT authentication"
+                'description': "The user's secret key, used in JWT auth"
             },
             'jwtClaims': {
                 'type': 'object',

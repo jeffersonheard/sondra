@@ -7,6 +7,7 @@ to create references between the schemas of Collections or Applications.
 import importlib
 from functools import partial
 
+FOREIGN_KEY = "fk"
 
 def _deferred_url_for(klass, context, fmt='schema', fragment=None):
     from sondra.document import Document
@@ -18,7 +19,7 @@ def _deferred_url_for(klass, context, fmt='schema', fragment=None):
         if "/" in klass or ('.' not in klass):
             slug = klass
         else:
-            modulename, classname = klass.rsplit(klass, 1)
+            modulename, classname = klass.rsplit('.', 1)
             klass = getattr(importlib.import_module(modulename), classname)
             slug = klass.slug
     else:
@@ -96,7 +97,7 @@ def fk(klass, **kwargs):
     """
     ret = {
         "type": "string",
-        "foreignKey": url_for(klass)
+        FOREIGN_KEY: url_for(klass)
     }
     if kwargs:
         ret.update(kwargs)

@@ -1,21 +1,15 @@
-from datetime import datetime, date, timezone
+
 from collections.abc import MutableMapping
 from abc import ABCMeta
 from copy import deepcopy, copy
-import importlib
-import iso8601
 import jsonschema
 import rethinkdb as r
 import logging
 import logging.config
-from slugify import slugify
-from shapely.geometry import mapping, shape
-from shapely.geometry.base import BaseGeometry
 
 from sondra import help, utils
-from sondra.application import Application
-from sondra.document import Document, references, signals as doc_signals, ValidationError
-
+from sondra.document import Document, signals as doc_signals
+from sondra.expose import method_schema
 from . import signals
 from sondra.utils import mapjson, resolve_class
 
@@ -66,35 +60,27 @@ class CollectionMetaclass(ABCMeta):
         cls.name = utils.convert_camelcase(cls.__name__)
         logging.debug("Registered " + cls.name)
 
-        cls.schema = deepcopy(cls.document_class.schema)
+        if cls.document_class:
+            cls.abstract = False
 
-        if (not cls.__doc__) and cls.document_class.__doc__:
-            cls.__doc__ = cls.document_class.__doc__
+            cls.schema = deepcopy(cls.document_class.schema)
 
-        if 'description' not in cls.schema and cls.__doc__:
-            cls.schema['description'] = cls.__doc__
+            if 'id' in cls.schema['properties']:
+                raise CollectionException('Document schema should not have an "id" property')
 
-        if "title" not in cls.schema:
-            cls.schema['title'] = cls.__name__
+            if not cls.primary_key:
+                cls.schema['properties']['id'] = {"type": "string", "description": "The primary key.", "title": "ID"}
 
-        if "definitions" in cls.schema:
-            cls.schema['definitions'].update(cls.definitions)
-        else:
-            cls.schema['definitions'] = cls.definitions
+            cls.schema["methods"] = [m.slug for m in cls.exposed_methods.values()]
+            cls.schema["documentMethods"] = [m.slug for m in cls.document_class.exposed_methods.values()]
 
-        if 'id' in cls.schema['properties']:
-            raise CollectionException('Document schema should not have an "id" property')
+            _validator.check_schema(cls.schema)
 
-        if not cls.primary_key:
-            cls.schema['properties']['id'] = {"type": "string"}
 
-        cls.schema["methods"] = [m.slug for m in cls.exposed_methods.values()]
-        cls.schema["documentMethods"] = [m.slug for m in cls.document_class.exposed_methods.values()]
-
-        _validator.check_schema(cls.schema)
-
-        if not cls.abstract:
             cls.slug = utils.camelcase_slugify(cls.__name__)
+
+        else:
+            cls.abstract = True
 
 
 class Collection(MutableMapping, metaclass=CollectionMetaclass):
@@ -160,14 +146,15 @@ class Collection(MutableMapping, metaclass=CollectionMetaclass):
 
     """
 
+    title = None
     name = None
     slug = None
     schema = None
-    application = Application
+    application = None
+    exposed_methods = {}
     document_class = Document
     primary_key = "id"
     private = False
-    specials = {}
     indexes = []
     relations = []
     anonymous_reads = True
@@ -199,7 +186,11 @@ class Collection(MutableMapping, metaclass=CollectionMetaclass):
         return self.url + ";schema"''
 
     def __init__(self, application):
+        if self.abstract:
+            raise CollectionException("Tried to instantiate an abstract collection")
+
         signals.pre_init.send(self.__class__, instance=self)
+        self.title = self.document_class.title
         self.application = application
         self._url = '/'.join((self.application.url, self.slug))
         self.schema['id'] = self.url + ";schema"
@@ -207,30 +198,32 @@ class Collection(MutableMapping, metaclass=CollectionMetaclass):
         self.log = logging.getLogger(self.application.name + "." + self.name)
         signals.post_init.send(self.__class__, instance=self)
 
+    def __str__(self):
+        return self.url
+
     def help(self, out=None, initial_heading_level=0):
         """Return full reStructuredText help for this class"""
         builder = help.SchemaHelpBuilder(self.schema, self.url, out=out, initial_heading_level=initial_heading_level)
-        builder.begin_subheading(self.name)
+        builder.begin_subheading(self.title)
         builder.begin_list()
         builder.define("Application", self.application.url + ';help')
         builder.define("Schema URL", self.schema_url)
         builder.define("JSON URL", self.url)
         builder.define("Primary Key", self.primary_key)
-        builder.define("Anonymous Reads", "yes" if self.anonymous_reads else "no")
         builder.end_list()
         builder.end_subheading()
         builder.build()
         if self.exposed_methods:
             builder.begin_subheading("Methods")
             for name, method in self.exposed_methods.items():
-                new_builder = help.SchemaHelpBuilder(method.schema(getattr(self, method.__name__)), initial_heading_level=builder._heading_level)
+                new_builder = help.SchemaHelpBuilder(method_schema(self, method), initial_heading_level=builder._heading_level)
                 new_builder.build()
                 builder.line(new_builder.rst)
             builder.end_subheading()
         if self.document_class.exposed_methods:
             builder.begin_subheading("Document Instance Methods")
             for name, method in self.document_class.exposed_methods.items():
-                new_builder = help.SchemaHelpBuilder(method.schema(getattr(self.document_class, method.__name__)), initial_heading_level=builder._heading_level)
+                new_builder = help.SchemaHelpBuilder(method_schema(None, method), initial_heading_level=builder._heading_level)
                 new_builder.build()
                 builder.line(new_builder.rst)
             builder.end_subheading()
@@ -262,7 +255,7 @@ class Collection(MutableMapping, metaclass=CollectionMetaclass):
             else:
                 multi = False
 
-            if index in self.specials and self.specials[index].is_geometry:
+            if index in self.document_class.specials and self.document_class.specials[index].is_geometry:
                 geo = True
             else:
                 geo = False
@@ -294,17 +287,17 @@ class Collection(MutableMapping, metaclass=CollectionMetaclass):
         return ret
 
     def _to_python_repr(self, doc):
-        for property, special in self.specials.items():
+        for property, special in self.document_class.specials.items():
             if property in doc:
                 doc[property] = special.to_python_repr(doc[property])
 
     def _to_json_repr(self, doc):
-        for property, special in self.specials.items():
+        for property, special in self.document_class.specials.items():
             if property in doc:
                 doc[property] = special.to_json_repr(doc[property])
 
     def _to_rql_repr(self, doc):
-        for property, special in self.specials.items():
+        for property, special in self.document_class.specials.items():
             if property in doc:
                 doc[property] = special.to_rql_repr(doc[property])
 
@@ -323,7 +316,7 @@ class Collection(MutableMapping, metaclass=CollectionMetaclass):
         doc = self.table.get(key).run(self.application.connection)
         if doc:
             self._to_python_repr(doc)
-            return self.document_class(doc, collection=self)
+            return self.document_class(doc, collection=self, from_db=True)
         else:
             raise KeyError('{0} not found in {1}'.format(key, self.url))
 
@@ -354,7 +347,7 @@ class Collection(MutableMapping, metaclass=CollectionMetaclass):
     def __iter__(self):
         for doc in self.table.run(self.application.connection):
             self._to_python_repr(doc)
-            yield doc
+            yield self.document_class(doc, collection=self, from_db=True)
 
     def __contains__(self, item):
         """Checks to see if the primary key is in the database.
@@ -372,7 +365,7 @@ class Collection(MutableMapping, metaclass=CollectionMetaclass):
         else:
             key = item
 
-        doc = self.table.get(item).run(self.application.connection)
+        doc = self.table.get(key).run(self.application.connection)
         return doc is not None
 
     def __len__(self):
@@ -388,8 +381,10 @@ class Collection(MutableMapping, metaclass=CollectionMetaclass):
             Document instances.
         """
         for doc in query.run(self.application.connection):
+            if 'doc' in doc:
+                doc = doc['doc']  # some queries return results that encapsulate the document with metadata
             self._to_python_repr(doc)
-            yield self.document_class(doc, collection=self)
+            yield self.document_class(doc, collection=self, from_db=True)
 
     def doc(self, value):
         """Return a document instance populated from a dict. Does **not** save document before returning.
@@ -412,11 +407,21 @@ class Collection(MutableMapping, metaclass=CollectionMetaclass):
         Returns:
             Document instance, guaranteed to have been saved.
         """
-        doc = self.document_class(value, collection=self)
-        ret = self.save(doc, conflict="error")
+
+        if isinstance(value, list):
+            docs = [(self.document_class(v, collection=self) if not isinstance(v, self.document_class) else v) for v in value]
+        else:
+            docs = [self.document_class(value, collection=self)]
+
+        ret = self.save(docs, conflict="error")
         if 'generated_keys' in ret:
-            doc.id = ret['generated_keys'][0]
-        return doc
+            for i, k in enumerate(ret['generated_keys']):
+                docs[i].id = k
+
+        if isinstance(value, list):
+            return docs
+        else:
+            return docs[0]
 
     def validator(self, value):
         """Override this method to do extra validation above and beyond a simple schema check.
@@ -465,9 +470,9 @@ class Collection(MutableMapping, metaclass=CollectionMetaclass):
         doc_signals.pre_save.send(self.document_class, docs=docs)
         for value in docs:
             if isinstance(value, Document):
+                value._saved = True
                 value = copy(value.obj)
 
-            value = references(value)  # get rid of Document objects and turn them into URLs
             self._to_json_repr(value)
             jsonschema.validate(value, self.schema)
             self.validator(value)
@@ -489,10 +494,12 @@ class Collection(MutableMapping, metaclass=CollectionMetaclass):
         values = []
         for value in docs:
             if isinstance(value, Document):
-                value = copy(value.obj)
+                v = copy(value.obj)
+                v['_url'] = value.url
+                value = v
 
-            value = references(value)  # get rid of Document objects and turn them into URLs
             self._to_json_repr(value)
+
             values.append(value)
 
         if pop:
@@ -500,161 +507,4 @@ class Collection(MutableMapping, metaclass=CollectionMetaclass):
         else:
             return values
 
-
-class ValueHandler(object):
-    """This is base class for transforming values to/from RethinkDB representations to standard representations.
-
-    Attributes:
-        is_geometry (bool): Does this handle geometry/geographical values. Indicates to Sondra that indexing should
-            be handled differently.
-    """
-    is_geometry = False
-
-    def to_rql_repr(self, value):
-        """Transform the object value into a ReQL object for storage.
-
-        Args:
-            value: The value to transform
-
-        Returns:
-            object: A ReQL object.
-        """
-        return value
-
-    def to_json_repr(self, value):
-        """Transform the object from a ReQL value into a standard value.
-
-        Args:
-            value (ReQL): The value to transform
-
-        Returns:
-            dict: A Python object representing the value.
-        """
-        return value
-
-    def to_python_repr(self, value):
-        """Transform the object from a ReQL value into a standard value.
-
-        Args:
-            value (ReQL): The value to transform
-
-        Returns:
-            dict: A Python object representing the value.
-        """
-        return value
-
-
-class DocumentProcessor(object):
-    def is_necessary(self, changed_props):
-        """Override this method to determine whether the processor should run."""
-        return False
-
-    def run(self, document):
-        """Override this method to post-process a document after it has changed."""
-        return document
-
-
-class SlugPropertyProcessor(DocumentProcessor):
-    def __init__(self, source_prop, dest_prop='slug'):
-        self.dest_prop = dest_prop
-        self.source_prop = source_prop
-
-    def is_necessary(self, changed_props):
-        return self.source_prop in changed_props
-
-    def run(self, document):
-        document[self.dest_prop] = slugify(document[self.source_prop])
-
-
-class Geometry(ValueHandler):
-    """A value handler for GeoJSON"""
-    is_geometry = True
-
-    def __init__(self, *allowed_types):
-        self.allowed_types = set(x.lower() for x in allowed_types) if allowed_types else None
-
-    def to_rql_repr(self, value):
-        if self.allowed_types:
-            if value['type'].lower() not in self.allowed_types:
-                raise ValidationError('value not in ' + ','.join(t for t in self.allowed_types))
-        return r.geojson(value)
-
-    def to_json_repr(self, value):
-        if isinstance(value, BaseGeometry):
-            return mapping(value)
-        else:
-            return value
-
-    def to_python_repr(self, value):
-        del value['$reql_type$']
-        return shape(value)
-
-
-class DateTime(ValueHandler):
-    """A value handler for Python datetimes"""
-
-    DEFAULT_TIMEZONE='Z'
-    def __init__(self, timezone='Z'):
-        self.timezone = timezone
-
-    def from_rql_tz(self, tz):
-        if tz == 'Z':
-            return 0
-        else:
-            posneg = -1 if tz[0] == '-' else 1
-            hours, minutes = map(int, tz.split(":"))
-            offset = posneg*(hours*60 + minutes)
-            return offset
-
-    def to_rql_repr(self, value):
-        if isinstance(value, str):
-            return r.iso8601(value, default_timezone=self.DEFAULT_TIMEZONE).in_timezone(self.timezone)
-        elif isinstance(value, int) or isinstance(value, float):
-            return datetime.fromtimestamp(value).isoformat()
-        elif isinstance(value, dict):
-            return r.time(
-                value.get('year', None),
-                value.get('month', None),
-                value.get('day', None),
-                value.get('hour', None),
-                value.get('minute', None),
-                value.get('second', None),
-                value.get('timezone', self.timezone),
-            ).in_timezone(self.timezone)
-        else:
-            return r.iso8601(value.isoformat(), default_timezone=self.DEFAULT_TIMEZONE).as_timezone(self.timezone)
-
-    def to_json_repr(self, value):
-        if isinstance(value, date) or isinstance(value, datetime):
-            return value.isoformat()
-        elif isinstance(value, str):
-            return value
-        elif isinstance(value, int) or isinstance(value, float):
-            return datetime.fromtimestamp(value).isoformat()
-        else:
-            return value.to_iso8601()
-
-    def to_python_repr(self, value):
-        if isinstance(value, str):
-            return iso8601.parse_date(value)
-        elif isinstance(value, datetime):
-            return value
-        elif hasattr(value, 'to_epoch_time'):
-            timestamp = value.to_epoch_time()
-            tz = value.timezone()
-            offset = self.from_rql_tz(tz)
-            offset_tz = timezone(offset)
-            dt = datetime.fromtimestamp(timestamp, tz=offset_tz)
-            return dt
-
-
-class Now(DateTime):
-    """Return a timestamp for right now if the value is null."""
-
-    def from_rql_tz(self, tz):
-        return 0
-
-    def to_rql_repr(self, value):
-        value = value or datetime.utcnow()
-        return super(Now, self).to_rql_repr(value)
 

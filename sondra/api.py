@@ -1,239 +1,17 @@
-"""Sondra's JSON API Services.
-
-API services are provided as a part of Sondra.  These will get more complete over time.
-In the meantime, here is the general combined URL format for calls on a collection::
-
-    http://host/api/appname.appmethod/collection.classmethod/0000.instancemethod/@/frag/ment;format
-                    1------ 2-------- 3--------- 4---------- 5--- 6------------- 7---------- 8-----
-
-1. **appname**. The application name, in this case "pronto"
-2. **appmethod**. A ``@expose``d method that exists on the application object itself.
-3. **collection**. The collection name. If the collection is in subgroups, the subgroups are
-   path-separated as well
-4. **classmethod**. Any exposed class methods on the
-5. **oid**. The object id. This is a UUID-based object, like RethinkDB usually uses.
-6. **instancemethod**. A method name that was ``@expose``d on the model.
-7. **format**. ``(json|jsonp|html|help|schema)`` The format we expect it in. ``json`` is
-   generally the default.
-8. **fragment**. The fragment portion of the URL digs deeper into the properties of the object,
-   referring to a JSON fragment within the referred document. Numbers and Python slice syntax work
-   fine to get at pieces of an array within the document.
-
-Furthermore there's a grammar for combining these, and a list of allowed HTTP methods for each
-grammar production
-
-Application Schema
-==================
-
-Form::
-
-    http://localhost:5000/appname/api;format
-
-By format:
-
-* ``help``: Get the docstring for the application object
-* ``schema``: Get the combined JSON schemas for all collections for the application
-
-Application Method Call
-=======================
-
-Form::
-
-    http://localhost:5000/appname/api.method.slug;format
-
-All Applications have the following methods:
-
-- **listing** - get the listing of all APIs and methods on this application
-
-``GET`` and ``POST`` have the same meaning. All other methods are unsupported on the application.
-
-GET Behavior
-------------
-
-By format:
-
-* ``help``: Get the docstring of the method.
-* ``schema``: Get the request and response schema in JSON Schema format.
-* ``html``:  Get a string response to the method.
-* ``json``:  Get a JSON response to the method.
-* ``jsonp`: Get a JSON-P response to the method.
-
-GET expects you to call the method with arguments passed as query parameters. For more complicated
-method calls, use POST
-
-POST Behavior
--------------
-
-POST always calls the method. POST can either be called with urlencoded or multipart form data, or
-with a JSON string. All of these will be interpreted the same way, as method calls.  Only multipart
-supports FILE posts, and the files posted must be according to the method parameters.
-
-By format:
-
-Formats ``form, help, schema`` are unsupported.
-
-* ``json``: Expect a JSON response.
-* ``jsonp``: Expect a JSON response.
-* ``html``: Expect a JSON response.
-
-Listing
--------
-
-**To be documented**
-
-Collection Schema
-=================
-
-Form::
-
-    http://localhost:5000/appname/api/collection;format
-
-By format:
-
-* ``help``: Get the docstring for the collection object
-* ``schema``: Get the JSON Schema for this collection.
-
-Class Method Call
-=================
-
-Form::
-
-    http://localhost:5000/appname/api/collection.classmethod
-
-All collections have the following methods:
-
-- **listing** - get the listing of all APIs and methods on this class
-- **filter** - query the collection underlying the API
-
-Listing
--------
-
-**To be documented**
-
-Filter
-------
-
-**To be documented**
-
-
-Instance Method Call
-====================
-
-Form::
-
-    http://localhost:5000/appname/api/collection/uuid.instancemethod;format
-
-Instance methods follow the same pattern as application and collection method calls. There are no
-default instance methods.
-
-Object Create, List
-===================
-
-Form::
-
-    http://localhsot:5000/appname/api/collection;format
-
-``GET`` Retrieve a listing of objects
---------------------------------------
-Retrieve a listing of objects in the given format, or retrieve an HTML form for entering a new
-object.
-
-Query parameters accepted:
-
-flt (JSON object or array)
-  Filer
-
-offset (int)
-  Retrieve objects, starting with **offset**-th object
-
-count (int)
-  The number of objects to return.
-
-``POST`` Add/Update an object
------------------------------
-
-Accepts JSON in the post body. The object being POST-ed is considered to be a wholesale replacement
-for the object that already exists.  Objects are looked up by their 'id' field, if present. The
-response will the the object that was added, with 'id' field added if it wasn't already present.
-
-Object Detail, Update, Delete
-=============================
-
-Form::
-
-    http://localhost:5000/appname/api/collection/oid;format#/fragment
-
-``GET`` Behavior
-----------------
-
-Retrieves the object specified by ``oid`` and optionally ``fragment``.  Fragment is a slash-
-separated path to a particular attribute on the requested object.
-
-Formats:
-
-` ``html``: Get an HTML fragment rendered by the object's ``__str__(self)`` method.
-- ``json``: Get the JSON corresponding to the object
-- ``jsonp``: Get the JSON corresopnding to the object as a JSON-P string
-
-``POST`` Behavior
------------------
-
-Accepts JSON in the request body. The object being POST-ed is treated as a wholesale replacement
-for the object that already exists.  Objects are looked up by their 'id' field, if present. The
-response will the the object that was added, with 'id' field added if it wasn't already present.
-
-The response is the object (fragment).
-
-Formats:
-
-- ``html``: Get an HTML fragment rendered by the object's ``__str__(self)`` method.
-- ``json``: Get the JSON corresponding to the object
-- ``jsonp``: Get the JSON corresopnding to the object as a JSON-P string
-
-``PUT`` Behavior
-------------------------------
-
-Accepts JSON in the request body.  The object of a PUT or PATCH request body is considered only to
-be updates on the object. All original object attributes that aren't specified are kept.  The
-assignment is also relative to the ``fragment`` section of the URL, so the replacement / update is
-of the object located at that path. If the fragment you PUT or PATCH to refers to an array, the
-object in the body is appended to that array. If you wish to replace the array, use a POST request.
-
-The response is the updated object fragment.
-
-Formats:
-
-- ``html``: Get an HTML fragment rendered by the object's ``__str__(self)`` method.
-- ``json``: Get the JSON corresponding to the object
-- ``jsonp``: Get the JSON corresopnding to the object as a JSON-P string
-
-
-A Note on Query strings
-=======================
-
-The query string can be used to pass arguments to methods defined on the collection that were
-decorated with @exposable.
-
-"""
-import inspect
-import io
+"""Sondra's JSON API Services."""
 import json
 import jsonschema
 from functools import partial
 from urllib.parse import urlencode
 import rethinkdb as r
 
+from sondra.document import Geometry
+from sondra.expose import method_schema, method_help
 from .ref import Reference
 from . import document
 import sondra.collection
 from .suite import BASIC_TYPES
 from .utils import mapjson
-
-def to_reql_types(doc):
-    jsonschema.validate(doc, BASIC_TYPES['datetime'])
-    return sondra.collection.Time().to_rql_repr(doc)
-
-_parse_query = partial(mapjson, to_reql_types)
 
 class ValidationError(Exception):
     pass
@@ -248,7 +26,7 @@ class RequestProcessor(object):
 
 
 class APIRequest(object):
-    formats = {'help', 'json', 'schema', 'html', 'js'}
+    formats = {'help', 'json', 'schema', 'geojson'}
     DEFAULT_FORMAT = 'json'
     MAX_RESULTS = 100
     SAFE_OPS = {
@@ -278,12 +56,13 @@ class APIRequest(object):
         self.suite = suite
         self.headers = headers
         self.body = body
-        self.request_method = method
+        self.request_method = method.upper()
         self.user = user
         self.query_params = query_params or {}
         self.files = files
-        self.arguments = []
+        self.objects = []
         self.api_arguments = {}
+        self.query = None
 
         self.reference = Reference(
             self.suite,
@@ -293,8 +72,7 @@ class APIRequest(object):
             )
         )
 
-        self._get_arguments()
-
+        self._parse_query()
 
         if self.reference.kind in {'collection','document','subdocument'} and self.reference.get_collection().private:
             raise PermissionError("The collection referenced in this request is marked private. It can only be used locally.")
@@ -330,8 +108,8 @@ class APIRequest(object):
             'json': {
                 'application': {},
                 'application_method': {
-                    'GET': partial(self.json_response, self.application_method),
-                    'POST': partial(self.json_response, self.application_method),
+                    'GET': partial(self.json_response, self.method_call),
+                    'POST': partial(self.json_response, self.method_call),
                 },
                 'collection': {
                     'GET': partial(self.json_response, self.get_collection_items),
@@ -341,8 +119,8 @@ class APIRequest(object):
                     'DELETE': partial(self.json_response, self.delete_collection_items),
                 },
                 'collection_method': {
-                    'GET': partial(self.json_response, self.collection_method),
-                    'POST': partial(self.json_response, self.collection_method),
+                    'GET': partial(self.json_response, self.method_call),
+                    'POST': partial(self.json_response, self.method_call),
                 },
                 'document': {
                     'GET': partial(self.json_response, self.get_document),
@@ -352,15 +130,10 @@ class APIRequest(object):
                     'DELETE': partial(self.json_response, self.delete_document),
                 },
                 'document_method': {
-                    'GET': partial(self.json_response, self.document_method),
-                    'POST': partial(self.json_response, self.document_method),
+                    'GET': partial(self.json_response, self.method_call),
+                    'POST': partial(self.json_response, self.method_call),
                 },
-                'subdocument': {
-                    'GET': partial(self.json_response, self.get_subdocument),
-                    'POST': partial(self.json_response, self.replace_subdocument),
-                    'PUT': partial(self.json_response, self.update_or_append_subdocument),
-                    'DELETE': partial(self.json_response, self.delete_subdocument),
-                }
+                'subdocument': {}
             },
             'geojson': {
                 'application': {},
@@ -370,37 +143,34 @@ class APIRequest(object):
                 'document': {
                     'GET': partial(self.geojson_response, self.get_document),
                     },
-                'subdocument': {
-                    'GET': partial(self.geojson_response, self.get_subdocument),
-                    }
+
             },
             'schema': {
                 'application': {
-                    'GET': partial(self.json_response, self.application_schema),
-                    'POST': partial(self.json_response, self.application_schema),
+                    'GET': partial(self.json_response, self.schema),
+                    'POST': partial(self.json_response, self.schema),
                 },
                 'application_method': {
-                    'GET': partial(self.json_response, self.application_method_schema),
-                    'POST': partial(self.json_response, self.application_method_schema),
+                    'GET': partial(self.json_response, self.schema),
+                    'POST': partial(self.json_response, self.schema),
                 },
                 'collection': {
-                    'GET': partial(self.json_response, self.collection_schema),
-                    'POST': partial(self.json_response, self.collection_schema),
+                    'GET': partial(self.json_response, self.schema),
+                    'POST': partial(self.json_response, self.schema),
                 },
                 'collection_method': {
-                    'GET': partial(self.json_response, self.collection_method_schema),
-                    'POST': partial(self.json_response, self.collection_method_schema),
+                    'GET': partial(self.json_response, self.schema),
+                    'POST': partial(self.json_response, self.schema),
                 },
                 'document': {
-                    'GET': partial(self.json_response, self.document_schema),
-                    'POST': partial(self.json_response, self.document_schema),
+                    'GET': partial(self.json_response, self.schema),
+                    'POST': partial(self.json_response, self.schema),
                 },
                 'document_method': {
-                    'GET': partial(self.json_response, self.document_method_schema),
-                    'POST': partial(self.json_response, self.document_method_schema),
+                    'GET': partial(self.json_response, self.schema),
+                    'POST': partial(self.json_response, self.schema),
                 }
             },
-
         }
 
     def __call__(self):
@@ -410,29 +180,16 @@ class APIRequest(object):
 
         return self.decision_tree[format][kind].get(method, self.exceptional_request)()
 
-
-    def _get_arguments(self):
-        """Turn body and query string into a JSON-serializable data structure"""
-
+    def _parse_query(self):
         target = self.reference.value
 
         if self.reference.kind.endswith('method'):
-            schema = target.request_schema(target)
+            schema = method_schema(*target)['definitions']['method_request']
         elif self.reference.kind in ['collection', 'application']:
             schema = target.schema
         else:
             schema = target.collection.schema
 
-        # user must pass real object(s) as URL-encoded JSON in the 'q' parameter
-        if 'q' in self.query_params:
-            v = json.loads(self.query_params['q'][0])
-            if isinstance(v, dict):
-                self.arguments.append(v)
-            else:
-                self.arguments.extend(v)
-            del self.query_params['q']
-
-        # Validate and copy query params into arguments dictionary
         if self.query_params:
             for k, v in self.query_params.items():
                 v = v[0]  # no list valued arguments in api-args
@@ -457,16 +214,21 @@ class APIRequest(object):
                 body_args = self.body
 
             if isinstance(body_args, list):
-                self.arguments.extend(body_args)
+                self.objects.extend(body_args)
             else:
                 if "__q" in body_args:
                     self.api_arguments.update(body_args['__q'])
                     self.request_method = body_args.get('__method', self.request_method)
-                    body_args = body_args.get("__objs", [])
-                self.arguments.append(body_args)
+                    self.objects = body_args.get("__objs", [])
+                else:
+                    self.objects = [body_args]
+
+        for object in self.objects:
+            jsonschema.validate(object, schema)
 
         if self.files:
-            self.arguments[0].update(self.files)
+            self.objects[0].update(self.files)
+
 
         self.durability = self.api_arguments.get('durability', 'hard')
         self.return_changes = self.api_arguments.get('return_changes', 'false').lower() != 'false'
@@ -478,16 +240,14 @@ class APIRequest(object):
             'PATCH': "replace"
         }.get(self.request_method, 'error'))
 
-        for a in self.arguments:
-            jsonschema.validate(a, schema)
-
     def help(self):
         """Return HTML help from a requested object (application, collection, document, method)"""
         # FIXME this should check read/execute permissions on all objects
-        value = self.reference.value
         if 'method' in self.reference.kind:
-            return 'text/html', self.suite.docstring_processor(value.help(value))
+            instance, method = self.reference.value
+            return 'text/html', self.suite.docstring_processor(method_help(instance, method))
         else:
+            value = self.reference.value
             return 'text/html', self.suite.docstring_processor(value.help())
 
     def json_response(self, method):
@@ -495,7 +255,11 @@ class APIRequest(object):
 
         def fun(doc):
             if isinstance(doc, document.Document):
-                return mapjson(fun, doc.collection.json(doc))
+                try:
+                    return mapjson(fun, doc.collection.json(doc))
+                except Exception as x:
+                    print(doc.obj)
+                    raise x
             else:
                 return doc
 
@@ -508,11 +272,12 @@ class APIRequest(object):
 
     def geojson_response(self, method):
         result = method()
+
         def fun(doc):
             if isinstance(doc, document.Document):
-                if doc.collection and doc.collection.specials:
-                    for s, t in doc.collection.specials.items():
-                        if isinstance(t, sondra.collection.Geometry):
+                if doc.specials:
+                    for s, t in doc.specials.items():
+                        if isinstance(t, sondra.document.Geometry):
                             result = mapjson(fun, doc.obj)
                             result = {
                                 "type": "Feature",
@@ -537,32 +302,12 @@ class APIRequest(object):
             ret = result
         return 'application/json', json.dumps(ret, indent=4)
 
-    def jsonp_response(self, method):
-        raise NotImplementedError()
-
-    def html_response(self, method):
-        raise NotImplementedError()
-
-    def application_method(self):
-        method = self.reference.get_application_method()
-        if len(self.arguments):
-            ret = method(**self.arguments[0])
-        else:
-            ret = method()
-        return ret
-
-    def collection_method(self):
-        method = self.reference.get_collection_method()
-        if len(self.arguments):
-            ret = method(**self.arguments[0])
-        else:
-            ret = method()
-        return ret
-
-    def document_method(self):
-        method = self.reference.get_document_method()
-        if len(self.arguments):
-            ret = method(**self.arguments[0])
+    def method_call(self):
+        instance, method = self.reference.value
+        if len(self.objects) > 1:
+            ret = [method(**o) for o in self.objects]
+        elif len(self.objects) == 1:
+            ret = method(**self.objects[0])
         else:
             ret = method()
         return ret
@@ -570,29 +315,30 @@ class APIRequest(object):
     def _handle_simple_filters(self, q):
         # handle simple filters
         if 'flt' in self.api_arguments:
-            flt = json.loads(self.api_arguments['flt'])
+            flt = json.loads(
+                self.api_arguments['flt']) \
+                    if isinstance(self.api_arguments['flt'], str) \
+                    else self.api_arguments['flt']
             if isinstance(flt, dict):
                 flt = [flt]
 
-            flt = _parse_query(flt)
+            print(flt)
+
             for f in flt:
-                default = flt.get('default', False)
+                default = f.get('default', False)
                 op = f.get('op', '==')
                 if op == '==':
-                    if 'op' not in f:
-                        q = q.filter(f, default=default)
-                    else:
-                        q = q.filter(f['args'], default=default)
+                    q = q.filter({f['lhs']: f['rhs']}, default=default)
                 elif op == '!=':
-                    q = q.filter(f['lhs'] != f['rhs'], default=default)
+                    q = q.filter(r.row[f['lhs']] != f['rhs'], default=default)
                 elif op == '<':
-                    q = q.filter(f['lhs'] < f['rhs'], default=default)
+                    q = q.filter(r.row[f['lhs']] < f['rhs'], default=default)
                 elif op == '<=':
-                    q = q.filter(f['lhs'] <= f['rhs'], default=default)
+                    q = q.filter(r.row[f['lhs']] <= f['rhs'], default=default)
                 elif op == '>':
-                    q = q.filter(f['lhs'] > f['rhs'], default=default)
+                    q = q.filter(r.row[f['lhs']] > f['rhs'], default=default)
                 elif op == '>=':
-                    q = q.filter(f['lhs'] >= f['rhs'], default=default)
+                    q = q.filter(r.row[f['lhs']] >= f['rhs'], default=default)
                 elif op == 'match':
                     field = f['lhs']
                     pattern  = f['rhs']
@@ -609,19 +355,28 @@ class APIRequest(object):
 
     def _handle_spatial_filters(self, coll, q):
         # handle geospatial queries
-        if 'geo' in self.api_arguments:  # unindent is intentional. Allow spatial queries limiting grouped pk lookups
-            geo = json.loads(self.api_arguments['geo'])
-            if not coll.geometries:
+        if 'geo' in self.api_arguments:
+            print("Geospatial limit")
+            geo = json.loads(
+                self.api_arguments['geo']) \
+                    if isinstance(self.api_arguments['geo'], str) \
+                    else self.api_arguments['geo']
+
+            geometries = [k for k in coll.document_class.specials if coll.document_class.specials[k].is_geometry]
+
+            if not geometries:
                 raise ValidationError("Requested a geometric query on a non geometric collection")
             if 'against' not in geo:
-                test_property = next(coll.geometries.keys())
+                test_property = geometries[0]
+            elif geo['against'] not in geometries:
+                raise KeyError('Not a valid geometry name')
             else:
                 test_property = geo['against']
             op = geo['op']
             geom = r.geojson(geo['test'])
-            if op['name'] not in self.GEOSPATIAL_OPS:
+            if op not in self.GEOSPATIAL_OPS:
                 raise ValidationError("Cannot perform non geometry op in geometry query")
-            q = getattr(q, op['name'])(geom, index=test_property, *op.get('args',[]), **op.get('kwargs', {}))
+            q = getattr(q, op)(geom, index=test_property, *geo.get('args',[]), **geo.get('kwargs', {}))
         return q
 
     def _handle_aggregations(self, q):
@@ -656,11 +411,11 @@ class APIRequest(object):
     def get_collection_items(self):
         coll = self.reference.get_collection()
 
-        if len(self.arguments):
+        if len(self.objects):
             if 'index' in self.api_arguments:
-                q = coll.table.get_all(self.arguments, index=self.api_arguments['index'])
+                q = coll.table.get_all(self.objects, index=self.api_arguments['index'])
             else:
-                q = coll.table.get_all(self.arguments)
+                q = coll.table.get_all(self.objects)
         else:
             q = coll.table
 
@@ -676,14 +431,14 @@ class APIRequest(object):
 
     def add_collection_items(self):
         coll = self.reference.get_collection()
-        changes = coll.save(self.arguments, conflict='error', return_changes=True)
-        keys = [(coll.url + '/' + k) for k in (value['new_val'][coll.primary_key] for value in changes['changes'])]
+        changes = coll.create(self.objects)
+        keys = [v.id for v in changes]
         return keys
 
     def update_collection_items(self):
         coll = self.reference.get_collection()
         docs = []
-        for k, updates in self.arguments:
+        for k, updates in self.objects:
             doc = coll[k]
             for prop, value in updates.items():
                 doc[prop] = value
@@ -696,7 +451,7 @@ class APIRequest(object):
     def replace_collection_items(self):
         coll = self.reference.get_collection()
         docs = []
-        for k, new_value in self.arguments:
+        for k, new_value in self.objects:
             doc = coll[k].doc(new_value)
             doc.id = k
             docs.append(doc)
@@ -707,11 +462,11 @@ class APIRequest(object):
     def delete_collection_items(self):
         coll = self.reference.get_collection()
 
-        if len(self.arguments):
+        if len(self.objects):
             if 'index' in self.api_arguments:
-                q = coll.table.get_all(self.arguments, index=self.api_arguments['index'])
+                q = coll.table.get_all(self.objects, index=self.api_arguments['index'])
             else:
-                q = coll.table.get_all(self.arguments)
+                q = coll.table.get_all(self.objects)
         elif self.delete_all:
             q = coll.table
         else:
@@ -731,16 +486,16 @@ class APIRequest(object):
     def set_document(self):
         doc = self.reference.get_document()
         id = doc.id
-        new_doc = doc.collection.doc(self.arguments)
+        new_doc = doc.collection.doc(self.objects[0])
         new_doc.id = id
         ret = new_doc.save(conflict=self.conflict, durability=self.durability, return_changes=self.return_changes)
         return ret
 
     def update_document(self):
         doc = self.reference.get_document()
-        if doc.collection.primary_key in self.arguments[0]:
-            del self.arguments[0][doc.collection.primary_key]
-        for k, v in self.arguments[0].items():
+        if doc.collection.primary_key in self.objects[0]:
+            del self.objects[0][doc.collection.primary_key]
+        for k, v in self.objects[0].items():
             doc[k] = v
         ret = doc.save(conflict='replace', durability=self.durability, return_changes=self.return_changes)
         return ret
@@ -749,98 +504,8 @@ class APIRequest(object):
         doc = self.reference.get_document()
         return doc.delete(durability=self.durability, return_changes=self.return_changes)
 
-    def get_subdocument(self):
-        doc, parent, walk, frag = self.reference.get_subdocument()
-        if isinstance(frag, document.Document):
-            frag.reference()
-        elif isinstance(frag, list) or isinstance(frag, dict):
-            frag = document.references(frag)
-        else:
-            frag = {"_": frag}
-
-        return frag
-
-    def replace_subdocument(self):
-        doc, parent, walk, frag = self.reference.get_subdocument()
-        args = self.arguments
-
-        target = parent
-        key, *walk = walk
-        while walk:
-            target = target[key]
-            key, *walk = walk
-        target[key] = args
-        target.save()
-        doc = doc.collection[doc.id]  # fetch again now that we've updated
-        if self.dereference:
-            doc.dereference()
-        return doc
-
-    def update_or_append_subdocument(self):
-        doc, parent, walk, frag = self.reference.get_subdocument()
-        args = self.arguments
-
-        target = parent
-        key, *walk = walk
-        while walk:
-            target = target[key]
-            key, *walk = walk
-        if isinstance(target[key], dict):
-            target[key].update(args[0])
-        elif isinstance(target[key], list):
-            target[key].append(args)
-        elif isinstance(target[key], document.Document):
-            for k, v in args[0].items():
-                target[key][k] = v
-            target[key].save()
-            target = target.collection[doc.id]  # fetch again since we updated the target
-        target.save()
-        doc = doc.collection[doc.id]  # fetch again now that we've updated
-        if self.dereference:
-            doc.dereference()
-        return doc
-
-    def delete_subdocument(self):
-        doc, parent, walk, frag = self.reference.get_subdocument()
-
-        target = parent
-        key, *walk = walk
-        while walk:
-            target = target[key]
-            key, *walk = walk
-        if isinstance(target[key], dict):
-            del target[key]
-        elif isinstance(target[key], list):
-            del target[key]
-        elif isinstance(target[key], document.Document):
-            target[key].delete()
-            del target[key]
-        target.save()
-        doc = doc.collection[doc.id]  # fetch again now that we've updated
-        if self.dereference:
-            doc.dereference()
-        return doc
-
-    def application_schema(self):
-        return self.reference.get_application().schema
-
-    def application_method_schema(self):
-        method = self.reference.get_application_method()
-        return method.schema(method)
-
-    def collection_schema(self):
-        return self.reference.get_collection().schema
-
-    def collection_method_schema(self):
-        method = self.reference.get_collection_method()
-        return method.schema(method)
-
-    def document_schema(self):
-        return self.reference.get_document().schema
-
-    def document_method_schema(self):
-        method = self.reference.get_document_method()
-        return method.schema(method)
+    def schema(self):
+        return self.reference.schema
 
     def exceptional_request(self):
-        raise ValidationError(self.reference.url)
+        raise ValidationError("{method} {kind}: {url}".format(method=self.request_method, kind=self.reference.kind, url=self.reference.url))
