@@ -229,7 +229,7 @@ class Suite(Mapping, metaclass=SuiteMetaclass):
     title = "Sondra-Based API"
     name = None
     debug = False
-    applications = {}
+    applications = None
     url = "http://localhost:5000/api"
     logging = None
     docstring_processor_name = 'preformatted'
@@ -268,6 +268,8 @@ class Suite(Mapping, metaclass=SuiteMetaclass):
         }
 
     def __init__(self):
+        self.applications = {}
+
         if self.logging:
             logging.config.dictConfig(self.logging)
         else:

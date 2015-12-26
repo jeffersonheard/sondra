@@ -12,7 +12,7 @@ def _ignore_ex(f):
         pass
 
 
-@pytest.fixture(scope='module')
+@pytest.fixture()
 def s(request):
     v = ConcreteSuite()
     _ignore_ex(lambda: EmptyApp(v))
@@ -27,7 +27,7 @@ def test_suite_apps(s):
     assert 'empty-app' in s
     assert 'simple-app' in s
     assert 'alt' in s
-    assert len(s) == 4
+    assert len(s) == 4, "Wrong number of apps was {0} should be 4: {1}".format(len(s.keys()), [x for x in s.keys()])
     assert all([isinstance(x, Application) for x in s.values()])
 
     assert s['simple-app'].db == 'simple_app'

@@ -2,34 +2,11 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="2dedf057-8577-4f17-80d1-a74f20359ae4" name="Default" comment="">
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/sondra/document/processors.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/sondra/document/valuehandlers.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/sondra/expose.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/sondra/tests/test_applications.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/sondra/tests/test_collections.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/sondra/tests/test_documents.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/sondra/tests/test_suite.py" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/sondra/tests/test_document.py" afterPath="" />
-      <change type="MOVED" beforePath="$PROJECT_DIR$/sondra/tests/web/documents.py" afterPath="$PROJECT_DIR$/sondra/tests/api.py" />
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/.idea/workspace.xml" afterPath="$PROJECT_DIR$/.idea/workspace.xml" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/sondra/api.py" afterPath="$PROJECT_DIR$/sondra/api.py" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/sondra/application/__init__.py" afterPath="$PROJECT_DIR$/sondra/application/__init__.py" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/sondra/auth/application.py" afterPath="$PROJECT_DIR$/sondra/auth/application.py" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/sondra/auth/collections.py" afterPath="$PROJECT_DIR$/sondra/auth/collections.py" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/sondra/auth/documents.py" afterPath="$PROJECT_DIR$/sondra/auth/documents.py" />
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/sondra/collection/__init__.py" afterPath="$PROJECT_DIR$/sondra/collection/__init__.py" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/sondra/decorators.py" afterPath="$PROJECT_DIR$/sondra/decorators.py" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/sondra/document/__init__.py" afterPath="$PROJECT_DIR$/sondra/document/__init__.py" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/sondra/exceptions.py" afterPath="$PROJECT_DIR$/sondra/exceptions.py" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/sondra/flask.py" afterPath="$PROJECT_DIR$/sondra/flask.py" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/sondra/ref.py" afterPath="$PROJECT_DIR$/sondra/ref.py" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/sondra/schema.py" afterPath="$PROJECT_DIR$/sondra/schema.py" />
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/sondra/suite/__init__.py" afterPath="$PROJECT_DIR$/sondra/suite/__init__.py" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/sondra/tests/test_auth.py" afterPath="$PROJECT_DIR$/sondra/tests/test_auth.py" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/sondra/tests/test_valuehandlers.py" afterPath="$PROJECT_DIR$/sondra/tests/test_valuehandlers.py" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/sondra/tests/web/app.py" afterPath="$PROJECT_DIR$/sondra/tests/web/app.py" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/sondra/tests/web/test_requests.py" afterPath="$PROJECT_DIR$/sondra/tests/web/test_requests.py" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/sondra/utils.py" afterPath="$PROJECT_DIR$/sondra/utils.py" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/sondra/tests/api.py" afterPath="$PROJECT_DIR$/sondra/tests/api.py" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/sondra/tests/test_suite.py" afterPath="$PROJECT_DIR$/sondra/tests/test_suite.py" />
     </list>
     <ignored path="sondra.iws" />
     <ignored path=".idea/workspace.xml" />
@@ -55,7 +32,7 @@
         <entry file="file://$PROJECT_DIR$/sondra/tests/api.py">
           <provider selected="true" editor-type-id="text-editor">
             <state vertical-scroll-proportion="0.0">
-              <caret line="21" column="42" selection-start-line="21" selection-start-column="42" selection-end-line="21" selection-end-column="42" />
+              <caret line="7" column="27" selection-start-line="7" selection-start-column="27" selection-end-line="7" selection-end-column="27" />
               <folding>
                 <element signature="e#0#59#0" expanded="true" />
               </folding>
@@ -63,14 +40,36 @@
           </provider>
         </entry>
       </file>
-      <file leaf-file-name="processors.py" pinned="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/sondra/document/processors.py">
+      <file leaf-file-name="__init__.py" pinned="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/sondra/document/__init__.py">
           <provider selected="true" editor-type-id="text-editor">
             <state vertical-scroll-proportion="0.0">
-              <caret line="35" column="0" selection-start-line="35" selection-start-column="0" selection-end-line="35" selection-end-column="0" />
+              <caret line="278" column="26" selection-start-line="278" selection-start-column="26" selection-end-line="278" selection-end-column="26" />
               <folding>
-                <element signature="e#0#29#0" expanded="true" />
+                <element signature="e#33#44#0" expanded="true" />
               </folding>
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file leaf-file-name="__init__.py" pinned="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/sondra/collection/__init__.py">
+          <provider selected="true" editor-type-id="text-editor">
+            <state vertical-scroll-proportion="0.0">
+              <caret line="160" column="20" selection-start-line="160" selection-start-column="20" selection-end-line="160" selection-end-column="20" />
+              <folding>
+                <element signature="e#1#43#0" expanded="true" />
+              </folding>
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file leaf-file-name="__init__.py" pinned="false" current-in-tab="true">
+        <entry file="file://$PROJECT_DIR$/sondra/application/__init__.py">
+          <provider selected="true" editor-type-id="text-editor">
+            <state vertical-scroll-proportion="4.7862067">
+              <caret line="309" column="21" selection-start-line="309" selection-start-column="21" selection-end-line="309" selection-end-column="21" />
+              <folding />
             </state>
           </provider>
         </entry>
@@ -91,7 +90,7 @@
         <entry file="file://$PROJECT_DIR$/sondra/tests/test_collections.py">
           <provider selected="true" editor-type-id="text-editor">
             <state vertical-scroll-proportion="0.0">
-              <caret line="6" column="0" selection-start-line="6" selection-start-column="0" selection-end-line="13" selection-end-column="0" />
+              <caret line="64" column="34" selection-start-line="64" selection-start-column="34" selection-end-line="64" selection-end-column="34" />
               <folding>
                 <element signature="e#0#13#0" expanded="true" />
               </folding>
@@ -119,11 +118,11 @@
           </provider>
         </entry>
       </file>
-      <file leaf-file-name="test_suite.py" pinned="false" current-in-tab="true">
+      <file leaf-file-name="test_suite.py" pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/sondra/tests/test_suite.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state vertical-scroll-proportion="0.14482759">
-              <caret line="10" column="25" selection-start-line="10" selection-start-column="25" selection-end-line="10" selection-end-column="25" />
+            <state vertical-scroll-proportion="0.0">
+              <caret line="14" column="16" selection-start-line="14" selection-start-column="16" selection-end-line="14" selection-end-column="16" />
               <folding>
                 <element signature="e#0#13#0" expanded="true" />
               </folding>
@@ -131,26 +130,12 @@
           </provider>
         </entry>
       </file>
-      <file leaf-file-name="api.py" pinned="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/sondra/api.py">
+      <file leaf-file-name="__init__.py" pinned="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/sondra/suite/__init__.py">
           <provider selected="true" editor-type-id="text-editor">
             <state vertical-scroll-proportion="0.0">
-              <caret line="340" column="48" selection-start-line="340" selection-start-column="48" selection-end-line="340" selection-end-column="48" />
-              <folding>
-                <element signature="e#34#45#0" expanded="true" />
-              </folding>
-            </state>
-          </provider>
-        </entry>
-      </file>
-      <file leaf-file-name="ref.py" pinned="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/sondra/ref.py">
-          <provider selected="true" editor-type-id="text-editor">
-            <state vertical-scroll-proportion="0.0">
-              <caret line="16" column="50" selection-start-line="16" selection-start-column="50" selection-end-line="16" selection-end-column="50" />
-              <folding>
-                <element signature="e#0#54#0" expanded="true" />
-              </folding>
+              <caret line="271" column="0" selection-start-line="271" selection-start-column="0" selection-end-line="271" selection-end-column="0" />
+              <folding />
             </state>
           </provider>
         </entry>
@@ -189,7 +174,6 @@
         <option value="$PROJECT_DIR$/sondra/schema.py" />
         <option value="$PROJECT_DIR$/sondra/tests/test_document.py" />
         <option value="$PROJECT_DIR$/sondra/utils.py" />
-        <option value="$PROJECT_DIR$/sondra/suite/__init__.py" />
         <option value="$PROJECT_DIR$/sondra/tests/test_applications.py" />
         <option value="$PROJECT_DIR$/sondra/decorators.py" />
         <option value="$PROJECT_DIR$/sondra/exceptions.py" />
@@ -205,13 +189,14 @@
         <option value="$PROJECT_DIR$/sondra/document/valuehandlers.py" />
         <option value="$PROJECT_DIR$/sondra/document/processors.py" />
         <option value="$PROJECT_DIR$/sondra/tests/web/app.py" />
-        <option value="$PROJECT_DIR$/sondra/collection/__init__.py" />
-        <option value="$PROJECT_DIR$/sondra/tests/api.py" />
         <option value="$PROJECT_DIR$/sondra/api.py" />
         <option value="$PROJECT_DIR$/sondra/tests/web/test_requests.py" />
         <option value="$PROJECT_DIR$/sondra/tests/test_collections.py" />
         <option value="$PROJECT_DIR$/sondra/tests/test_documents.py" />
+        <option value="$PROJECT_DIR$/sondra/tests/api.py" />
         <option value="$PROJECT_DIR$/sondra/tests/test_suite.py" />
+        <option value="$PROJECT_DIR$/sondra/suite/__init__.py" />
+        <option value="$PROJECT_DIR$/sondra/collection/__init__.py" />
       </list>
     </option>
   </component>
@@ -726,13 +711,6 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/sondra/auth/__init__.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state vertical-scroll-proportion="0.07692308">
-          <caret line="5" column="25" selection-start-line="5" selection-start-column="25" selection-end-line="5" selection-end-column="25" />
-        </state>
-      </provider>
-    </entry>
     <entry file="file://$PROJECT_DIR$/sondra/auth/request_processor.py">
       <provider selected="true" editor-type-id="text-editor">
         <state vertical-scroll-proportion="0.3846154">
@@ -831,6 +809,7 @@
       <provider selected="true" editor-type-id="text-editor">
         <state vertical-scroll-proportion="0.0">
           <caret line="11" column="37" selection-start-line="11" selection-start-column="37" selection-end-line="11" selection-end-column="37" />
+          <folding />
         </state>
       </provider>
     </entry>
@@ -855,7 +834,7 @@
           <caret line="206" column="13" selection-start-line="206" selection-start-column="13" selection-end-line="206" selection-end-column="13" />
           <folding>
             <element signature="e#0#21#0" expanded="false" />
-            <marker date="1450560994000" expanded="true" signature="6226:6331" placeholder="..." />
+            <marker date="1451075380000" expanded="true" signature="6226:6331" placeholder="..." />
           </folding>
         </state>
       </provider>
@@ -895,6 +874,9 @@
       <provider selected="true" editor-type-id="text-editor">
         <state vertical-scroll-proportion="1.0315186">
           <caret line="48" column="28" selection-start-line="48" selection-start-column="28" selection-end-line="48" selection-end-column="28" />
+          <folding>
+            <element signature="e#0#59#0" expanded="false" />
+          </folding>
         </state>
       </provider>
     </entry>
@@ -916,14 +898,6 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/sondra/suite/__init__.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state vertical-scroll-proportion="0.0">
-          <caret line="304" column="21" selection-start-line="304" selection-start-column="21" selection-end-line="304" selection-end-column="21" />
-          <folding />
-        </state>
-      </provider>
-    </entry>
     <entry file="file://$PROJECT_DIR$/sondra/tests/web/__init__.py">
       <provider selected="true" editor-type-id="text-editor">
         <state vertical-scroll-proportion="0.0">
@@ -935,14 +909,9 @@
       <provider selected="true" editor-type-id="text-editor">
         <state vertical-scroll-proportion="0.0">
           <caret line="59" column="0" selection-start-line="59" selection-start-column="0" selection-end-line="59" selection-end-column="0" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/sondra/application/__init__.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state vertical-scroll-proportion="0.0">
-          <caret line="309" column="21" selection-start-line="309" selection-start-column="21" selection-end-line="309" selection-end-column="21" />
-          <folding />
+          <folding>
+            <element signature="e#0#13#0" expanded="false" />
+          </folding>
         </state>
       </provider>
     </entry>
@@ -974,6 +943,9 @@
       <provider selected="true" editor-type-id="text-editor">
         <state vertical-scroll-proportion="0.47586206">
           <caret line="23" column="61" selection-start-line="23" selection-start-column="61" selection-end-line="23" selection-end-column="61" />
+          <folding>
+            <element signature="e#0#51#0" expanded="true" />
+          </folding>
         </state>
       </provider>
     </entry>
@@ -1012,16 +984,6 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/sondra/document/__init__.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state vertical-scroll-proportion="-3.013793">
-          <caret line="278" column="26" selection-start-line="278" selection-start-column="26" selection-end-line="278" selection-end-column="26" />
-          <folding>
-            <element signature="e#33#44#0" expanded="true" />
-          </folding>
-        </state>
-      </provider>
-    </entry>
     <entry file="file://$PROJECT_DIR$/sondra/tests/web/app.py">
       <provider selected="true" editor-type-id="text-editor">
         <state vertical-scroll-proportion="0.16551724">
@@ -1035,16 +997,6 @@
         <state vertical-scroll-proportion="2.275862">
           <caret line="117" column="0" selection-start-line="117" selection-start-column="0" selection-end-line="117" selection-end-column="0" />
           <folding />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/sondra/collection/__init__.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state vertical-scroll-proportion="2.6703448">
-          <caret line="384" column="107" selection-start-line="384" selection-start-column="107" selection-end-line="384" selection-end-column="107" />
-          <folding>
-            <element signature="e#1#43#0" expanded="true" />
-          </folding>
         </state>
       </provider>
     </entry>
@@ -1068,16 +1020,6 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/sondra/tests/api.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state vertical-scroll-proportion="0.0">
-          <caret line="21" column="42" selection-start-line="21" selection-start-column="42" selection-end-line="21" selection-end-column="42" />
-          <folding>
-            <element signature="e#0#59#0" expanded="true" />
-          </folding>
-        </state>
-      </provider>
-    </entry>
     <entry file="file://$PROJECT_DIR$/sondra/tests/web/test_requests.py">
       <provider selected="true" editor-type-id="text-editor">
         <state vertical-scroll-proportion="0.0">
@@ -1096,16 +1038,6 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/sondra/tests/test_collections.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state vertical-scroll-proportion="0.0">
-          <caret line="6" column="0" selection-start-line="6" selection-start-column="0" selection-end-line="13" selection-end-column="0" />
-          <folding>
-            <element signature="e#0#13#0" expanded="true" />
-          </folding>
-        </state>
-      </provider>
-    </entry>
     <entry file="file://$PROJECT_DIR$/sondra/tests/test_documents.py">
       <provider selected="true" editor-type-id="text-editor">
         <state vertical-scroll-proportion="0.0">
@@ -1114,13 +1046,77 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/sondra/tests/test_suite.py">
+    <entry file="file://$PROJECT_DIR$/sondra/tests/test_collections.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state vertical-scroll-proportion="0.14482759">
-          <caret line="10" column="25" selection-start-line="10" selection-start-column="25" selection-end-line="10" selection-end-column="25" />
+        <state vertical-scroll-proportion="0.0">
+          <caret line="64" column="34" selection-start-line="64" selection-start-column="34" selection-end-line="64" selection-end-column="34" />
           <folding>
             <element signature="e#0#13#0" expanded="true" />
           </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/sondra/auth/__init__.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state vertical-scroll-proportion="0.04137931">
+          <caret line="5" column="25" selection-start-line="5" selection-start-column="25" selection-end-line="5" selection-end-column="25" />
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/sondra/tests/api.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state vertical-scroll-proportion="0.0">
+          <caret line="7" column="27" selection-start-line="7" selection-start-column="27" selection-end-line="7" selection-end-column="27" />
+          <folding>
+            <element signature="e#0#59#0" expanded="true" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/sondra/tests/test_suite.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state vertical-scroll-proportion="0.0">
+          <caret line="14" column="16" selection-start-line="14" selection-start-column="16" selection-end-line="14" selection-end-column="16" />
+          <folding>
+            <element signature="e#0#13#0" expanded="true" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/sondra/suite/__init__.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state vertical-scroll-proportion="0.0">
+          <caret line="271" column="0" selection-start-line="271" selection-start-column="0" selection-end-line="271" selection-end-column="0" />
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/sondra/document/__init__.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state vertical-scroll-proportion="0.0">
+          <caret line="278" column="26" selection-start-line="278" selection-start-column="26" selection-end-line="278" selection-end-column="26" />
+          <folding>
+            <element signature="e#33#44#0" expanded="true" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/sondra/collection/__init__.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state vertical-scroll-proportion="0.0">
+          <caret line="160" column="20" selection-start-line="160" selection-start-column="20" selection-end-line="160" selection-end-column="20" />
+          <folding>
+            <element signature="e#1#43#0" expanded="true" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/sondra/application/__init__.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state vertical-scroll-proportion="4.7862067">
+          <caret line="309" column="21" selection-start-line="309" selection-start-column="21" selection-end-line="309" selection-end-column="21" />
+          <folding />
         </state>
       </provider>
     </entry>

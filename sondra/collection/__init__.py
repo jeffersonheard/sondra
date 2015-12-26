@@ -60,7 +60,7 @@ class CollectionMetaclass(ABCMeta):
         cls.name = utils.convert_camelcase(cls.__name__)
         logging.debug("Registered " + cls.name)
 
-        if cls.document_class:
+        if cls.document_class and (cls.document_class is not Document):
             cls.abstract = False
 
             cls.schema = deepcopy(cls.document_class.schema)
@@ -151,7 +151,7 @@ class Collection(MutableMapping, metaclass=CollectionMetaclass):
     slug = None
     schema = None
     application = None
-    exposed_methods = {}
+    exposed_methods = None
     document_class = Document
     primary_key = "id"
     private = False
@@ -159,7 +159,6 @@ class Collection(MutableMapping, metaclass=CollectionMetaclass):
     relations = []
     anonymous_reads = True
     abstract = False
-    processors = []
 
     @property
     def suite(self):
