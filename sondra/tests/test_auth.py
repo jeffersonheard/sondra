@@ -11,9 +11,6 @@ class ConcreteSuite(suite.Suite):
 s = ConcreteSuite()
 
 auth = Auth(s)
-auth.drop_tables()
-auth.create_database()
-auth.create_tables()
 
 s.clear_databases()
 
@@ -98,21 +95,31 @@ def test_user_role(local_calvin):
 
 
 def test_login_local(local_calvin):
-    assert local_calvin['username'] == 'calvin'
-
     # test login
     token = s['auth'].login(local_calvin['username'], 'password')
     assert isinstance(token, str)
     assert '.' in token
-    assert isinstance(s['auth'].check(token, user='calvin'), User)
-
-    # test renew
-    token2 = s['auth'].renew(token)
-    assert s['auth'].check(token2, user='calvin')
+    assert isinstance(s['auth'].check(token, user=local_calvin['username']), User)
 
     # Test logout
     s['auth'].logout(token)
     creds = s['auth']['user-credentials'][local_calvin.url]
     assert creds['secret'] not in s['auth']['logged-in-users']
+
+
+def test_renew(local_calvin):
+    token = s['auth'].login(local_calvin['username'], 'password')
+
+    # test renew
+    try:
+        token2 = s['auth'].renew(token)
+        assert token2 != token
+        print(token2)
+        print(token)
+        assert s['auth'].check(token2, user='calvin')
+        assert s['auth']['logged-in-users'].for_token(token) is None
+        assert s['auth']['logged-in-users'].for_token(token2) is not None
+    finally:
+        s['auth'].logout(token)
 
 

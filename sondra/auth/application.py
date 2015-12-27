@@ -50,6 +50,9 @@ class Auth(Application):
         hashed_real_password = credentials['password'].encode('utf-8')
         hashed_given_password = bcrypt.hashpw(password.encode('utf-8'), credentials['salt'].encode('utf-8'))
         if hashed_real_password == hashed_given_password:
+            if credentials['secret'] in self['logged-in-users']:
+                self['logged-in-users'][credentials['secret']].delete()
+
             return self.issue(username, credentials)
         else:
             self.log.warning("Failed login attempt by registered user: {0}".format(username))
@@ -57,8 +60,13 @@ class Auth(Application):
 
     @authenticated_method
     @expose_method
-    def logout(self, token: str) -> None:
-        self['logged-in-users'].for_token(token).delete()
+    def logout(self, token: str) -> bool:
+        u = self['logged-in-users'].for_token(token)
+        if u:
+            u.delete()
+            return True
+        else:
+            return False
 
     @authenticated_method
     @expose_method
@@ -76,6 +84,7 @@ class Auth(Application):
         """
 
         logged_in_user = self['logged-in-users'].for_token(token)
+
         secret = logged_in_user['secret'].encode('utf-8')
         claims = jwt.decode(token.encode('utf-8'), secret, issuer=self.url, verify=True)
         claims.update(self.get_expiration_claims())  # make sure this token expires
@@ -132,15 +141,16 @@ class Auth(Application):
             PermissionError: if a claim is not present, or if claims differ.
         """
 
-        try:
-            logged_in_user = self['logged-in-users'].for_token(token)
-            secret = logged_in_user['secret'].encode('utf-8')
-            decoded = jwt.decode(token.encode('utf-8'), secret, issuer=self.url, verify=True)
-            for name, value in claims.items():
-                if name not in decoded:
-                    raise PermissionError("Claim not present in {0}: {1}".format(decoded['user'], name))
-                elif decoded[name] != value:
-                    raise PermissionError("Claims differ for {0}: {1}".format(decoded['user'], name))
-            return self['users'][decoded['user']]
-        except KeyError:
-            raise PermissionError("Token not present in system")
+        logged_in_user = self['logged-in-users'].for_token(token)
+        if logged_in_user is None:
+            raise PermissionError("Token not present")
+
+        secret = logged_in_user['secret'].encode('utf-8')
+        decoded = jwt.decode(token.encode('utf-8'), secret, issuer=self.url, verify=True)
+        for name, value in claims.items():
+            if name not in decoded:
+                raise PermissionError("Claim not present in {0}: {1}".format(decoded['user'], name))
+            elif decoded[name] != value:
+                raise PermissionError("Claims differ for {0}: {1}".format(decoded['user'], name))
+        return self['users'][decoded['user']]
+

@@ -1,3 +1,4 @@
+from sondra.auth.decorators import authorized_method
 from sondra.expose import expose_method
 from sondra.document import Document, SlugPropertyProcessor, DateTime, Now
 from sondra.ref import Reference
@@ -107,6 +108,8 @@ class Role(Document):
 
 class User(Document):
     """A basic, but fairly complete system user record"""
+    active_by_default = True
+
     schema = {
         'type': 'object',
         'required': ['email'],
@@ -148,7 +151,12 @@ class User(Document):
             'active': {
                 'type': 'boolean',
                 'description': 'Whether or not the user is currently able to log into the system.',
-                'default': True
+                'default': active_by_default
+            },
+            'confirmedEmail': {
+                'type': 'boolean',
+                'description': 'Whether or not the user has confirmed their email',
+                'default': False
             },
             'admin': {
                 'type': 'boolean',
@@ -173,6 +181,18 @@ class User(Document):
     @expose_method
     def permissions(self) -> [dict]:
         return functools.reduce(operator.add, [role['permissions'] for role in self.fetch('roles')], [])
+
+    @expose_method
+    def confirm_email(self, confirmation_code: str) -> bool:
+        confirmed = self.application['credentials'][self.url]['confirmation_code'] == confirmation_code
+        self['confirmed'] = self['confirmed'] or confirmed
+        self.save()
+        return self['confirmed']
+
+    @authorized_method
+    @expose_method
+    def send_confirmation_email(self) -> None:
+        raise NotImplemented()
 
     def __str__(self):
         return self['username']
@@ -200,6 +220,10 @@ class Credentials(Document):
             'jwtClaims': {
                 'type': 'object',
                 'description': "Any additional claims to add to a user's JSON Web Token before encoding."
+            },
+            'confirmationCode': {
+                'type': 'string',
+                'description': "A generated code that confirms a user's email"
             }
         }
     }

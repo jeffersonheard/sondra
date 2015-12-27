@@ -1,10 +1,8 @@
 import pytest
-from copy import copy
 from datetime import datetime
 import json
 import requests
 
-from sondra import utils
 from sondra.tests import api
 
 BASE_URL = api.ConcreteSuite.url
@@ -460,10 +458,6 @@ def test_geo__get_nearest(points):
     assert len(results) == 1
 
 
-def test_files():
-    pass
-
-
 def test_flt__equals(docs):
     simple_documents = _url('simple-app/simple-documents')
 
@@ -590,3 +584,6 @@ def test_flt__has_fields(docs):
     results = bbox.json()
     assert len(results) == 10  # should pick up the point at (0.0, 33.2) and (-10.1, 33.2)
 
+
+def test_files():
+    pass

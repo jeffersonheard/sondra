@@ -436,7 +436,7 @@ class Collection(MutableMapping, metaclass=CollectionMetaclass):
         """
         return True
 
-    def delete(self, docs, **kwargs):
+    def delete(self, docs=None, **kwargs):
         """Delete a document or list of documents from the database.
 
         Args:
@@ -446,6 +446,9 @@ class Collection(MutableMapping, metaclass=CollectionMetaclass):
         Returns:
             The result of RethinkDB delete.
         """
+        if not docs:
+            return self.table.delete(**kwargs).run(self.application.connection)
+
         if not isinstance(docs, list):
             docs = [docs]
 

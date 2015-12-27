@@ -1,4 +1,4 @@
-from flask import request, Blueprint, current_app, Response
+from flask import request, Blueprint, current_app, Response, abort
 from flask.ext.cors import CORS
 import json
 
@@ -44,25 +44,36 @@ def api_request(path):
             if request.form:
                 args['q'] = [json.dumps({k: v for k, v in request.form.items()})]
 
-        r = APIRequest(
-            current_app.suite,
-            request.headers,
-            request.data,
-            request.method,
-            None,
-            current_app.suite.url + '/' + path,
-            args,
-            request.files
-        )
+        try:
+            r = APIRequest(
+                current_app.suite,
+                request.headers,
+                request.data,
+                request.method,
+                None,
+                current_app.suite.url + '/' + path,
+                args,
+                request.files
+            )
 
-        # Run any number of post-processing steps on this request, including
-        for p in current_app.suite.api_request_processors:
-            r = p(r)
+            # Run any number of post-processing steps on this request, including
+            for p in current_app.suite.api_request_processors:
+                r = p(r)
 
-        mimetype, response = r()
-        resp = Response(
-            response=response,
-            status=200,
-            mimetype=mimetype)
+            mimetype, response = r()
+            resp = Response(
+                response=response,
+                status=200,
+                mimetype=mimetype)
+            return resp
 
-    return resp
+        except PermissionError as denial:
+            abort(403, description=str(denial))
+
+        except KeyError as not_found:
+            abort(404, description=str(not_found))
+
+        except Exception as error:
+            abort(500, description=str(error))
+
+

@@ -16,6 +16,9 @@ class Reference(object):
     """Contains the application, collection, document, methods, and fragment the URL refers to"""
     FORMATS = {'help', 'schema', 'json', 'geojson'}
 
+    def __str__(self):
+        return self.url
+
     def __init__(self, env, url=None, **kw):
         self.environment = env
 
@@ -49,11 +52,11 @@ class Reference(object):
             (not self.environment.base_url_path) or p_url.path.startswith(self.environment.base_url_path)
         )):
             raise EndpointError("{0} does not refer to the application hosted at {1}".format(
-                                url, self.environment.base_url))
+                                url, self.environment.url))
 
         # make sure future references to the url are absolute.
         if not p_url.netloc:
-            self.url = self.environment.base_url + self.url
+            self.url = self.environment.url + self.url
 
         # fix the path if our applications are at an offset
         path = p_url.path if not self.environment.base_url_path\
@@ -94,7 +97,7 @@ class Reference(object):
             doc_method = doc_method.replace('-', '_')
 
         if coll and (coll not in self.environment[app]):
-            raise EndpointError('{0} not found in {1}'.format(url, self.environment.base_url))
+            raise EndpointError('{0} not found in {1}'.format(url, self.environment.url))
 
         # parse out the fragment portion, which refers to a subdocument inside the URL
         fragment = p_url.fragment.split('/') if p_url.fragment else None
@@ -214,7 +217,7 @@ class Reference(object):
     def construct(self):
         """Construct a URL from its base parts"""
 
-        url = self.environment.base_url + '/' + self.app
+        url = self.environment.url + '/' + self.app
         if self.app_method:
             url += '.' + self.app_method
         if self.coll:

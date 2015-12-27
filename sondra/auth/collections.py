@@ -8,7 +8,7 @@ from sondra.collection import Collection
 from .documents import Credentials, Role, User, LoggedInUser
 
 
-@authorization_required('write','add','delete')
+@authorization_required('write')
 @authentication_required('read')
 class Roles(Collection):
     primary_key = 'slug'
@@ -21,8 +21,7 @@ class UserCredentials(Collection):
     private = True
 
 
-@authorization_required('write', 'add', 'delete')
-@authentication_required('read')
+@authorization_required('write')
 class Users(Collection):
     document_class = User
     primary_key = 'username'
@@ -68,9 +67,9 @@ class Users(Collection):
             familyName: str=None,
             givenName: str=None,
             names: list=None,
-            picture: str=None,
-            active: bool=True,
+            active: bool=None,
             roles: list=None,
+            confirmedEmail: bool=False
     ) -> str:
         """Create a new user
 
@@ -81,9 +80,10 @@ class Users(Collection):
             locale (str="en-US"): The name of the locale for the user
             familyName (str): The user's family name
             givenName (str): The user's given name
-            names (str): The user's middle names
-            picture (url as str): A pointer to a resource that is the user's picture.
+            names (str): The user's middle name
             active (bool): Default true. Whether or not the user is allowed to log in.
+            roles (list[roles]): List of role objects or urls. The list of roles a user is granted.
+            confirmedEmail (bool): Default False. The user has confirmed their email address already.
 
         Returns:
             str: The url of the new user object.
@@ -107,10 +107,11 @@ class Users(Collection):
             "username": username,
             "email": email,
             "emailVerified": False,
-            "active": active,
+            "active": active if active is not None else self.document_class.active_by_default,
             "locale": locale,
             "created": datetime.datetime.now(),
-            "roles": roles
+            "roles": roles or [],
+            "confirmedEmail": confirmedEmail
         }
 
         if familyName:
@@ -121,9 +122,6 @@ class Users(Collection):
 
         if names:
             user_data['names'] = names
-
-        if picture:
-            user_data['picture'] = picture
 
         user = self.create(user_data)
         self.validate_password(password)
@@ -139,6 +137,48 @@ class Users(Collection):
 
         return user.url
 
+    @expose_method
+    def signup(
+        self,
+        username: str,
+        password: str,
+        email: str,
+        locale: str='en-US',
+        familyName: str=None,
+        givenName: str=None,
+        names: list=None
+    ) -> bool:
+        """Create a new user anonymously. by default the user is inactive and email is not confirmed. No roles can be
+        assigned except by an admin
+
+        Args:
+            username (str): The username to use. Can be blank. If blank the username is the email.
+            password (str): The password to use.
+            email (str): The email address for the user. Should be unique
+            locale (str="en-US"): The name of the locale for the user
+            familyName (str): The user's family name
+            givenName (str): The user's given name
+            names (str): The user's middle names
+
+        Returns:
+            str: The url of the new user object.
+
+        Raises:
+            KeyError if the user already exists.
+            ValueError if the user's password does not pass muster.
+        """
+        self.create_user(
+            username=username,
+            password=password,
+            email=email,
+            familyName=familyName,
+            givenName=givenName,
+            names=names,
+            active=False
+        )
+        self[username].send_confirmation_email()
+        return True
+
 
 class LoggedInUsers(Collection):
     primary_key = 'secret'
@@ -148,7 +188,11 @@ class LoggedInUsers(Collection):
     private = True
 
     def for_token(self, token):
-        return next(self.q(self.table.get_all(token, index='token')))
+        result = self.table.get_all(token, index='token')
+        try:
+            return result.next()
+        except:
+            return None
 
     def delete_token(self, token):
         self.q(self.table.get_all(token, index='token').delete())

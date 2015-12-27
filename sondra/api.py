@@ -22,7 +22,7 @@ class RequestProcessor(object):
         return r
 
     def __call__(self, *args, **kwargs):
-        self.process_api_request(*args, **kwargs)
+        return self.process_api_request(*args, **kwargs)
 
 
 class APIRequest(object):
@@ -51,6 +51,29 @@ class APIRequest(object):
         'get_intersecting',
         'get_nearest',
     }
+
+    def __str__(self):
+        return """
+{request_method} {url}
+
+Headers
+-------
+{headers}
+
+API Arguments
+-------------
+{api_args}
+
+Objects
+-------------
+{objects}
+        """.format(
+            request_method=self.request_method,
+            url=self.reference,
+            headers="\n".join(['{0}: {1}'.format(*i) for i in self.headers.items()]) if self.headers else "<none>",
+            api_args="\n".join(['{0}: {1}'.format(*i) for i in self.api_arguments.items()]) if self.api_arguments else "<none>",
+            objects="\n".join(['{0}: {1}'.format(*i) for i in enumerate(self.objects)]) if self.objects else "<none>"
+        )
 
     def __init__(self, suite, headers, body, method, user, path, query_params, files):
         self.suite = suite
@@ -218,7 +241,7 @@ class APIRequest(object):
             else:
                 if "__q" in body_args:
                     self.api_arguments.update(body_args['__q'])
-                    self.request_method = body_args.get('__method', self.request_method)
+                    self.request_method = body_args.get('__method', self.request_method).upper()
                     self.objects = body_args.get("__objs", [])
                 else:
                     self.objects = [body_args]
@@ -266,7 +289,7 @@ class APIRequest(object):
         result = mapjson(fun, result)  # make sure to serialize a full Document structure if we have one.
 
         if not (isinstance(result, dict) or isinstance(result, list)):
-            result, = {"_": result}
+            result = {"_": result}
 
         return 'application/json', json.dumps(result, indent=4)
 

@@ -1,4 +1,5 @@
 from sondra import document, suite, collection, application
+from sondra.auth.request_processor import AuthRequestProcessor
 from sondra.auth.decorators import authentication_required, authorization_required, authenticated_method, authorized_method
 from sondra.expose import expose_method
 from sondra.schema import S
@@ -10,6 +11,19 @@ class ConcreteSuite(suite.Suite):
     definitions = {
         "concreteSuiteDefn": {"type": "string", "pattern": "[0-9]+"}
     }
+    api_request_processors = (
+        AuthRequestProcessor(),
+    )
+
+    @authenticated_method
+    @expose_method
+    def authenticated_method(self) -> str:
+        return "Successfully authenticated method"
+
+    @authorized_method
+    @expose_method
+    def authorized_method(self) -> str:
+        return "Accessed authorized method"
 
 
 class SimpleDocument(document.Document):
@@ -74,6 +88,16 @@ class SimpleDocument(document.Document):
     @expose_method
     def operates_on_self(self) -> str:
         return self.schema['type']
+
+    @authenticated_method
+    @expose_method
+    def authenticated_method(self) -> str:
+        return "Successfully authenticated method"
+
+    @authorized_method
+    @expose_method
+    def authorized_method(self) -> str:
+        return "Accessed authorized method"
 
 
 class ForeignKeyDoc(document.Document):
@@ -157,6 +181,16 @@ class SimpleDocuments(collection.Collection):
     def operates_on_self(self) -> str:
         return self.title
 
+    @authenticated_method
+    @expose_method
+    def authenticated_method(self) -> str:
+        return "Successfully authenticated method"
+
+    @authorized_method
+    @expose_method
+    def authorized_method(self) -> str:
+        return "Accessed authorized method"
+
 
 class SimplePoints(collection.Collection):
     "A collection of simple points."
@@ -221,6 +255,16 @@ class SimpleApp(application.Application):
     def operates_on_self(self) -> str:
         return self.title
 
+    @authenticated_method
+    @expose_method
+    def authenticated_method(self) -> str:
+        return "Successfully authenticated method"
+
+    @authorized_method
+    @expose_method
+    def authorized_method(self) -> str:
+        return "Accessed authorized method"
+
 
 class DerivedCollection(SimpleDocuments):
     "A collection derived from SimpleDocuments"
@@ -242,9 +286,151 @@ class DerivedApp(SimpleApp):
     def derived_method(self) -> None:
         pass
 
+
 class EmptyApp(application.Application):
     "An empty application"
 
+#####
+# APIs for testing authentication and authorization
+#####
 
 
+@authentication_required('write')
+class AuthenticatedSuite(suite.Suite):
+    "A simple API for testing"
+    definitions = {
+        "concreteSuiteDefn": {"type": "string", "pattern": "[0-9]+"}
+    }
+
+    @authenticated_method
+    @expose_method
+    def authenticated_method(self) -> str:
+        return "Successfully authenticated method"
+
+    @authorized_method
+    @expose_method
+    def authorized_method(self) -> str:
+        return "Accessed authorized method"
+
+
+@authorization_required('write')
+class AuthorizedSuite(suite.Suite):
+    "A simple API for testing"
+    definitions = {
+        "concreteSuiteDefn": {"type": "string", "pattern": "[0-9]+"}
+    }
+
+    @authenticated_method
+    @expose_method
+    def authenticated_method(self) -> str:
+        return "Successfully authenticated method"
+
+    @authorized_method
+    @expose_method
+    def authorized_method(self) -> str:
+        return "Accessed authorized method"
+
+
+@authentication_required('read', 'write')
+class AuthenticatedDocument(document.Document):
+    "A simple document type"
+
+    schema = S.object(
+        {
+            "name": S.string(title="Name", description="The name of the document"),
+            "slug": S.string(),
+        },
+        required=["name",],
+        propertyOrder=['name']
+    )
+    processors = (
+        document.SlugPropertyProcessor('name'),
+    )
+
+    @expose_method
+    def simple_none_return(self) -> None:
+        return None
+
+
+@authentication_required('read', 'write')
+class AuthenticatedDocuments(collection.Collection):
+    """A collection of simple documents"""
+
+    document_class = AuthenticatedDocument
+    primary_key = "slug"
+    indexes = ("timestamp", "name")
+
+    @expose_method
+    def simple_none_return(self) -> None:
+        return None
+
+
+@authentication_required('write')
+class AuthenticatedApp(application.Application):
+    """A simple application containing all the collections defined and some methods."""
+
+    collections = (
+        AuthenticatedDocuments,
+        SimpleDocuments,  # this should still require authentication to write, because the app is authenticated
+    )
+
+    definitions = {
+        "appDef": S.color(pattern="#FF.*")
+    }
+
+    @expose_method
+    def simple_none_return(self) -> None:
+        return None
+
+
+@authorization_required('read','write')
+class AuthorizedDocument(document.Document):
+    """A simple document type"""
+
+    schema = S.object(
+        {
+            "name": S.string(title="Name", description="The name of the document"),
+            "slug": S.string(),
+        },
+        required=["name",],
+        propertyOrder=['name']
+    )
+    processors = (
+        document.SlugPropertyProcessor('name'),
+    )
+
+    @expose_method
+    def simple_none_return(self) -> None:  # should be protected by authorization
+        return None
+
+
+@authorization_required('read','write')
+class AuthorizedDocuments(collection.Collection):
+    """A collection of simple documents."""
+
+    document_class = SimpleDocument
+    primary_key = "slug"
+    indexes = ("timestamp", "name")
+
+    @expose_method
+    def simple_none_return(self) -> None:  # should be protected by authorization
+        return None
+
+
+@authorization_required('write')
+class AuthorizedApp(application.Application):
+    """A simple application containing all the collections defined and some methods."""
+
+    collections = (
+        AuthorizedDocuments,  # protects read, write, and delete
+        SimpleDocuments  # Should be able to read the documents, but not write or delete them anonymously
+    )
+
+    definitions = {
+        "appDef": S.color(pattern="#FF.*")
+    }
+
+    @expose_method
+    def simple_none_return(self) -> None:
+        return None
 

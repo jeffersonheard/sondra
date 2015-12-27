@@ -1,11 +1,11 @@
 def authorized_method(o):
-    o.authentication_required = [o.slug]
-    o.authorization_required = [o.slug]
+    o.authentication_required = o.slug
+    o.authorization_required = o.slug
     return o
 
 
 def authenticated_method(o):
-    o.authentication_required = [o.slug]
+    o.authentication_required = o.slug
     return o
 
 
