@@ -281,8 +281,8 @@ class Document(MutableMapping, metaclass=DocumentMetaclass):
     def json(self, *args, **kwargs):
         return json.dumps(self.obj, *args, **kwargs)
 
-    def save(self, *args, **kwargs):
-        return self.collection.save(self.obj, *args, **kwargs)
+    def save(self, conflict='replace', *args, **kwargs):
+        return self.collection.save(self.obj, conflict=conflict, *args, **kwargs)
 
     def delete(self, **kwargs):
         return  self.collection.delete(self.id, **kwargs)

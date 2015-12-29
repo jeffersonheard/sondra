@@ -87,6 +87,7 @@ class Auth(Application):
 
         secret = logged_in_user['secret'].encode('utf-8')
         claims = jwt.decode(token.encode('utf-8'), secret, issuer=self.url, verify=True)
+        claims['iat'] = datetime.datetime.now().timestamp()
         claims.update(self.get_expiration_claims())  # make sure this token expires
         token = jwt.encode(claims, secret).decode('utf-8')
 
@@ -111,7 +112,8 @@ class Auth(Application):
         """
         claims = {
             'iss': self.url,
-            'user': username
+            'user': username,
+            'iat': datetime.datetime.now().timestamp()
         }
         claims.update(self.get_expiration_claims())  # make sure this token expires
         if 'extraClaims' in credentials:

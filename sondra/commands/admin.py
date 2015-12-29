@@ -25,7 +25,7 @@ def cli(config):
 @click.option('--locale', default='en-US')
 def add_user(username, email, givenname, familyname, password, locale):
     auth['users'].create_user(
-        username, password, email=email, givenName=givenname, familyName=familyname, locale=locale)
+        username, password, email=email, given_name=givenname, family_name=familyname, locale=locale)
 
 @cli.command()
 @click.option("--username", "-u")
@@ -36,7 +36,7 @@ def add_user(username, email, givenname, familyname, password, locale):
 @click.option('--locale', default='en-US')
 def add_superuser(username, email, givenName, familyName, password, locale):
     auth['users'].create_user(
-        username, password, email=email, givenName=givenName, familyName=familyName, locale=locale)
+        username, password, email=email, given_name=givenName, family_name=familyName, locale=locale)
 
     new_user = auth['users'][username]
     new_user['admin'] = True

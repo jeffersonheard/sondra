@@ -107,6 +107,13 @@ def test_simple_document_creation(s, simple_document):
     assert simple_document['value'] == 0  # make sure defaults work
 
 
+def test_document_update(s, simple_document):
+    simple_document['value'] = 1024
+    simple_document.save(conflict='replace')
+    updated = s['simple-app']['simple-documents'][simple_document.id]
+    assert updated['value'] == 1024
+
+
 def test_foreign_key_doc_creation(s, foreign_key_document):
     single = foreign_key_document.fetch('simple_document')
     multiple = foreign_key_document.fetch('rest')

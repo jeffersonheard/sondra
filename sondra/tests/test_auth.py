@@ -31,8 +31,8 @@ def calvin(request):
         username='calvin',
         password='password',
         email='user@nowhere.com',
-        familyName='Powers',
-        givenName='Calvin',
+        family_name='Powers',
+        given_name='Calvin',
         names=['S'],
         roles=[r]
     )
@@ -45,7 +45,6 @@ def calvin(request):
     request.addfinalizer(teardown)
 
     return u
-
 
 @pytest.fixture
 def local_calvin(calvin):

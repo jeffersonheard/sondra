@@ -10,7 +10,10 @@ class AuthRequestProcessor(RequestProcessor):
     def authentication_requirement(self, target, permission):
         """Check the target to see if it or any of its 'parents' require authentication."""
         if isinstance(target, tuple):
-            if getattr(target[1], 'authentication_required', False):
+            req = getattr(target[1], 'authentication_required', None)
+            if req is False:
+                return None
+            elif req is not None:
                 return target[0]  # return the object the method is bound to, as this is what permissions are set upon
             else:
                 return self.authentication_requirement(target[0], 'write')  # assume all methods are write-dangerous
@@ -28,7 +31,10 @@ class AuthRequestProcessor(RequestProcessor):
     def authorization_requirement(self, target, permission):
         """Check the target to see if it or any of its 'parents' require authorization."""
         if isinstance(target, tuple):
-            if getattr(target[1], 'authorization_required', False):
+            req = getattr(target[1], 'authorization_required', None)
+            if req is False:
+                return None
+            elif req is not None:
                 return target[0]  # return the object the method is bound to, as this is what permissions are set upon
             else:
                 return self.authorization_requirement(target[0], 'write')  # assume all methods are write-dangerous
@@ -54,18 +60,6 @@ class AuthRequestProcessor(RequestProcessor):
         authentication_target = self.authentication_requirement(auth_target, permission_name)
         authorization_target = self.authorization_requirement(auth_target, permission_name)
 
-        print("<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<")
-        print(("C {target} {perm} - \n{req}".format(
-            target=authentication_target,
-            perm=permission_name,
-            req=request
-        )))
-        print(("Z {target} {perm} - \n{req}".format(
-            target=authentication_target,
-            perm=permission_name,
-            req=request
-        )))
-
         if authentication_target is None:  # authentication is not required
             return request
         if reference.format == 'schema':  # always allow schema calls
@@ -81,20 +75,13 @@ class AuthRequestProcessor(RequestProcessor):
                 auth_token = bearer[7:]  # skip "Bearer "
 
         if auth_token:  # check which user the token belongs to; that is the request's user
-            print(auth_token)
             user = request.suite['auth'].check(auth_token)
         else:
             user = None
 
-        print("User info\n---------")
-        if user:
-            print(user['username'], user.permissions())
-        else:
-            print("Anonymous")
-
-        print(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
-
-        if (authentication_target or authorization_target) and (user is None):
+        if ((authentication_target is not None) or (authorization_target is not None)) \
+                and (not user):
+            print("Permission error!!!!!")
             raise PermissionError("Target {url} requires authentication or authorization, but user is anonymous".format(url=reference.url))
         if user and user['admin']:  # allow the superuser unfettered access
             return request

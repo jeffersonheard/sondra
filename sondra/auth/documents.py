@@ -1,4 +1,6 @@
+from sondra.application import Application
 from sondra.auth.decorators import authorized_method
+from sondra.collection import Collection
 from sondra.expose import expose_method
 from sondra.document import Document, SlugPropertyProcessor, DateTime, Now
 from sondra.ref import Reference
@@ -40,64 +42,33 @@ class Role(Document):
         'created': DateTime()
     }
 
-    
-    def authorizes(self, reference, perm=None):
-        if isinstance(reference, str):
-            reference = Reference(self.suite, reference)
-
-        if reference.kind == 'application_method':
-            application = reference.get_application()
-            meth = reference.get_application_method()
+    def authorizes(self, value, perm=None):
+        if isinstance(value, Application):
+            application = value.slug
             for permission in self['permissions']:
-                if permission.get('application', None) == application.slug:
-                    return meth.slug in permission['allowed']
-            else:
-                return False
-
-        elif reference.kind == 'collection_method':
-            collection = reference.get_collection()
-            meth = reference.get_collection_method()
-            for permission in self['permissions']:
-                if permission.get('collection', None) == collection.slug and \
-                        permission.get('application', None) == collection.application.slug:
-                    return meth.slug in permission['allowed']
-            else:
-                return False
-
-        elif reference.kind == 'document_method':
-            doc = reference.get_document()
-            meth = reference.get_document_method()
-            for permission in self['permissions']:
-                if permission.get('collection', None) == doc.collection.slug and \
-                        permission.get('application', None) == doc.collection.application.slug and \
-                        permission.get('document', None) == doc.id:
-                    return meth.slug in permission['allowed']
-            else:
-                return False
-
-        elif reference.kind == 'application':
-            application = reference.get_application()
-            for permission in self['permissions']:
-                if permission.get('application', None) == application.slug:
+                if permission.get('application', None) == application:
                     return perm in permission['allowed']
             else:
                 return False
 
-        elif reference.kind == 'collection':
-            collection = reference.get_collection()
+        elif isinstance(value, Collection):
+            collection = value.slug
+            application = value.application.slug
             for permission in self['permissions']:
-                if permission.get('collection', None) == collection.slug and \
-                        permission.get('application', None) == collection.application.slug:
+                if permission.get('collection', None) == collection and \
+                        permission.get('application', None) == application:
                     return perm in permission['allowed']
             else:
                 return False
 
-        elif reference.kind == 'document' or reference.kind == 'subdocument':
-            doc = reference.get_document()
+        elif isinstance(value, Document):
+            document = value.slug
+            collection = value.collection.slug
+            application = value.application.slug
             for permission in self['permissions']:
-                if permission.get('collection', None) == doc.collection.slug and \
-                        permission.get('application', None) == doc.collection.application.slug and \
-                        permission.get('document', None) == doc.id:
+                if permission.get('collection', None) == collection and \
+                        permission.get('application', None) == application and \
+                        permission.get('document', None) == document:
                     return perm in permission['allowed']
             else:
                 return False
@@ -121,8 +92,10 @@ class User(Document):
             'email': {
                 'type': 'string',
                 'description': 'The user\'s email address',
+                'format': 'email',
+                'pattern': '^(\w+[.|\w])*@(\w+[.])*\w+$'
             },
-            'emailVerified': {
+            'email_verified': {
                 'type': 'boolean',
                 'description': 'Whether or not this email address has been verified',
             },
@@ -130,11 +103,11 @@ class User(Document):
                 'type': 'string',
                 'description': 'A URL resource of a photograph',
             },
-            'familyName': {
+            'family_name': {
                 'type': 'string',
                 'description': 'The user\'s family name',
             },
-            'givenName': {
+            'given_name': {
                 'type': 'string',
                 'description': 'The user\'s family name',
             },
@@ -153,7 +126,7 @@ class User(Document):
                 'description': 'Whether or not the user is currently able to log into the system.',
                 'default': active_by_default
             },
-            'confirmedEmail': {
+            'confirmed_email': {
                 'type': 'boolean',
                 'description': 'Whether or not the user has confirmed their email',
                 'default': False
@@ -221,7 +194,7 @@ class Credentials(Document):
                 'type': 'object',
                 'description': "Any additional claims to add to a user's JSON Web Token before encoding."
             },
-            'confirmationCode': {
+            'confirmation_code': {
                 'type': 'string',
                 'description': "A generated code that confirms a user's email"
             }

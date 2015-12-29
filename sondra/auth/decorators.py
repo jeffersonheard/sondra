@@ -9,6 +9,12 @@ def authenticated_method(o):
     return o
 
 
+def anonymous_method(o):
+    o.authentication_required = False
+    o.authorization_required = False
+    return o
+
+
 class authorization_required(object):
     def __init__(self, *protected):
         self.protected = protected

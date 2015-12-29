@@ -2,7 +2,7 @@ import bcrypt
 import datetime
 import rethinkdb as r
 
-from sondra.auth.decorators import authorized_method, authorization_required, authentication_required
+from sondra.auth.decorators import authorized_method, authorization_required, authentication_required, anonymous_method
 from sondra.expose import expose_method
 from sondra.collection import Collection
 from .documents import Credentials, Role, User, LoggedInUser
@@ -25,6 +25,7 @@ class UserCredentials(Collection):
 class Users(Collection):
     document_class = User
     primary_key = 'username'
+    indexes = ['email']
 
     def __init__(self, application):
         super(Users, self).__init__(application)
@@ -64,12 +65,12 @@ class Users(Collection):
             password: str,
             email: str,
             locale: str='en-US',
-            familyName: str=None,
-            givenName: str=None,
+            family_name: str=None,
+            given_name: str=None,
             names: list=None,
             active: bool=None,
             roles: list=None,
-            confirmedEmail: bool=False
+            confirmed_email: bool=False
     ) -> str:
         """Create a new user
 
@@ -78,12 +79,12 @@ class Users(Collection):
             password (str): The password to use.
             email (str): The email address for the user. Should be unique
             locale (str="en-US"): The name of the locale for the user
-            familyName (str): The user's family name
-            givenName (str): The user's given name
+            family_name (str): The user's family name
+            given_name (str): The user's given name
             names (str): The user's middle name
             active (bool): Default true. Whether or not the user is allowed to log in.
             roles (list[roles]): List of role objects or urls. The list of roles a user is granted.
-            confirmedEmail (bool): Default False. The user has confirmed their email address already.
+            confirmed_email (bool): Default False. The user has confirmed their email address already.
 
         Returns:
             str: The url of the new user object.
@@ -92,12 +93,13 @@ class Users(Collection):
             KeyError if the user already exists.
             ValueError if the user's password does not pass muster.
         """
-
-        if not email:
-            email = username
+        email = email.lower()
 
         if not username:
             username = email
+
+        if username in self:
+            raise PermissionError("Attempt to create duplicate user " + username)
 
         if roles:
             for role in roles:
@@ -106,19 +108,19 @@ class Users(Collection):
         user_data = {
             "username": username,
             "email": email,
-            "emailVerified": False,
+            "email_verified": False,
             "active": active if active is not None else self.document_class.active_by_default,
             "locale": locale,
             "created": datetime.datetime.now(),
             "roles": roles or [],
-            "confirmedEmail": confirmedEmail
+            "confirmed_email": confirmed_email
         }
 
-        if familyName:
-            user_data['familyName'] = familyName
+        if family_name:
+            user_data['family_name'] = family_name
 
-        if givenName:
-            user_data['givenName'] = givenName
+        if given_name:
+            user_data['given_name'] = given_name
 
         if names:
             user_data['names'] = names
@@ -137,6 +139,7 @@ class Users(Collection):
 
         return user.url
 
+    @anonymous_method
     @expose_method
     def signup(
         self,
@@ -144,8 +147,8 @@ class Users(Collection):
         password: str,
         email: str,
         locale: str='en-US',
-        familyName: str=None,
-        givenName: str=None,
+        family_name: str=None,
+        given_name: str=None,
         names: list=None
     ) -> bool:
         """Create a new user anonymously. by default the user is inactive and email is not confirmed. No roles can be
@@ -171,27 +174,37 @@ class Users(Collection):
             username=username,
             password=password,
             email=email,
-            familyName=familyName,
-            givenName=givenName,
+            family_name=family_name,
+            given_name=given_name,
             names=names,
             active=False
         )
-        self[username].send_confirmation_email()
+        # self[username].send_confirmation_email()
         return True
+
+    @anonymous_method
+    @expose_method
+    def by_email(self, email) -> User:
+        email = email.lower()
+        u = self.q(self.table.get_all(email, index='email'))
+        try:
+            return next(u)
+        except:
+            return None
 
 
 class LoggedInUsers(Collection):
     primary_key = 'secret'
     document_class = LoggedInUser
-    indexes = ['token', 'time']
+    indexes = ['token']
 
     private = True
 
     def for_token(self, token):
-        result = self.table.get_all(token, index='token')
+        result = self.table.get_all(token, index='token').run(self.application.connection)
         try:
-            return result.next()
-        except:
+            return self.document_class(next(result), self, True)
+        except StopIteration:
             return None
 
     def delete_token(self, token):

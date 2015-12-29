@@ -356,7 +356,7 @@ class AuthenticatedDocument(document.Document):
 class AuthenticatedDocuments(collection.Collection):
     """A collection of simple documents"""
 
-    document_class = AuthenticatedDocument
+    document_class = SimpleDocument
     primary_key = "slug"
     indexes = ("timestamp", "name")
 
