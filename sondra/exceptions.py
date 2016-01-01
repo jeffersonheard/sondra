@@ -4,3 +4,6 @@ class ValidationError(Exception):
 
 class ParseError(Exception):
     "Raised when a method signature cannot be parsed."
+
+class SuspiciousFileOperation(Exception):
+    "A suspicious file operation was attempted"

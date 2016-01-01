@@ -285,7 +285,7 @@ class Document(MutableMapping, metaclass=DocumentMetaclass):
         return self.collection.save(self.obj, conflict=conflict, *args, **kwargs)
 
     def delete(self, **kwargs):
-        return  self.collection.delete(self.id, **kwargs)
+        return self.collection.delete(self.id, **kwargs)
 
     def validate(self):
         jsonschema.validate(self.obj, self.schema)

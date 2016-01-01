@@ -7,6 +7,7 @@ import rethinkdb as r
 
 from sondra.document import Geometry
 from sondra.expose import method_schema, method_help
+from sondra._files import uploadhandler
 from .ref import Reference
 from . import document
 import sondra.collection

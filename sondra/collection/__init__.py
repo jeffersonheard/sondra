@@ -152,6 +152,7 @@ class Collection(MutableMapping, metaclass=CollectionMetaclass):
     schema = None
     application = None
     exposed_methods = None
+    file_storage = None
     document_class = Document
     primary_key = "id"
     private = False
@@ -195,6 +196,8 @@ class Collection(MutableMapping, metaclass=CollectionMetaclass):
         self.schema['id'] = self.url + ";schema"
         self.schema = mapjson(lambda x: x(context=self.application.suite) if callable(x) else x, self.schema)
         self.log = logging.getLogger(self.application.name + "." + self.name)
+        if self.file_storage:
+            self.file_storage = self.file_storage(self)
         signals.post_init.send(self.__class__, instance=self)
 
     def __str__(self):
@@ -473,6 +476,8 @@ class Collection(MutableMapping, metaclass=CollectionMetaclass):
         for value in docs:
             if isinstance(value, Document):
                 value._saved = True
+                if self.file_storage:
+                    self.file_storage.persist_document_files(value)
                 value = copy(value.obj)
 
             self._to_json_repr(value)

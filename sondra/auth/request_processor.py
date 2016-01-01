@@ -76,7 +76,9 @@ class AuthRequestProcessor(RequestProcessor):
 
         if auth_token:  # check which user the token belongs to; that is the request's user
             user = request.suite['auth'].check(auth_token)
+            request.user = user
         else:
+            request.user = None
             user = None
 
         if ((authentication_target is not None) or (authorization_target is not None)) \

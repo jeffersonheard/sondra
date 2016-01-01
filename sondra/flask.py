@@ -1,5 +1,6 @@
 from flask import request, Blueprint, current_app, Response, abort
 from flask.ext.cors import CORS
+
 import json
 
 from .api import APIRequest
@@ -7,6 +8,8 @@ from .api import APIRequest
 api_tree = Blueprint('api', __name__)
 
 def init(app):
+    if hasattr(app.suite, 'max_content_length'):
+        app.config['MAX_CONTENT_LENGTH'] = app.suite.max_content_length
     if app.suite.cross_origin:
         CORS(api_tree, intercept_exceptions=True)
 

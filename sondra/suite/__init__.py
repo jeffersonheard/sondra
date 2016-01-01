@@ -1,12 +1,13 @@
 from collections.abc import Mapping
 from abc import ABCMeta
-from copy import copy
 from functools import partial
+import importlib
 from urllib.parse import urlparse
 import requests
 import rethinkdb as r
 import logging
 import logging.config
+import os
 
 from sondra import help
 from sondra.ref import Reference
@@ -230,16 +231,30 @@ class Suite(Mapping, metaclass=SuiteMetaclass):
     name = None
     debug = False
     applications = None
+    definitions = BASIC_TYPES
     url = "http://localhost:5000/api"
     logging = None
     docstring_processor_name = 'preformatted'
     cross_origin = False
     allow_anonymous_formats = {'help', 'schema'}
     api_request_processors = ()
-    definitions = BASIC_TYPES
     connection_config = {
         'default': {}
     }
+    working_directory = os.getcwd()
+
+    # file system settings
+    file_upload_permissions = 0o644
+    file_upload_directory_permissions = 0o755
+    file_upload_temp_dir = None
+    file_upload_max_memory_size = 100*2**20
+    file_upload_handlers = (
+        'sondra.files.uploadhandler.MemoryFileUploadHandler'
+        'sondra.files.uploadhandler.TemporaryFileUploadHandler'
+    )
+    media_root = 'media'
+    media_url = '/media'
+    file_storage = "sondra.files.storage.FileSystemStorage"
 
     @property
     def schema_url(self):
@@ -290,6 +305,15 @@ class Suite(Mapping, metaclass=SuiteMetaclass):
 
         self.name = self.name or self.__class__.__name__
         self.description = self.__doc__ or "No description provided."
+        if isinstance(self.file_storage, str):
+            mod, cls = self.file_storage.rsplit('.', 1)
+            mod = importlib.import_module(mod)
+            cls = getattr(mod, cls)
+            self.storage = cls(self)
+        elif isinstance(self.file_storage, type):
+            self.storage = self.file_storage(self)
+        else:
+            self.storage = self.file_storage
 
         signals.post_init.send(self.__class__, instance=self)
 
