@@ -1,4 +1,6 @@
 from sondra import document, suite, collection, application
+from sondra.document.processors import SlugPropertyProcessor
+from sondra.document.valuehandlers import DateTime, Now, Geometry
 from sondra.auth.request_processor import AuthRequestProcessor
 from sondra.auth.decorators import authentication_required, authorization_required, authenticated_method, authorized_method
 from sondra.expose import expose_method
@@ -45,11 +47,11 @@ class SimpleDocument(document.Document):
         propertyOrder=['name','date','timestamp']
     )
     processors = (
-        document.SlugPropertyProcessor('name'),
+        SlugPropertyProcessor('name'),
     )
     specials = {
-        "date": document.DateTime(),
-        "timestamp": document.Now()
+        "date": DateTime(),
+        "timestamp": Now()
     }
 
     @expose_method
@@ -112,7 +114,7 @@ class ForeignKeyDoc(document.Document):
         required=["name"]
     )
     processors = (
-        document.SlugPropertyProcessor('name'),
+        SlugPropertyProcessor('name'),
     )
 
 
@@ -129,12 +131,12 @@ class SimplePoint(document.Document):
         required=["name","geometry"]
     )
     processors = (
-        document.SlugPropertyProcessor('name'),
+        SlugPropertyProcessor('name'),
     )
     specials = {
-        "geometry": document.Geometry('point'),
-        "date": document.DateTime(),
-        "timestamp": document.Now()
+        "geometry": Geometry('point'),
+        "date": DateTime(),
+        "timestamp": Now()
     }
 
 
@@ -344,7 +346,7 @@ class AuthenticatedDocument(document.Document):
         propertyOrder=['name']
     )
     processors = (
-        document.SlugPropertyProcessor('name'),
+        SlugPropertyProcessor('name'),
     )
 
     @expose_method
@@ -396,7 +398,7 @@ class AuthorizedDocument(document.Document):
         propertyOrder=['name']
     )
     processors = (
-        document.SlugPropertyProcessor('name'),
+        SlugPropertyProcessor('name'),
     )
 
     @expose_method

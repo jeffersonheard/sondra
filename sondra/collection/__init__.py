@@ -291,17 +291,20 @@ class Collection(MutableMapping, metaclass=CollectionMetaclass):
     def _to_python_repr(self, doc):
         for property, special in self.document_class.specials.items():
             if property in doc:
-                doc[property] = special.to_python_repr(doc[property])
+                doc[property] = special.to_python_repr(doc[property], doc)
 
     def _to_json_repr(self, doc):
         for property, special in self.document_class.specials.items():
             if property in doc:
-                doc[property] = special.to_json_repr(doc[property])
+                doc[property] = special.to_json_repr(doc[property], doc)
 
     def _to_rql_repr(self, doc):
         for property, special in self.document_class.specials.items():
             if property in doc:
-                doc[property] = special.to_rql_repr(doc[property])
+                doc[property] = special.to_rql_repr(doc[property], doc)
+
+    def __hash__(self):
+        return hash(self.name)
 
     def __getitem__(self, key):
         """Get an object from the database and populate an instance of self.document_class with its contents.
@@ -317,7 +320,6 @@ class Collection(MutableMapping, metaclass=CollectionMetaclass):
         """
         doc = self.table.get(key).run(self.application.connection)
         if doc:
-            self._to_python_repr(doc)
             return self.document_class(doc, collection=self, from_db=True)
         else:
             raise KeyError('{0} not found in {1}'.format(key, self.url))
@@ -348,7 +350,6 @@ class Collection(MutableMapping, metaclass=CollectionMetaclass):
 
     def __iter__(self):
         for doc in self.table.run(self.application.connection):
-            self._to_python_repr(doc)
             yield self.document_class(doc, collection=self, from_db=True)
 
     def __contains__(self, item):

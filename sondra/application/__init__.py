@@ -210,6 +210,9 @@ class Application(Mapping, metaclass=ApplicationMetaclass):
             self._collections[name] = collection_class(self)
         signals.post_init.send(self.__class__, instance=self)
 
+    def __hash__(self):
+        return hash(self.name)
+
     def __len__(self):
         return len(self._collections)
 

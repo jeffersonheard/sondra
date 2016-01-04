@@ -212,11 +212,16 @@ class Document(MutableMapping, metaclass=DocumentMetaclass):
     def __getitem__(self, key):
         """Return either the value of the property or the default value of the property if the real value is undefined"""
         if key in self.obj:
-            return self.obj[key]
+            v = self.obj[key]
         elif key in self.defaults:
-            return self.defaults[key]
+            v = self.defaults[key]
         else:
             raise KeyError(key)
+
+        if key in self.specials:
+            return self.specials[key].to_python_repr(v, self)
+        else:
+            return v
 
     def fetch(self, key):
         """Return the value of the property interpreting it as a reference to another document"""
@@ -239,7 +244,7 @@ class Document(MutableMapping, metaclass=DocumentMetaclass):
             value = mapjson(_reference, value)
 
         if key in self.specials:
-            value = self.specials[key].to_json_repr(value)
+            value = self.specials[key].to_json_repr(value, self)
 
         self.obj[key] = value
 
@@ -291,27 +296,26 @@ class Document(MutableMapping, metaclass=DocumentMetaclass):
         jsonschema.validate(self.obj, self.schema)
 
 
-class DocumentProcessor(object):
-    def is_necessary(self, changed_props):
-        """Override this method to determine whether the processor should run."""
-        return False
-
-    def run(self, document):
-        """Override this method to post-process a document after it has changed."""
-        return document
-
-
-class SlugPropertyProcessor(DocumentProcessor):
-    def __init__(self, source_prop, dest_prop='slug'):
-        self.dest_prop = dest_prop
-        self.source_prop = source_prop
-
-    def is_necessary(self, changed_props):
-        return self.source_prop in changed_props
-
-    def run(self, document):
-        document[self.dest_prop] = slugify(document[self.source_prop])
-
+# class DocumentProcessor(object):
+#     def is_necessary(self, changed_props):
+#         """Override this method to determine whether the processor should run."""
+#         return False
+#
+#     def run(self, document):
+#         """Override this method to post-process a document after it has changed."""
+#         return document
+#
+#
+# class SlugPropertyProcessor(DocumentProcessor):
+#     def __init__(self, source_prop, dest_prop='slug'):
+#         self.dest_prop = dest_prop
+#         self.source_prop = source_prop
+#
+#     def is_necessary(self, changed_props):
+#         return self.source_prop in changed_props
+#
+#     def run(self, document):
+#         document[self.dest_prop] = slugify(document[self.source_prop])
 
 
 class ValueHandler(object):

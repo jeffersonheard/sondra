@@ -83,10 +83,8 @@ def test_credentials(local_calvin):
 def test_role(role):
     assert role['slug'] == 'test-role'
     assert 'test-role' in s['auth']['roles']
-    assert (role.authorizes('http://localhost:5000/api/auth/roles', 'write') == True)
-    assert (role.authorizes('http://localhost:5000/api/auth/roles', 'read') == True)
-    assert (role.authorizes('http://localhost:5000/api/auth/roles', 'delete') == True)
-    assert (role.authorizes('http://localhost:5000/api/auth/roles', 'add') == False)
+    assert (role.authorizes(s['auth']['roles'], 'write') == True)
+    assert (role.authorizes(s['auth']['roles'], 'read') == True)
 
 
 def test_user_role(local_calvin):

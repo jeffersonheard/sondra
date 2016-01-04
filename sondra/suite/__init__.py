@@ -243,19 +243,6 @@ class Suite(Mapping, metaclass=SuiteMetaclass):
     }
     working_directory = os.getcwd()
 
-    # file system settings
-    file_upload_permissions = 0o644
-    file_upload_directory_permissions = 0o755
-    file_upload_temp_dir = None
-    file_upload_max_memory_size = 100*2**20
-    file_upload_handlers = (
-        'sondra.files.uploadhandler.MemoryFileUploadHandler'
-        'sondra.files.uploadhandler.TemporaryFileUploadHandler'
-    )
-    media_root = 'media'
-    media_url = '/media'
-    file_storage = "sondra.files.storage.FileSystemStorage"
-
     @property
     def schema_url(self):
         return self.url + ";schema"
@@ -305,16 +292,6 @@ class Suite(Mapping, metaclass=SuiteMetaclass):
 
         self.name = self.name or self.__class__.__name__
         self.description = self.__doc__ or "No description provided."
-        if isinstance(self.file_storage, str):
-            mod, cls = self.file_storage.rsplit('.', 1)
-            mod = importlib.import_module(mod)
-            cls = getattr(mod, cls)
-            self.storage = cls(self)
-        elif isinstance(self.file_storage, type):
-            self.storage = self.file_storage(self)
-        else:
-            self.storage = self.file_storage
-
         signals.post_init.send(self.__class__, instance=self)
 
     def register_application(self, app):

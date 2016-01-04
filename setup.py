@@ -4,6 +4,7 @@ setup(
     name='sondra',
     packages=[
        'sondra',
+       'sondra.auth',
        'sondra.commands',
        'sondra.application',
        'sondra.collection',
@@ -13,7 +14,7 @@ setup(
        'sondra.tests',
        'sondra.tests.web',
     ],
-    version='0.0.1',
+    version='0.5.0',
     description='JSON-Schema-based ORM for RethinkDB',
     author="Jefferson Heard",
     author_email="jefferson.r.heard@gmail.com",

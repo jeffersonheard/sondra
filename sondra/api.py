@@ -5,13 +5,10 @@ from functools import partial
 from urllib.parse import urlencode
 import rethinkdb as r
 
-from sondra.document import Geometry
 from sondra.expose import method_schema, method_help
-from sondra._files import uploadhandler
 from .ref import Reference
 from . import document
 import sondra.collection
-from .suite import BASIC_TYPES
 from .utils import mapjson
 
 class ValidationError(Exception):
@@ -294,36 +291,31 @@ Objects
 
         return 'application/json', json.dumps(result, indent=4)
 
+    def _feature(self, doc):
+        properties = doc.obj
+        for key, value in doc.specials.items():
+            if isinstance(value, document.Geometry):
+                geometry = doc.obj[key]
+                break
+        else:
+            geometry = None
+
+        return {
+            "type": "Feature",
+            "geometry": geometry,
+            "properties": properties
+        }
+
     def geojson_response(self, method):
         result = method()
-
-        def fun(doc):
-            if isinstance(doc, document.Document):
-                if doc.specials:
-                    for s, t in doc.specials.items():
-                        if isinstance(t, sondra.document.Geometry):
-                            result = mapjson(fun, doc.obj)
-                            result = {
-                                "type": "Feature",
-                                "geometry": doc[s],
-                                "properties": result
-                            }
-                            break
-                    else:
-                        result = mapjson(fun, doc.obj)
-                    return result
-            else:
-                return doc
-
-        result = mapjson(fun, result)  # make sure to serialize a full Document structure if we have one.
 
         if isinstance(result, list):
             ret = {
                 "type": "FeatureCollection",
-                "features": result
+                "features": [self._feature(x) for x in result]
             }
         else:
-            ret = result
+            ret = self._feature(result)
         return 'application/json', json.dumps(ret, indent=4)
 
     def method_call(self):
@@ -448,10 +440,7 @@ Objects
         q = self._handle_aggregations(q)
         q = self._handle_limits(q)
 
-        if self.dereference:
-            return [x.dereference() for x in coll.q(q)]
-        else:
-            return [x for x in coll.q(q)]
+        return [x for x in coll.q(q)]
 
     def add_collection_items(self):
         coll = self.reference.get_collection()
@@ -503,8 +492,6 @@ Objects
 
     def get_document(self):
         doc = self.reference.get_document()
-        if self.dereference:
-            doc.collection.application.dereference(doc)
         return doc
 
     def set_document(self):

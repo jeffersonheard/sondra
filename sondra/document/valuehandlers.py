@@ -16,7 +16,7 @@ class ValueHandler(object):
     is_geometry = False
     has_default = False
 
-    def to_rql_repr(self, value):
+    def to_rql_repr(self, value, document):
         """Transform the object value into a ReQL object for storage.
 
         Args:
@@ -27,7 +27,7 @@ class ValueHandler(object):
         """
         return value
 
-    def to_json_repr(self, value):
+    def to_json_repr(self, value, document):
         """Transform the object from a ReQL value into a standard value.
 
         Args:
@@ -38,7 +38,7 @@ class ValueHandler(object):
         """
         return value
 
-    def to_python_repr(self, value):
+    def to_python_repr(self, value, document):
         """Transform the object from a ReQL value into a standard value.
 
         Args:
@@ -52,6 +52,12 @@ class ValueHandler(object):
     def default_value(self):
         raise NotImplemented()
 
+    def post_save(self, document):
+        pass
+
+    def pre_delete(self, document):
+        pass
+
 
 class Geometry(ValueHandler):
     """A value handler for GeoJSON"""
@@ -60,13 +66,13 @@ class Geometry(ValueHandler):
     def __init__(self, *allowed_types):
         self.allowed_types = set(x.lower() for x in allowed_types) if allowed_types else None
 
-    def to_rql_repr(self, value):
+    def to_rql_repr(self, value, document):
         if self.allowed_types:
             if value['type'].lower() not in self.allowed_types:
                 raise ValidationError('value not in ' + ','.join(t for t in self.allowed_types))
         return r.geojson(value)
 
-    def to_json_repr(self, value):
+    def to_json_repr(self, value, document):
         if isinstance(value, BaseGeometry):
             return mapping(value)
         elif '$reql_type$' in value:
@@ -75,7 +81,7 @@ class Geometry(ValueHandler):
         else:
             return value
 
-    def to_python_repr(self, value):
+    def to_python_repr(self, value, document):
         if isinstance(value, BaseGeometry):
             return value
         if '$reql_type$' in value:
@@ -99,7 +105,7 @@ class DateTime(ValueHandler):
             offset = posneg*(hours*60 + minutes)
             return offset
 
-    def to_rql_repr(self, value):
+    def to_rql_repr(self, value, document):
         if isinstance(value, str):
             return r.iso8601(value, default_timezone=self.DEFAULT_TIMEZONE).in_timezone(self.timezone)
         elif isinstance(value, int) or isinstance(value, float):
@@ -117,7 +123,7 @@ class DateTime(ValueHandler):
         else:
             return r.iso8601(value.isoformat(), default_timezone=self.DEFAULT_TIMEZONE).as_timezone(self.timezone)
 
-    def to_json_repr(self, value):
+    def to_json_repr(self, value, document):
         if isinstance(value, date) or isinstance(value, datetime):
             return value.isoformat()
         elif isinstance(value, str):
@@ -127,7 +133,7 @@ class DateTime(ValueHandler):
         else:
             return value.to_iso8601()
 
-    def to_python_repr(self, value):
+    def to_python_repr(self, value, document):
         if isinstance(value, str):
             return iso8601.parse_date(value)
         elif isinstance(value, datetime):
@@ -143,17 +149,17 @@ class Now(DateTime):
     def from_rql_tz(self, tz):
         return 0
 
-    def to_rql_repr(self, value):
+    def to_rql_repr(self, value, document):
         value = value or datetime.utcnow()
-        return super(Now, self).to_rql_repr(value)
+        return super(Now, self).to_rql_repr(value, document)
 
-    def to_json_repr(self, value):
+    def to_json_repr(self, value, document):
         value = value or datetime.utcnow()
-        return super(Now, self).to_json_repr(value)
+        return super(Now, self).to_json_repr(value, document)
 
-    def to_python_repr(self, value):
+    def to_python_repr(self, value, document):
         value = value or datetime.utcnow()
-        return super(Now, self).to_python_repr(value)
+        return super(Now, self).to_python_repr(value, document)
 
     def default_value(self):
         return

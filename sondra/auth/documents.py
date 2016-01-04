@@ -2,8 +2,9 @@ from sondra.application import Application
 from sondra.auth.decorators import authorized_method
 from sondra.collection import Collection
 from sondra.expose import expose_method
-from sondra.document import Document, SlugPropertyProcessor, DateTime, Now
-from sondra.ref import Reference
+from sondra.document import Document
+from sondra.document.processors import SlugPropertyProcessor
+from sondra.document.valuehandlers import DateTime
 from sondra.lazy import fk
 import operator
 import functools
