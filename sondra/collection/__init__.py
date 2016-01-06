@@ -9,7 +9,7 @@ import logging.config
 
 from sondra import help, utils
 from sondra.document import Document, signals as doc_signals
-from sondra.expose import method_schema
+from sondra.expose import method_schema, expose_method
 from . import signals
 from sondra.utils import mapjson, resolve_class
 
@@ -386,7 +386,6 @@ class Collection(MutableMapping, metaclass=CollectionMetaclass):
         for doc in query.run(self.application.connection):
             if 'doc' in doc:
                 doc = doc['doc']  # some queries return results that encapsulate the document with metadata
-            self._to_python_repr(doc)
             yield self.document_class(doc, collection=self, from_db=True)
 
     def doc(self, value):
@@ -456,6 +455,10 @@ class Collection(MutableMapping, metaclass=CollectionMetaclass):
         if not isinstance(docs, list):
             docs = [docs]
 
+        for value in docs:
+            if isinstance(value, Document):
+                for s in value.specials.values():
+                    s.pre_delete(value)
         values = [v.id if isinstance(v, Document) else v for v in docs]
         return self.table.get_all(*values).delete(**kwargs).run(self.application.connection)
 
@@ -477,8 +480,6 @@ class Collection(MutableMapping, metaclass=CollectionMetaclass):
         for value in docs:
             if isinstance(value, Document):
                 value._saved = True
-                if self.file_storage:
-                    self.file_storage.persist_document_files(value)
                 value = copy(value.obj)
 
             self._to_json_repr(value)
@@ -489,7 +490,14 @@ class Collection(MutableMapping, metaclass=CollectionMetaclass):
             values.append(value)
 
         ret = self.table.insert(values, **kwargs).run(self.application.connection)
-        doc_signals.post_save.send(self.document_class, results=ret)
+        if docs and isinstance(docs[0], Document):
+            for i, value in enumerate(docs):
+                value._saved = True
+                if 'generated_keys' in ret:
+                    value.id = ret['generated_keys'][i]
+                    for s in value.specials.values():
+                        s.post_save(value)
+                doc_signals.post_save.send(self.document_class, instance=value)
 
         return ret
 
@@ -515,4 +523,7 @@ class Collection(MutableMapping, metaclass=CollectionMetaclass):
         else:
             return values
 
+    @expose_method
+    def count(self) -> int:
+        return len(self)
 

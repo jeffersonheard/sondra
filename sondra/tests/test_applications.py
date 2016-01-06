@@ -18,7 +18,7 @@ def test_app_collections(s):
     assert 'simple-documents' in s['simple-app']
     assert 'simple-points' in s['simple-app']
     assert 'foreign-key-docs' in s['simple-app']
-    assert len(s['simple-app']) == 3
+    assert len(s['simple-app']) == 4
     assert all([isinstance(x, Collection) for x in s['simple-app'].values()])
 
     assert 'simple-documents' not in s['empty-app']

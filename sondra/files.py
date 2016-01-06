@@ -52,7 +52,16 @@ class FileHandler(ValueHandler):
         return self._storage_service.stream(value)
 
     def to_rql_repr(self, value, document):
-        return super().to_rql_repr(value, document)
+        if not hasattr(value, 'read'):
+            return super().to_rql_repr(value, document)
+        else:
+            return self._storage_service.store(
+                document=document,
+                key=self._key,
+                original_filename=getattr(value, "filename", "uploaded-file.dat"),
+                content_type=self._content_type,
+                stream=value
+            )
 
 
 class FileStorageDefaults(object):
@@ -67,14 +76,14 @@ class FileStorageService(object):
         self._path_start = None
 
     def _db(self, collection):
-        return collection.application.db
+        return r.db(collection.application.db)
 
     def _conn(self, collection):
         return collection.application.connection
 
     @lru_cache()
     def _table_name(self, collection):
-        return "_sondra_files__{collection}".format(collection=collection)
+        return "_sondra_files__{collection}".format(collection=collection.name)
 
     @lru_cache()
     def _table(self, collection):
@@ -84,10 +93,10 @@ class FileStorageService(object):
         table = db.table(table_name)
 
         all_tables = { name for name in db.table_list().run(conn) }
-        if table not in all_tables:
+        if table_name not in all_tables:
             db.table_create(table_name).run(conn)
-            db.index_create(table_name, 'document').run(conn)
-            db.index_create(table_name, 'collection').run(conn)
+            table.index_create('document').run(conn)
+            table.index_create('collection').run(conn)
 
         return table
 
@@ -120,7 +129,7 @@ class FileStorageService(object):
             "content_type": content_type,
         }).run(self._conn(collection))
 
-        new_filename = "{id}.{ext}".format(id=result['generated_keys'][0], extension=extension)
+        new_filename = "{id}{ext}".format(id=result['generated_keys'][0], ext=extension)
         self.store_file(collection, new_filename, stream)
         return "{media_url}/{app}/{coll}/{new_filename}".format(
             media_url=self._media_url,
@@ -150,7 +159,7 @@ class FileStorageService(object):
                 .run(self._conn(document.collection))
 
             for f in existing:  # should only be one
-                self.delete_file(document.collection, f['id'] + '.' + f['extension'])
+                self.delete_file(document.collection, f['id'] + f['extension'])
         else:
             self._table(document.collection)\
                 .get_all(document, index='document')\
@@ -159,9 +168,10 @@ class FileStorageService(object):
 
     def stream(self, url):
         app, coll, pk = url[self._path_start:].split('/', 2)
+        pk, ext = os.path.splitext(pk)
         collection = self._suite[app][coll]
         record = self._table(collection).get(pk).run(self._conn(collection))
-        in_stream = self.stream_file(collection, pk)
+        in_stream = self.stream_file(collection, pk + ext)
         return {
             "content_type": record['content_type'],
             "filename": record['original_filename'],
@@ -185,11 +195,11 @@ class LocalFileStorageService(FileStorageService):
     def connect(self, suite):
         super(LocalFileStorageService, self).connect(suite)
 
-        self._root = suite.media_file_root \
-            if suite.media_file_root.startswith('/') \
-            else os.path.join(os.getcwd(), suite.media_file_root)
+        self._root = suite.media_path \
+            if suite.media_path.startswith('/') \
+            else os.path.join(os.getcwd(), suite.media_path)
 
-        os.makedirs(self._root, self._suite.media_path_perms, exist_ok=True)
+        os.makedirs(self._root, self._suite.media_path_permissions, exist_ok=True)
 
     def _path(self, collection, make=False):
         p = os.path.join(self._root, collection.application.slug, collection.slug)

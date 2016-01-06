@@ -67,12 +67,18 @@ class Geometry(ValueHandler):
         self.allowed_types = set(x.lower() for x in allowed_types) if allowed_types else None
 
     def to_rql_repr(self, value, document):
+        if value is None:
+            return value
+
         if self.allowed_types:
             if value['type'].lower() not in self.allowed_types:
                 raise ValidationError('value not in ' + ','.join(t for t in self.allowed_types))
         return r.geojson(value)
 
     def to_json_repr(self, value, document):
+        if value is None:
+            return value
+
         if isinstance(value, BaseGeometry):
             return mapping(value)
         elif '$reql_type$' in value:
@@ -82,6 +88,9 @@ class Geometry(ValueHandler):
             return value
 
     def to_python_repr(self, value, document):
+        if value is None:
+            return value
+
         if isinstance(value, BaseGeometry):
             return value
         if '$reql_type$' in value:
@@ -106,6 +115,9 @@ class DateTime(ValueHandler):
             return offset
 
     def to_rql_repr(self, value, document):
+        if value is None:
+            return value
+
         if isinstance(value, str):
             return r.iso8601(value, default_timezone=self.DEFAULT_TIMEZONE).in_timezone(self.timezone)
         elif isinstance(value, int) or isinstance(value, float):
@@ -124,6 +136,9 @@ class DateTime(ValueHandler):
             return r.iso8601(value.isoformat(), default_timezone=self.DEFAULT_TIMEZONE).as_timezone(self.timezone)
 
     def to_json_repr(self, value, document):
+        if value is None:
+            return value
+
         if isinstance(value, date) or isinstance(value, datetime):
             return value.isoformat()
         elif isinstance(value, str):
@@ -134,6 +149,9 @@ class DateTime(ValueHandler):
             return value.to_iso8601()
 
     def to_python_repr(self, value, document):
+        if value is None:
+            return value
+
         if isinstance(value, str):
             return iso8601.parse_date(value)
         elif isinstance(value, datetime):

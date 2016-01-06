@@ -1,5 +1,22 @@
-from copy import copy
+from copy import copy, deepcopy
 from functools import partial
+
+
+def merge(a, b, path=None):
+    "merges b into a"
+
+    if path is None: path = []
+    for key in b:
+        if key in a:
+            if isinstance(a[key], dict) and isinstance(b[key], dict):
+                merge(a[key], b[key], path + [str(key)])
+            elif a[key] == b[key]:
+                pass # same leaf value
+            else:
+                a[key] = b[key]  # prefer b to a
+        else:
+            a[key] = b[key]
+    return a
 
 
 def extend(proto, *values, **kwargs):
@@ -47,4 +64,8 @@ class S(object):
     time = partial(extend, {"type": "string", "format": "time"})
     url = partial(extend, {"type": "string", "format": "url"})
     week = partial(extend, {"type": "string", "format": "week"})
+
+    @staticmethod
+    def nullable(o):
+        return { "oneOf": [{"type": "null"}, o]}
 

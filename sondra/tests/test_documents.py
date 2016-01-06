@@ -35,6 +35,18 @@ def simple_document(request, s):
 
 
 @pytest.fixture()
+def file_document(request, s):
+    doc = s['simple-app']['file-documents'].create({
+        "name": "file document 1",
+        "file": open("sondra/tests/data/test.json")
+    })
+    def teardown():
+        doc.delete()
+    request.addfinalizer(teardown)
+
+    return doc
+
+@pytest.fixture()
 def foreign_key_document(request, s, simple_document):
     doc = s['simple-app']['foreign-key-docs'].create({
         'name': 'FK Doc',
@@ -70,6 +82,21 @@ def test_document_methods_local(s):
     assert s['simple-app']['simple-documents'].list_return() == ["0", "1", "2", "3"]
     assert s['simple-app']['simple-documents'].dict_return() == {'a': 0, 'b': 1, 'c': 2}
     assert s['simple-app']['simple-documents'].operates_on_self() == s['simple-app']['simple-documents'].title
+
+
+def test_file_storage(s, file_document):
+    result = s.file_storage._table(file_document.collection).get_all(file_document.id, "document").run(s.file_storage._conn(file_document.collection))
+    file_record = next(result)
+    assert file_record['original_file'] == 'test.json'
+    assert file_record['content_type'] == 'application/octet-stream'
+
+    with open('sondra/tests/data/test.json') as infile:
+        original_data = infile.read()
+
+    with file_document['file'] as infile:
+        test_data = infile.read()
+
+    assert original_data == test_data
 
 
 def test_derived_document_inheritance(s):

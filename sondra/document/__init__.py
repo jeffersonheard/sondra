@@ -5,6 +5,7 @@ import logging
 
 from abc import ABCMeta
 from collections.abc import MutableMapping
+from copy import deepcopy
 from datetime import datetime, date
 
 import iso8601
@@ -23,6 +24,7 @@ except:
 
 from sondra import utils, help
 from sondra.utils import mapjson, split_camelcase
+from sondra.schema import merge
 from sondra.ref import Reference
 
 __all__ = (
@@ -40,7 +42,6 @@ def _reference(v):
         return v
 
 
-
 class DocumentMetaclass(ABCMeta):
     """
     The metaclass for all documents merges definitions and schema into a single schema attribute and makes sure that
@@ -51,15 +52,13 @@ class DocumentMetaclass(ABCMeta):
         schema = attrs.get('schema', {"type": "object", "properties": {}})
 
         for base in bases:  # make sure this class inherits definitions and schemas
-            if hasattr(base, "definitions") and base.definitions:
-                definitions.update(base.definitions)
-            if hasattr(base, "collection"):
-                if "allOf" not in schema:
-                    schema["allOf"] = []
-                schema['allOf'].append({"$ref": base.collection.schema_url})
+            if hasattr(base, "definitions") and base.definitions is not None:
+                definitions = merge(deepcopy(base.definitions), definitions)
+            if hasattr(base, "schema") and base.schema is not None:
+                schema = merge(deepcopy(base.schema), schema)
 
         if "definitions" in attrs:
-            attrs['definitions'].update(definitions)
+            merge(attrs['definitions'], definitions)
         else:
             attrs['definitions'] = definitions
 
@@ -126,7 +125,7 @@ class Document(MutableMapping, metaclass=DocumentMetaclass):
         self.collection = collection
         self._saved = from_db
 
-        if self.collection:
+        if self.collection is not None:
             self.schema = self.collection.schema  # this means it's only calculated once. helpful.
         else:
             self.schema = mapjson(lambda x: x(context=self) if callable(x) else x, self.schema)  # turn URL references into URLs
@@ -137,7 +136,6 @@ class Document(MutableMapping, metaclass=DocumentMetaclass):
         if '_url' in obj:
             del obj['_url']
 
-        self._referenced = True
         self.obj = {}
         if obj:
             for k, v in obj.items():
@@ -287,10 +285,10 @@ class Document(MutableMapping, metaclass=DocumentMetaclass):
         return json.dumps(self.obj, *args, **kwargs)
 
     def save(self, conflict='replace', *args, **kwargs):
-        return self.collection.save(self.obj, conflict=conflict, *args, **kwargs)
+        return self.collection.save(self, conflict=conflict, *args, **kwargs)
 
     def delete(self, **kwargs):
-        return self.collection.delete(self.id, **kwargs)
+        return self.collection.delete(self, **kwargs)
 
     def validate(self):
         jsonschema.validate(self.obj, self.schema)

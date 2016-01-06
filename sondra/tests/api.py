@@ -1,6 +1,7 @@
 from sondra import document, suite, collection, application
 from sondra.document.processors import SlugPropertyProcessor
 from sondra.document.valuehandlers import DateTime, Now, Geometry
+from sondra.files import LocalFileStorageService, LocalFileStorageDefaults, FileHandler
 from sondra.auth.request_processor import AuthRequestProcessor
 from sondra.auth.decorators import authentication_required, authorization_required, authenticated_method, authorized_method
 from sondra.expose import expose_method
@@ -8,7 +9,7 @@ from sondra.schema import S
 from sondra.lazy import fk, ref
 
 
-class ConcreteSuite(suite.Suite):
+class ConcreteSuite(suite.Suite, LocalFileStorageDefaults):
     "A simple API for testing"
     definitions = {
         "concreteSuiteDefn": {"type": "string", "pattern": "[0-9]+"}
@@ -16,6 +17,8 @@ class ConcreteSuite(suite.Suite):
     api_request_processors = (
         AuthRequestProcessor(),
     )
+
+    file_storage = LocalFileStorageService()
 
     @authenticated_method
     @expose_method
@@ -26,6 +29,29 @@ class ConcreteSuite(suite.Suite):
     @expose_method
     def authorized_method(self) -> str:
         return "Accessed authorized method"
+
+
+@suite.signals.post_init.connect
+def _connect_storage(sender, instance, *args, **kwargs):
+    print("Connected file storage")
+    instance.file_storage.connect(instance)
+
+class FileDocument(document.Document):
+    schema = S.object(
+        {
+            "name": S.string(title="Name", description="The name of the document"),
+            "slug": S.string(),
+            "file": S.url(),
+            "image": S.url(),
+        }
+    )
+    processors = (
+        SlugPropertyProcessor('name'),
+    )
+    specials = {
+        "file": FileHandler(ConcreteSuite.file_storage, "file"),
+        "image": FileHandler(ConcreteSuite.file_storage, "file", content_type='image/png'),
+    }
 
 
 class SimpleDocument(document.Document):
@@ -140,6 +166,11 @@ class SimplePoint(document.Document):
     }
 
 
+class FileDocuments(collection.Collection):
+    document_class = FileDocument
+    primary_key = "slug"
+    indexes = ("name",)
+
 
 class SimpleDocuments(collection.Collection):
     "A collection of simple documents"
@@ -214,7 +245,8 @@ class SimpleApp(application.Application):
     collections = (
         SimpleDocuments,
         SimplePoints,
-        ForeignKeyDocs
+        ForeignKeyDocs,
+        FileDocuments,
     )
 
     definitions = {
