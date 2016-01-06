@@ -5,7 +5,7 @@ from functools import partial
 from urllib.parse import urlencode
 import rethinkdb as r
 
-from build.lib.sondra.document import valuehandlers
+from sondra.document import valuehandlers
 from sondra.expose import method_schema, method_help
 from .ref import Reference
 from . import document
