@@ -5,6 +5,7 @@ from functools import partial
 from urllib.parse import urlencode
 import rethinkdb as r
 
+from build.lib.sondra.document import valuehandlers
 from sondra.expose import method_schema, method_help
 from .ref import Reference
 from . import document
@@ -294,7 +295,7 @@ Objects
     def _feature(self, doc):
         properties = doc.obj
         for key, value in doc.specials.items():
-            if isinstance(value, document.Geometry):
+            if isinstance(value, valuehandlers.Geometry):
                 geometry = doc.obj[key]
                 break
         else:
