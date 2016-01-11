@@ -62,13 +62,13 @@ class Users(Collection):
     def create_user(
             self,
             username: str,
-            password: str,
             email: str,
             locale: str='en-US',
+            password: str=None,
             family_name: str=None,
             given_name: str=None,
             names: list=None,
-            active: bool=None,
+            active: bool=True,
             roles: list=None,
             confirmed_email: bool=False
     ) -> str:
@@ -94,6 +94,10 @@ class Users(Collection):
             ValueError if the user's password does not pass muster.
         """
         email = email.lower()
+
+        if not password:
+            active=False
+            password=''
 
         if not username:
             username = email
@@ -126,16 +130,17 @@ class Users(Collection):
             user_data['names'] = names
 
         user = self.create(user_data)
-        self.validate_password(password)
-        salt = bcrypt.gensalt()
-        secret = bcrypt.gensalt(16)
-        hashed_password = bcrypt.hashpw(password.encode('utf-8'), salt)
-        self.application['user-credentials'].create({
-            'user': user,
-            'password': hashed_password.decode('utf-8'),
-            'salt': salt.decode('utf-8'),
-            'secret': secret.decode('utf-8')
-        })
+        if active and password:
+            self.validate_password(password)
+            salt = bcrypt.gensalt()
+            secret = bcrypt.gensalt(16)
+            hashed_password = bcrypt.hashpw(password.encode('utf-8'), salt)
+            self.application['user-credentials'].create({
+                'user': user,
+                'password': hashed_password.decode('utf-8'),
+                'salt': salt.decode('utf-8'),
+                'secret': secret.decode('utf-8')
+            })
 
         return user.url
 
@@ -184,11 +189,11 @@ class Users(Collection):
 
     @anonymous_method
     @expose_method
-    def by_email(self, email) -> User:
+    def by_email(self, email: str) -> 'sondra.auth.documents.User':
         email = email.lower()
         u = self.q(self.table.get_all(email, index='email'))
         try:
-            return next(u)
+            return next(u).url
         except:
             return None
 

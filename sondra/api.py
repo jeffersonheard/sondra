@@ -7,6 +7,7 @@ import rethinkdb as r
 
 from sondra.document import valuehandlers
 from sondra.expose import method_schema, method_help
+from sondra.format.json import JSONFormatter
 from .ref import Reference
 from . import document
 import sondra.collection
@@ -84,6 +85,7 @@ Objects
         self.files = files
         self.objects = []
         self.api_arguments = {}
+        self.formatter_kwargs = {}
         self.query = None
 
         self.reference = Reference(
@@ -212,6 +214,8 @@ Objects
         else:
             schema = target.collection.schema
 
+        self.formatter_kwargs = self.reference.kwargs
+
         if self.query_params:
             for k, v in self.query_params.items():
                 v = v[0]  # no list valued arguments in api-args
@@ -273,24 +277,7 @@ Objects
             return 'text/html', self.suite.docstring_processor(value.help())
 
     def json_response(self, method):
-        result = method()
-
-        def fun(doc):
-            if isinstance(doc, document.Document):
-                try:
-                    return mapjson(fun, doc.collection.json(doc))
-                except Exception as x:
-                    print(doc.obj)
-                    raise x
-            else:
-                return doc
-
-        result = mapjson(fun, result)  # make sure to serialize a full Document structure if we have one.
-
-        if not (isinstance(result, dict) or isinstance(result, list)):
-            result = {"_": result}
-
-        return 'application/json', json.dumps(result, indent=4)
+        return JSONFormatter()(self.reference, method(), **self.formatter_kwargs)
 
     def _feature(self, doc):
         properties = doc.obj

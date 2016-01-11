@@ -2,6 +2,7 @@ from flask import request, Blueprint, current_app, Response, abort
 from flask.ext.cors import CORS
 
 import json
+import traceback
 
 from .api import APIRequest
 
@@ -76,7 +77,7 @@ def api_request(path):
         except KeyError as not_found:
             abort(404, description=str(not_found))
 
-        except Exception as error:
-            abort(500, description=str(error))
+        # except Exception as error:
+        #     abort(500, description='\n'.join(traceback.format_exception(error)))
 
 
