@@ -72,7 +72,7 @@ def role(request):
 
 
 def test_credentials(local_calvin):
-    creds = s['auth']['user-credentials'][local_calvin.url]
+    creds = s['auth']['user-credentials'][local_calvin]
     assert isinstance(creds, Credentials)
     assert creds['password'] != 'password'
     assert creds['salt']
@@ -88,7 +88,7 @@ def test_role(role):
 
 
 def test_user_role(local_calvin):
-    assert isinstance(local_calvin.fetch('roles')[0], Role)
+    assert isinstance(local_calvin['roles'][0], Role)
 
 
 def test_login_local(local_calvin):
@@ -100,7 +100,7 @@ def test_login_local(local_calvin):
 
     # Test logout
     s['auth'].logout(token)
-    creds = s['auth']['user-credentials'][local_calvin.url]
+    creds = s['auth']['user-credentials'][local_calvin]
     assert creds['secret'] not in s['auth']['logged-in-users']
 
 

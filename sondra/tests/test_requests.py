@@ -80,6 +80,60 @@ def test_app_help():
     assert r.text
 
 
+def test_method_returns():
+    int_method_url = _url('simple-app/simple-documents.simple-int-return')
+    none_method_url = _url('simple-app/simple-documents.simple-none-return')
+    number_method_url = _url('simple-app/simple-documents.simple-number-return')
+    str_method_url = _url('simple-app/simple-documents.simple-str-return')
+    list_method_url = _url('simple-app/simple-documents.list-return')
+    dict_method_url = _url('simple-app/simple-documents.dict-return')
+    self_method_url = _url('simple-app/simple-documents.operates-on-self')
+    
+    int_rsp = requests.post(int_method_url)
+    assert int_rsp.ok
+    x = int_rsp.json()
+    assert isinstance(x, dict)
+    assert '_' in x
+    assert isinstance(x['_'], int)
+    
+    none_rsp = requests.post(none_method_url)
+    assert none_rsp.ok
+    
+    number_rsp = requests.post(number_method_url)
+    assert number_rsp.ok
+    x = number_rsp.json()
+    assert isinstance(x, dict)
+    assert '_' in x
+    assert isinstance(x['_'], float)
+    
+    str_rsp = requests.post(str_method_url)
+    assert str_rsp.ok
+    x = str_rsp.json()
+    assert isinstance(x, dict)
+    assert '_' in x
+    assert isinstance(x['_'], str)
+    
+    dict_rsp = requests.post(dict_method_url)
+    assert dict_rsp.ok
+    x = dict_rsp.json()
+    assert isinstance(x, dict)
+    assert '_' not in x
+    assert x == {
+        'a': 0,
+        'b': 1,
+        'c': 2
+    }
+
+    list_rsp = requests.post(list_method_url)
+    assert list_rsp.ok
+    x = list_rsp.json()
+    assert isinstance(x, list)
+    assert x == ["0", "1", "2", "3"]
+    
+    self_rsp = requests.post(self_method_url)
+    assert self_rsp.ok
+
+
 def test_app_method():
     """Test all aspects of an app method"""
     test_method_url = _url('simple-app.arg-test')

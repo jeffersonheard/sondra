@@ -1,32 +1,59 @@
-from sondra.document import DateTime, Geometry, Now
+from sondra.document.valuehandlers import DateTime, Geometry, Now
 from shapely.geometry import Point
 from datetime import datetime
 import rethinkdb as r
+import pytest
+
+from sondra.tests.api import *
+from sondra.auth import Auth
+
+s = ConcreteSuite()
+
+api = SimpleApp(s)
+auth = Auth(s)
+AuthenticatedApp(s)
+AuthorizedApp(s)
+s.ensure_database_objects()
 
 
-def test_datetime():
-    dt = DateTime()
-    now = datetime.utcnow()
-    now_seconds = datetime(now.year, now.month, now.day, now.hour, now.minute, now.second)
-    now_str = now_seconds.isoformat()
-    now_rdb = r.time(now.year, now.month, now.day, now.hour, now.minute, now.second, 'Z')
+@pytest.fixture(scope='module')
+def simple_doc(request):
+    simple_doc = s['simple-app']['simple-documents'].create({
+        'name': "valuehandler test",
+        "date": datetime.now(),
+        "value": 0
+    })
+    def teardown():
+        simple_doc.delete()
+    request.addfinalizer(teardown)
+    return simple_doc
 
-    assert isinstance(dt.to_json_repr(now_seconds), str)
-    assert dt.to_json_repr(now_rdb) == now_str
-    assert dt.to_json_repr(now_seconds) == now_str
-    assert dt.to_json_repr(dt.to_python_repr(now_str))
-    assert dt.to_json_repr(dt.to_rql_repr(now_str))
+
+@pytest.fixture(scope='module')
+def fk_doc(request, simple_doc):
+    fk_doc = s['simple-app']['foreign-key-docs'].create({
+        'name': "valuehandler test foreign key",
+        'simple_document': simple_doc,
+        'rest': [simple_doc]
+    })
+    def teardown():
+        fk_doc.delete()
+    request.addfinalizer(teardown)
+    return fk_doc
 
 
-def test_geometry():
-    g = Geometry()
-    pt = Point(-85.0, 33.1)
-    pt_json = {"type": "Point", "coordinates": [-85.0, 33.1]}
+def test_foreignkey(fk_doc, simple_doc):
+    retr_doc = s['simple-app']['foreign-key-docs']['valuehandler-test-foreign-key']
 
-    assert isinstance(g.to_json_repr(pt), dict)
-    assert isinstance(g.to_python_repr(pt_json), Point)
-    assert g.to_rql_repr(pt)
-    assert g.to_rql_repr(pt_json)
-    assert g.to_python_repr(pt)
-    assert g.to_python_repr(pt_json)
-    assert g.to_python_repr(pt_json)
+    # make sure our object representation is the JSON one in the retrieved object.
+    assert isinstance(fk_doc.obj['simple_document'], str)
+    assert fk_doc.obj['simple_document'] == simple_doc.url
+
+    # make sure our object representation is the JSON one in the retrieved object.
+    assert isinstance(retr_doc.obj['simple_document'], str)
+    assert retr_doc.obj['simple_document'] == simple_doc.url
+
+    storage_repr = fk_doc.rql_repr()
+    assert storage_repr['simple_document'] == simple_doc.id
+
+    assert isinstance(fk_doc['simple_document'], SimpleDocument)

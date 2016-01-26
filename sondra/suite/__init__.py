@@ -238,6 +238,7 @@ class Suite(Mapping, metaclass=SuiteMetaclass):
     cross_origin = False
     allow_anonymous_formats = {'help', 'schema'}
     api_request_processors = ()
+    file_storage = None
     connection_config = {
         'default': {}
     }

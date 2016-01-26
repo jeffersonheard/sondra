@@ -5,6 +5,9 @@ from shapely.geometry.base import BaseGeometry
 from shapely.geometry import mapping, shape
 
 from sondra.exceptions import ValidationError
+from sondra.ref import Reference
+from sondra.utils import import_string
+
 
 class ValueHandler(object):
     """This is base class for transforming values to/from RethinkDB representations to standard representations.
@@ -57,6 +60,87 @@ class ValueHandler(object):
 
     def pre_delete(self, document):
         pass
+
+
+class ListHandler(ValueHandler):
+    def __init__(self, sub_handler):
+        self.sub_handler = sub_handler
+
+    def to_rql_repr(self, value, document):
+        if value is not None:
+            return [self.sub_handler.to_rql_repr(v, document) for v in value]
+
+
+    def to_json_repr(self, value, document):
+        if value is not None:
+            return [self.sub_handler.to_json_repr(v, document) for v in value]
+
+    def to_python_repr(self, value, document):
+        if value is not None:
+            return [self.sub_handler.to_python_repr(v, document) for v in value]
+
+
+class KeyValueHandler(ValueHandler):
+    """Handle a key-value object of a particular type of value"""
+    def __init__(self, sub_handler):
+        self.sub_handler = sub_handler
+
+    def to_rql_repr(self, value, document):
+        if value:
+            return {k: self.sub_handler.to_rql_repr(v, document) for k, v in value.items()}
+
+    def to_json_repr(self, value, document):
+        if value:
+            return {k: self.sub_handler.to_json_repr(v, document) for k, v in value.items()}
+
+    def to_python_repr(self, value, document):
+        if value:
+            return {k: self.sub_handler.to_python_repr(v, document) for k, v in value.items()}
+
+
+class ForeignKey(ValueHandler):
+    def __init__(self, app, coll):
+        self._app = app
+        self._coll = coll
+
+    def to_rql_repr(self, value, document):
+        """Should be just the 'id' of the document, not the full URL for portability"""
+
+        if value is None:
+            return value
+        elif isinstance(value, str):
+            if value.startswith('/') or value.startswith('http'):
+                return Reference(document.suite, value).value.id
+            else:
+                return value
+        else:
+            return value.id
+
+    def to_json_repr(self, value, document):
+        """The URL of the document"""
+
+        if value is None:
+            return None
+        elif isinstance(value, str):
+            if value.startswith('/') or value.startswith('http'):
+                return value
+            else:
+                return document.suite[self._app][self._coll][value].url
+        else:
+            return value.url
+
+    def to_python_repr(self, value, document):
+        """The document itself"""
+
+        if value is None:
+            return None
+        elif isinstance(value, str):
+            if value.startswith('/') or value.startswith('http'):
+                return Reference(document.suite, value).value
+            else:
+                return document.suite[self._app][self._coll][value]
+        else:
+            return value
 
 
 class Geometry(ValueHandler):

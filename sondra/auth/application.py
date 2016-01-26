@@ -46,7 +46,7 @@ class Auth(Application):
             self.log.warning("Failed login attempt by nonexistent user: {0}".format(username))
             raise PermissionError("Login not valid")
 
-        credentials = self['user-credentials'][user.url]
+        credentials = self['user-credentials'][username]
         hashed_real_password = credentials['password'].encode('utf-8')
         hashed_given_password = bcrypt.hashpw(password.encode('utf-8'), credentials['salt'].encode('utf-8'))
         if hashed_real_password == hashed_given_password:
@@ -120,10 +120,11 @@ class Auth(Application):
             claims.update(credentials['extraClaims'])
         token = jwt.encode(claims, credentials['secret']).decode('utf-8')
 
-        logged_in_user = {
+        logged_in_user = self['logged-in-users'].doc({
             "token": token,
             "secret": credentials['secret']
-        }
+        })
+
         if 'exp' in claims:
             logged_in_user['exp'] = claims['exp']
 

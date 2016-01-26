@@ -318,6 +318,9 @@ class Collection(MutableMapping, metaclass=CollectionMetaclass):
         Raises:
             KeyError if the object is not found in the database.
         """
+        if isinstance(key, Document):  # handle the case where our primary key is a foreign key and the user passes in the instance.
+            key = key.id
+
         doc = self.table.get(key).run(self.application.connection)
         if doc:
             return self.document_class(doc, collection=self, from_db=True)
@@ -478,16 +481,13 @@ class Collection(MutableMapping, metaclass=CollectionMetaclass):
         values = []
         doc_signals.pre_save.send(self.document_class, docs=docs)
         for value in docs:
-            if isinstance(value, Document):
-                value._saved = True
-                value = copy(value.obj)
+            if not isinstance(value, Document):
+                value = self.document_class(value)
 
-            self._to_json_repr(value)
-            jsonschema.validate(value, self.schema)
-            self.validator(value)
-
-            self._to_rql_repr(value)
-            values.append(value)
+            value.validate()
+            value._saved = True
+            rql = value.rql_repr()
+            values.append(rql)
 
         ret = self.table.insert(values, **kwargs).run(self.application.connection)
         if docs and isinstance(docs[0], Document):

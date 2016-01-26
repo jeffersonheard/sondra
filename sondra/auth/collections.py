@@ -105,10 +105,6 @@ class Users(Collection):
         if username in self:
             raise PermissionError("Attempt to create duplicate user " + username)
 
-        if roles:
-            for role in roles:
-                assert role in self.suite['auth']['roles']
-
         user_data = {
             "username": username,
             "email": email,

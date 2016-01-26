@@ -14,7 +14,6 @@ class JSONFormatter(object):
                 src = src[prop]
             else:
                 return
-        print("args:", src, i)
         if i in src and src[i] is not None:
             x = Reference(suite, src[i]).value
             src[i] = x.collection.json(x)
@@ -25,23 +24,23 @@ class JSONFormatter(object):
 
         if 'fetch' in kwargs:
             fetch = kwargs['fetch'].split(',')
-            print("Fetch: ", fetch)
             del kwargs['fetch']
         else:
             fetch = []
 
         def fun(doc):
             if isinstance(doc, document.Document):
-                ret = doc.collection.json(doc)
+                ret = doc.json_repr()
                 for f in fetch:
-                    self._deref(reference.environment, ret, f)
-                return mapjson(fun, ret)
+                    if f in doc:
+                        ret[f] = doc[f].json_repr()
+                return ret
             else:
                 return doc
 
         result = mapjson(fun, results)  # make sure to serialize a full Document structure if we have one.
 
         if not (isinstance(result, dict) or isinstance(result, list)):
-            result, = {"_": result}
+            result = {"_": result}
 
         return 'application/json', json.dumps(result, **kwargs)

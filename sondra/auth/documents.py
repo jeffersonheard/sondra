@@ -4,7 +4,7 @@ from sondra.collection import Collection
 from sondra.expose import expose_method
 from sondra.document import Document
 from sondra.document.processors import SlugPropertyProcessor
-from sondra.document.valuehandlers import DateTime
+from sondra.document.valuehandlers import DateTime, ForeignKey, ListHandler
 from sondra.lazy import fk
 import operator
 import functools
@@ -149,7 +149,8 @@ class User(Document):
         }
     }
     specials = {
-        "created": DateTime()
+        "created": DateTime(),
+        "roles": ListHandler(ForeignKey('auth','roles'))
     }
 
     @expose_method
@@ -202,6 +203,10 @@ class Credentials(Document):
         }
     }
 
+    specials = {
+        'user': ForeignKey('auth','users')
+    }
+
 
 class LoggedInUser(Document):
     schema = {
@@ -213,7 +218,7 @@ class LoggedInUser(Document):
         }
     }
     specials = {
-        "expires": DateTime()
+        "expires": DateTime(),
     }
 
 

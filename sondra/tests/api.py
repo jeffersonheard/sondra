@@ -1,6 +1,6 @@
 from sondra import document, suite, collection, application
 from sondra.document.processors import SlugPropertyProcessor
-from sondra.document.valuehandlers import DateTime, Now, Geometry
+from sondra.document.valuehandlers import DateTime, Now, Geometry, ForeignKey, ListHandler
 from sondra.files import LocalFileStorageService, LocalFileStorageDefaults, FileHandler
 from sondra.auth.request_processor import AuthRequestProcessor
 from sondra.auth.decorators import authentication_required, authorization_required, authenticated_method, authorized_method
@@ -34,7 +34,8 @@ class ConcreteSuite(suite.Suite, LocalFileStorageDefaults):
 @suite.signals.post_init.connect
 def _connect_storage(sender, instance, *args, **kwargs):
     print("Connected file storage")
-    instance.file_storage.connect(instance)
+    if instance.file_storage is not None:
+        instance.file_storage.connect(instance)
 
 class FileDocument(document.Document):
     schema = S.object(
@@ -139,6 +140,10 @@ class ForeignKeyDoc(document.Document):
         },
         required=["name"]
     )
+    specials = {
+        'simple_document': ForeignKey("simple-app", 'simple-documents'),
+        'rest': ListHandler(ForeignKey('simple-app', 'simple-documents'))
+    }
     processors = (
         SlugPropertyProcessor('name'),
     )

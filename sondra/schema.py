@@ -69,3 +69,5 @@ class S(object):
     def nullable(o):
         return { "oneOf": [{"type": "null"}, o]}
 
+
+

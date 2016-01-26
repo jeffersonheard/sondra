@@ -41,7 +41,7 @@ def suite_help():
 @api_tree.route('/<path:path>', methods=['GET','POST','PUT','PATCH', 'DELETE'])
 def api_request(path):
     if request.method == 'HEAD':
-        resp = Response(status=200)
+        return Response(status=200)
     else:
         args = dict(request.args)
         if 'q' not in args:
