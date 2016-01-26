@@ -37,6 +37,7 @@ def _connect_storage(sender, instance, *args, **kwargs):
     if instance.file_storage is not None:
         instance.file_storage.connect(instance)
 
+
 class FileDocument(document.Document):
     schema = S.object(
         {
