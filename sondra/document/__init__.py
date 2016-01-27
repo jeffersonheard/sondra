@@ -207,6 +207,9 @@ class Document(MutableMapping, metaclass=DocumentMetaclass):
         """True if and only if the primary keys are the same"""
         return self.id and (self.id == other.id)
 
+    def __contains__(self, item):
+        return item in self.obj
+
     def __getitem__(self, key):
         """Return either the value of the property or the default value of the property if the real value is undefined"""
         if isinstance(key, Document):  # handle the case where our primary key is a foreign key and the user passes in the instance.

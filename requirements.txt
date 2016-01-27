@@ -22,7 +22,6 @@ rethinkdb==2.2.0.post1
 Shapely==1.5.13
 simplegeneric==0.8.1
 six==1.10.0
-sondra==0.0.1
 Sphinx==1.2.3
 sphinxcontrib-napoleon==0.3.11
 Unidecode==0.4.18
