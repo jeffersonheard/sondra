@@ -20,15 +20,15 @@ class DocumentProcessor(object):
 class SlugPropertyProcessor(DocumentProcessor):
     """Slugify a document property"""
 
-    def __init__(self, source_prop, dest_prop='slug'):
+    def __init__(self, *source_props, dest_prop='slug'):
         self.dest_prop = dest_prop
-        self.source_prop = source_prop
+        self.source_props = source_props
 
     def is_necessary(self, changed_props):
-        return self.source_prop in changed_props
+        return len({p for p in self.source_props if p in changed_props}) > 0
 
     def run(self, document):
-        document[self.dest_prop] = slugify(document[self.source_prop])
+        document[self.dest_prop] = '-'.join([slugify(str(document.obj[p])) for p in self.source_props])
 
 
 class TimestampOnUpdate(DocumentProcessor):
