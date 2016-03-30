@@ -60,7 +60,7 @@ class Auth(Application):
 
     @authenticated_method
     @expose_method
-    def logout(self, token: str) -> bool:
+    def logout(self, token: str, _user=None) -> bool:
         u = self['logged-in-users'].for_token(token)
         if u:
             u.delete()
@@ -70,7 +70,7 @@ class Auth(Application):
 
     @authenticated_method
     @expose_method
-    def renew(self, token: str) -> str:
+    def renew(self, token: str, _user=None) -> str:
         """Renew a currently logged in user's token.
 
         Args:

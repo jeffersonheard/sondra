@@ -1,17 +1,21 @@
 import json
 
 from sondra import collection, document
+from sondra.document.valuehandlers import Geometry
 from sondra.utils import mapjson
 
 class GeoJSON(object):
-    name = 'geojson'
-
     def __call__(self, reference, result, **kwargs):
+        if 'geom' in kwargs:
+            geometry_field = kwargs['geom']
+        else:
+            geometry_field = None
+
         def fun(doc):
             if isinstance(doc, document.Document):
-                if doc.collection and doc.collection.specials:
-                    for s, t in doc.collection.specials.items():
-                        if isinstance(t, collection.Geometry):
+                if doc.specials:
+                    for s, t in doc.specials.items():
+                        if isinstance(t, Geometry):
                             result = mapjson(fun, doc.obj)
                             result = {
                                 "type": "Feature",
@@ -27,6 +31,11 @@ class GeoJSON(object):
 
         if 'indent' in kwargs:
             kwargs['indent'] = int(kwargs['indent'])
+
+        if 'ordered' in kwargs:
+            ordered = bool(kwargs.get('ordered', False))
+            del kwargs['ordered']
+
 
         result = mapjson(fun, result)  # make sure to serialize a full Document structure if we have one.
 

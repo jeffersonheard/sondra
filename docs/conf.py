@@ -78,7 +78,7 @@ release = '0.0.1'
 # There are two options for replacing |today|: either, you set today to some
 # non-false value, then it is used:
 #today = ''
-# Else, today_fmt is used as the format for a strftime call.
+# Else, today_fmt is used as the formatters for a strftime call.
 #today_fmt = '%B %d, %Y'
 
 # List of patterns, relative to source directory, that match files and
@@ -151,7 +151,7 @@ html_static_path = ['_static']
 #html_extra_path = []
 
 # If not '', a 'Last updated on:' timestamp is inserted at every page bottom,
-# using the given strftime format.
+# using the given strftime formatters.
 #html_last_updated_fmt = '%b %d, %Y'
 
 # If true, SmartyPants will be used to convert quotes and dashes to

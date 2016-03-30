@@ -10,7 +10,7 @@ setup(
        'sondra.collection',
        'sondra.document',
        'sondra.suite',
-       'sondra.format',
+       'sondra.formatters',
        'sondra.tests',
        'sondra.tests.web',
     ],

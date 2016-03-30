@@ -125,21 +125,6 @@ class RSTBuilder(object):
         self._list = []
         self._indents = []
 
-    # def _begin_line(self):
-    #     if len(self._list):
-    #         self._out.write(self._indent_str)
-    #         self._out.write(self._list[-1])
-    #         self._out.write(" ")
-    #         self._indent(2)
-    #     else:
-    #         self._out.write(self._indent_str)
-    #
-    # def _write(self, s):
-    #     self._out.write(s)
-    #
-    # def _end_line(self):
-    #     self._out.write('\n')
-
     def line(self, s=''):
         s = [l.strip() for l in s.splitlines()]
         first, *rest = s if s else (None, [])
@@ -417,8 +402,8 @@ class SchemaHelpBuilder(RSTBuilder):
         if "pattern" in typedef:
             self.define("Matches regular expression", "``" + typedef['pattern'] + "``")
 
-        if "format" in typedef:
-            self.define("Required format", typedef['format'])
+        if "formatters" in typedef:
+            self.define("Required formatters", typedef['formatters'])
 
     def _type_specifier(self, typedef):
         if "type" in typedef:

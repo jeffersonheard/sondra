@@ -1,7 +1,7 @@
 from sondra import document, suite, collection, application
 from sondra.document.processors import SlugPropertyProcessor
 from sondra.document.valuehandlers import DateTime, Now, Geometry, ForeignKey, ListHandler
-from sondra.files import LocalFileStorageService, LocalFileStorageDefaults, FileHandler
+from sondra.file3 import FileUploadProcessor, LocalFileStorage, FileHandler
 from sondra.auth.request_processor import AuthRequestProcessor
 from sondra.auth.decorators import authentication_required, authorization_required, authenticated_method, authorized_method
 from sondra.expose import expose_method
@@ -9,33 +9,27 @@ from sondra.schema import S
 from sondra.lazy import fk, ref
 
 
-class ConcreteSuite(suite.Suite, LocalFileStorageDefaults):
+class ConcreteSuite(suite.Suite):
     "A simple API for testing"
     definitions = {
         "concreteSuiteDefn": {"type": "string", "pattern": "[0-9]+"}
     }
     api_request_processors = (
         AuthRequestProcessor(),
+        FileUploadProcessor()
     )
 
-    file_storage = LocalFileStorageService()
+    file_storage = LocalFileStorage('/Users/pronto365/Source/foss/sondra/_media', 'http://localhost:5000/uploads')
 
     @authenticated_method
     @expose_method
-    def authenticated_method(self) -> str:
+    def authenticated_method(self, _user=None) -> str:
         return "Successfully authenticated method"
 
     @authorized_method
     @expose_method
-    def authorized_method(self) -> str:
+    def authorized_method(self, _user=None) -> str:
         return "Accessed authorized method"
-
-
-@suite.signals.post_init.connect
-def _connect_storage(sender, instance, *args, **kwargs):
-    print("Connected file storage")
-    if instance.file_storage is not None:
-        instance.file_storage.connect(instance)
 
 
 class FileDocument(document.Document):
@@ -50,10 +44,10 @@ class FileDocument(document.Document):
     processors = (
         SlugPropertyProcessor('name'),
     )
-    specials = {
-        "file": FileHandler(ConcreteSuite.file_storage, "file"),
-        "image": FileHandler(ConcreteSuite.file_storage, "file", content_type='image/png'),
-    }
+    # specials = {
+    #     "file": FileHandler(ConcreteSuite.file_storage, "file"),
+    #     "image": FileHandler(ConcreteSuite.file_storage, "file", content_type='image/png'),
+    # }
 
 
 class SimpleDocument(document.Document):
@@ -121,12 +115,12 @@ class SimpleDocument(document.Document):
 
     @authenticated_method
     @expose_method
-    def authenticated_method(self) -> str:
+    def authenticated_method(self, _user=None) -> str:
         return "Successfully authenticated method"
 
     @authorized_method
     @expose_method
-    def authorized_method(self) -> str:
+    def authorized_method(self, _user=None) -> str:
         return "Accessed authorized method"
 
 
@@ -222,12 +216,12 @@ class SimpleDocuments(collection.Collection):
 
     @authenticated_method
     @expose_method
-    def authenticated_method(self) -> str:
+    def authenticated_method(self, _user=None) -> str:
         return "Successfully authenticated method"
 
     @authorized_method
     @expose_method
-    def authorized_method(self) -> str:
+    def authorized_method(self, _user=None) -> str:
         return "Accessed authorized method"
 
 
@@ -297,12 +291,12 @@ class SimpleApp(application.Application):
 
     @authenticated_method
     @expose_method
-    def authenticated_method(self) -> str:
+    def authenticated_method(self, _user=None) -> str:
         return "Successfully authenticated method"
 
     @authorized_method
     @expose_method
-    def authorized_method(self) -> str:
+    def authorized_method(self, _user=None) -> str:
         return "Accessed authorized method"
 
 
@@ -344,12 +338,12 @@ class AuthenticatedSuite(suite.Suite):
 
     @authenticated_method
     @expose_method
-    def authenticated_method(self) -> str:
+    def authenticated_method(self, _user=None) -> str:
         return "Successfully authenticated method"
 
     @authorized_method
     @expose_method
-    def authorized_method(self) -> str:
+    def authorized_method(self, _user=None) -> str:
         return "Accessed authorized method"
 
 
@@ -362,12 +356,12 @@ class AuthorizedSuite(suite.Suite):
 
     @authenticated_method
     @expose_method
-    def authenticated_method(self) -> str:
+    def authenticated_method(self, _user=None) -> str:
         return "Successfully authenticated method"
 
     @authorized_method
     @expose_method
-    def authorized_method(self) -> str:
+    def authorized_method(self, _user=None) -> str:
         return "Accessed authorized method"
 
 

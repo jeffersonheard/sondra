@@ -2,7 +2,7 @@ from functools import reduce
 from sondra.application import Application
 from sondra.collection import Collection, DateTime
 from sondra.document import Document
-from sondra.decorators import expose
+from sondra._decorators import expose
 import datetime
 import bcrypt
 import jwt

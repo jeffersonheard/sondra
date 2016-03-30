@@ -11,7 +11,7 @@ from sondra import help, utils
 from sondra.document import Document, signals as doc_signals
 from sondra.expose import method_schema, expose_method
 from . import signals
-from sondra.utils import mapjson, resolve_class
+from sondra.utils import mapjson, resolve_class, split_camelcase
 
 _validator = jsonschema.Draft4Validator
 
@@ -30,6 +30,8 @@ class CollectionMetaclass(ABCMeta):
     * definitions from base classes are included in subclasses.
     * exposed methods in base classes are included in subclasses.
     """
+    document_class=None
+    primary_key='id'
 
     def __new__(mcs, name, bases, attrs):
         definitions = {}
@@ -51,18 +53,17 @@ class CollectionMetaclass(ABCMeta):
     def __init__(cls, name, bases, nmspc):
         super(CollectionMetaclass, cls).__init__(name, bases, nmspc)
         cls.exposed_methods = {}
+        cls.title = cls.title or cls.__name__
+        cls.name = utils.convert_camelcase(cls.__name__)
+
         for base in bases:
             if hasattr(base, 'exposed_methods'):
                 cls.exposed_methods.update(base.exposed_methods)
         for name, method in (n for n in nmspc.items() if hasattr(n[1], 'exposed')):
                 cls.exposed_methods[name] = method
 
-        cls.name = utils.convert_camelcase(cls.__name__)
-        logging.debug("Registered " + cls.name)
-
         if cls.document_class and (cls.document_class is not Document):
             cls.abstract = False
-
             cls.schema = deepcopy(cls.document_class.schema)
 
             if 'id' in cls.schema['properties']:
@@ -74,8 +75,13 @@ class CollectionMetaclass(ABCMeta):
             cls.schema["methods"] = [m.slug for m in cls.exposed_methods.values()]
             cls.schema["documentMethods"] = [m.slug for m in cls.document_class.exposed_methods.values()]
 
-            _validator.check_schema(cls.schema)
+            if not 'description' in cls.schema:
+                cls.schema['description'] = cls.document_class.__doc__ or 'No Description Provided.'
 
+            if not 'title' in cls.schema:
+                cls.schema['title'] = split_camelcase(cls.document_class.__name__)
+
+            _validator.check_schema(cls.schema)
 
             cls.slug = utils.camelcase_slugify(cls.__name__)
 
@@ -206,7 +212,8 @@ class Collection(MutableMapping, metaclass=CollectionMetaclass):
     def help(self, out=None, initial_heading_level=0):
         """Return full reStructuredText help for this class"""
         builder = help.SchemaHelpBuilder(self.schema, self.url, out=out, initial_heading_level=initial_heading_level)
-        builder.begin_subheading(self.title)
+        builder.build()
+        builder.begin_subheading("Info")
         builder.begin_list()
         builder.define("Application", self.application.url + ';help')
         builder.define("Schema URL", self.schema_url)
@@ -214,7 +221,7 @@ class Collection(MutableMapping, metaclass=CollectionMetaclass):
         builder.define("Primary Key", self.primary_key)
         builder.end_list()
         builder.end_subheading()
-        builder.build()
+
         if self.exposed_methods:
             builder.begin_subheading("Methods")
             for name, method in self.exposed_methods.items():
@@ -288,21 +295,6 @@ class Collection(MutableMapping, metaclass=CollectionMetaclass):
 
         return ret
 
-    def _to_python_repr(self, doc):
-        for property, special in self.document_class.specials.items():
-            if property in doc:
-                doc[property] = special.to_python_repr(doc[property], doc)
-
-    def _to_json_repr(self, doc):
-        for property, special in self.document_class.specials.items():
-            if property in doc:
-                doc[property] = special.to_json_repr(doc[property], doc)
-
-    def _to_rql_repr(self, doc):
-        for property, special in self.document_class.specials.items():
-            if property in doc:
-                doc[property] = special.to_rql_repr(doc[property], doc)
-
     def __hash__(self):
         return hash(self.name)
 
@@ -352,8 +344,8 @@ class Collection(MutableMapping, metaclass=CollectionMetaclass):
         doc_signals.post_delete.send(self.document_class, results=results)
 
     def __iter__(self):
-        for doc in self.table.run(self.application.connection):
-            yield self.document_class(doc, collection=self, from_db=True)
+        for k in self.table.get_field(self.primary_key).run(self.application.connection):
+            yield k
 
     def __contains__(self, item):
         """Checks to see if the primary key is in the database.
@@ -501,7 +493,20 @@ class Collection(MutableMapping, metaclass=CollectionMetaclass):
 
         return ret
 
-    def json(self, docs):
+    def json_repr(self, docs, ordered=False):
+        pop = False
+        if not isinstance(docs, list):
+            docs = [docs]
+            pop = True
+
+        values = [v.json_repr(ordered) for v in docs]
+
+        if pop:
+            return values[0]
+        else:
+            return values
+
+    def geojson_repr(self, docs, ordered=False):
         pop = False
         if not isinstance(docs, list):
             docs = [docs]
@@ -514,16 +519,22 @@ class Collection(MutableMapping, metaclass=CollectionMetaclass):
                 v['_url'] = value.url
                 value = v
 
-            self._to_json_repr(value)
-
-            values.append(value)
+            values.append(value.geojson_repr(ordered))
 
         if pop:
             return values[0]
         else:
-            return values
+            return {"type": "FeatureCollection", "features": values}
 
     @expose_method
     def count(self) -> int:
         return len(self)
 
+
+    @expose_method
+    def key_list(self) -> list:
+        return list(self.keys())
+
+    @expose_method
+    def key_map(self) -> dict:
+        return {k: str(self[k]) for k in self}

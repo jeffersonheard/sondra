@@ -14,7 +14,7 @@ def cli():
     pass
 
 @cli.command()
-@click.option("--format", '-f', type=click.Choice(['html','rst', 'odt']), default='html')
+@click.option("--formatters", '-f', type=click.Choice(['html','rst', 'odt']), default='html')
 @click.option("--destpath", '-d', default='.')
 @click.argument("classnames", nargs=-1)
 def classes(format, destpath, classnames):
@@ -49,7 +49,7 @@ def classes(format, destpath, classnames):
 
 
 @cli.command()
-@click.option("--format", '-f', type=click.Choice(['html','rst', 'odt']), default='html')
+@click.option("--formatters", '-f', type=click.Choice(['html','rst', 'odt']), default='html')
 @click.option("--destpath", '-d', default='.')
 @click.argument("suite", nargs=1)
 @click.argument("apps", nargs=-1)

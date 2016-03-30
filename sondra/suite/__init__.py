@@ -13,19 +13,20 @@ from sondra import help
 from sondra.ref import Reference
 from . import signals
 
-
+CSS_PATH = os.path.join(os.getcwd(), 'static', 'css', 'help.css')
 DOCSTRING_PROCESSORS = {}
 try:
     from docutils.core import publish_string
     from sphinxcontrib import napoleon
+
 
     def google_processor(s):
         return publish_string(
             str(napoleon.GoogleDocstring(s)),
             writer_name='html',
             settings_overrides={
-                "stylesheet_path": "/static/css/flasky.css",
-                "embed_stylesheet": False,
+                "stylesheet_path": CSS_PATH,
+                "embed_stylesheet": True,
                 'report_level': 5
             }
         )
@@ -35,8 +36,8 @@ try:
             str(napoleon.NumpyDocstring(s)),
             writer_name='html',
             settings_overrides={
-                "stylesheet_path": "/static/css/flasky.css",
-                "embed_stylesheet": False,
+                "stylesheet_path": CSS_PATH,
+                "embed_stylesheet": True,
                 'report_level': 5
             }
         )
@@ -49,7 +50,7 @@ except ImportError:
 try:
     from docutils.core import publish_string
 
-    DOCSTRING_PROCESSORS['rst'] = partial(publish_string, writer_name='html', settings_overrides={"stylesheet_path": "sondra/css/flasky.css"})
+    DOCSTRING_PROCESSORS['rst'] = partial(publish_string, writer_name='html', settings_overrides={"stylesheet_path": CSS_PATH, "embed_stylesheet": True})
 except ImportError:
     pass
 

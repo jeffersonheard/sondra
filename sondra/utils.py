@@ -1,6 +1,7 @@
 import importlib
 import inspect
 import re
+from collections import OrderedDict
 from copy import deepcopy
 import hashlib
 import random
@@ -150,3 +151,30 @@ def import_string(dotted_path):
         msg = 'Module "%s" does not define a "%s" attribute/class' % (
             module_path, class_name)
         six.reraise(ImportError, ImportError(msg), sys.exc_info()[2])
+
+
+def natural_order(json_repr, first=None):
+    """
+    Dictionary sort order for JSON. Optionally prioritize keys.
+
+    :param json_repr: A JSON-compatible data structure.
+    :param first: An optional list of keys to list first, in order.
+
+    :return: A JSON compatible data structure that will print keys in the right order.
+    """
+    first = first or ()
+
+    if isinstance(json_repr, dict):
+        od = OrderedDict()
+        keys = set(json_repr.keys())
+        for k in first:
+            if k in json_repr:
+                od[k] = natural_order(json_repr[k])
+                keys.discard(k)
+        for k in sorted(keys):
+            od[k] = natural_order(json_repr[k])
+        return od
+    elif isinstance(json_repr, list):
+        return [natural_order(item, first) for item in json_repr]
+    else:
+        return json_repr

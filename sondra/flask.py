@@ -43,10 +43,7 @@ def api_request(path):
     if request.method == 'HEAD':
         return Response(status=200)
     else:
-        args = dict(request.args)
-        if 'q' not in args:
-            if request.form:
-                args['q'] = [json.dumps({k: v for k, v in request.form.items()})]
+        args = {k:v for k, v in request.values.items()}
 
         try:
             r = APIRequest(
@@ -54,15 +51,21 @@ def api_request(path):
                 request.headers,
                 request.data,
                 request.method,
-                None,
                 current_app.suite.url + '/' + path,
                 args,
                 request.files
             )
 
             # Run any number of post-processing steps on this request, including
-            for p in current_app.suite.api_request_processors:
-                r = p(r)
+            try:
+                for p in current_app.suite.api_request_processors:
+                    r = p(r)
+            except Exception as e:
+                for p in current_app.suite.api_request_processors:
+                    p.cleanup_after_exception(r, e)
+                raise e
+
+            r.validate()
 
             mimetype, response = r()
             resp = Response(

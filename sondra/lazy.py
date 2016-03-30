@@ -9,11 +9,14 @@ from functools import partial
 
 FOREIGN_KEY = "fk"
 
-def _deferred_url_for(klass, context, fmt='schema', fragment=None):
+
+def _deferred_url_for(klass, context, fmt=None, fragment=None):
     from sondra.document import Document
     from sondra.suite import Suite
     from sondra.application import Application
     from sondra.collection import Collection
+
+    fmt = ';'+fmt if fmt else ''
 
     if isinstance(klass, str):
         if "/" in klass or ('.' not in klass):
@@ -43,11 +46,11 @@ def _deferred_url_for(klass, context, fmt='schema', fragment=None):
         for app in suite.values():
             for coll in app.values():
                 if coll.document_class is klass:
-                    ret = coll.url + ';' + fmt
+                    ret = coll.url + fmt
                     if fragment:
-                        return ret + ';schema' + fragment
+                        return ret + fragment
                     else:
-                        return ret + ';schema'
+                        return ret + fmt
         else:
             raise KeyError("Cannot find document in a registered collection {0}".format(klass))
     elif issubclass(klass, Collection):
@@ -58,24 +61,24 @@ def _deferred_url_for(klass, context, fmt='schema', fragment=None):
         else:
             raise KeyError("Cannot find collection in a registered application {0}".format(klass))
     elif issubclass(klass, Application):
-        ret = suite[slug].url + ';' + fmt
+        ret = suite[slug].url + fmt
     elif issubclass(klass, Suite):
-        ret = suite.url
+        ret = suite.url + fmt
     else:
         raise ValueError("Target class must be an Application, Document, Collection, or Suite")
 
     if fragment:
-        return ret + ";schema" + fragment
+        return ret + fragment
     else:
-        return ret + ';schema'
+        return ret + fmt
 
 
-def url_for(klass, fmt='schema'):
+def url_for(klass, fmt=None):
     """Defer the calculation of the URL until the application has been initialized.
 
     Args:
         klass (str or type): The class whose URL to search for. Must be a Collection, Application, or Suite.
-        format (str): The "format" portion of the API call. By default this is schema.
+        formatters (str): The "formatters" portion of the API call. By default this is schema.
 
     Returns:
         callable: A function that takes a context. The context is an *instance* of Collection, Application, Document, or

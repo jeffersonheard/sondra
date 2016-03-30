@@ -64,6 +64,9 @@ def method_request_schema(instance, method):
     properties = {}
 
     for i, (name, param) in enumerate(metadata.parameters.items()):
+        if name.startswith('_'):
+            continue  # skips parameters filled in by decorators
+
         if i == 0:
             continue
         schema = _parse_arg(instance, param.annotation)
@@ -98,7 +101,7 @@ def _parse_arg(instance, arg):
     elif arg is str:
         arg = {"type": "string"}
     elif arg is bytes:
-        arg = {"type": "string", "format": "attachment"}
+        arg = {"type": "string", "formatters": "attachment"}
     elif arg is int:
         arg = {"type": "integer"}
     elif arg is float:
@@ -119,9 +122,8 @@ def _parse_arg(instance, arg):
         arg = {"$ref": (instance.application[arg.slug].url if instance is not None else "<application>") + ";schema"}
     elif issubclass(arg, Document):
         arg = copy(arg.schema)
-        arg['id'] = arg.__module__ + "." + arg.__class__.__name__
     else:
-        raise ParseError("arg types must be str, int, float, bool, list, dict, a Collection subclass or a compound of.")
+        arg = {"type": ['string','boolean','integer','number','array','object'], "description": "Unspecified type arg."}
 
     if description:
         arg['description'] = description

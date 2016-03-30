@@ -33,7 +33,7 @@ class Reference(object):
         self.doc = kw.get("doc")
         self.doc_method = kw.get("doc_method")
         self.fragment = kw.get("fragment")
-        self.format = format = kw.get("format", 'json')
+        self.format = format = kw.get("formatters", 'json')
         self.query = query = kw.get("query")
         self.vargs = vargs = kw.get("vargs", [])
         self.kwargs = kwargs = kw.get("kwargs", {})
@@ -111,14 +111,14 @@ class Reference(object):
             vargs = [a for a in params if '=' not in a]
             kwargs = {k: v for k, v in (kv.split('=') for kv in params if '=' in kv)}
 
-        # determine output format
-        if vargs and 'format' not in kwargs:
+        # determine output formatters
+        if vargs and 'formatters' not in kwargs:
             format = vargs[0]
-        elif 'format' in kwargs:
-            format = kwargs['format']
+        elif 'formatters' in kwargs:
+            format = kwargs['formatters']
 
         if format not in self.FORMATS:
-            raise ParseError('Unknown output format: {0}'.format(format))
+            raise ParseError('Unknown output formatters: {0}'.format(format))
 
         # check basic validity of URL
         if app_method and any((coll, coll_method, doc, doc_method)):

@@ -14,7 +14,7 @@ def cli():
 
 
 @cli.command()
-@click.option("--format", '-f', type=click.Choice(['html','rst', 'odt']), default='html')
+@click.option("--formatters", '-f', type=click.Choice(['html','rst', 'odt']), default='html')
 @click.option("--destpath", '-d', default='.')
 @click.argument("filenames", nargs=-1)
 def files(format, destpath, filenames):
@@ -33,7 +33,7 @@ def files(format, destpath, filenames):
     #    logging.error(str(e))
 
 @cli.command()
-@click.option("--format", '-f', type=click.Choice(['html','rst']), default='html')
+@click.option("--formatters", '-f', type=click.Choice(['html','rst']), default='html')
 @click.option("--destpath", '-d', default='.')
 @click.argument("urls", nargs=-1)
 def urls(format, destpath, urls):

@@ -81,6 +81,7 @@ class Role(Document):
 class User(Document):
     """A basic, but fairly complete system user record"""
     active_by_default = True
+    template = "{username}"
 
     schema = {
         'type': 'object',
@@ -89,11 +90,12 @@ class User(Document):
             'username': {
                 'type': 'string',
                 'description': 'The user\'s username',
+                'propertyOrder': 0,
             },
             'email': {
                 'type': 'string',
                 'description': 'The user\'s email address',
-                'format': 'email',
+                'formatters': 'email',
                 'pattern': '^(\w+[.|\w])*@(\w+[.])*\w+$'
             },
             'email_verified': {
@@ -166,7 +168,7 @@ class User(Document):
 
     @authorized_method
     @expose_method
-    def send_confirmation_email(self) -> None:
+    def send_confirmation_email(self, _user=None) -> None:
         raise NotImplemented()
 
     def __str__(self):

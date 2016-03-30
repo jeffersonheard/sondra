@@ -91,7 +91,7 @@ def _parse_arg(instance, arg):
     elif arg is str:
         arg = {"type": "string"}
     elif arg is bytes:
-        arg = {"type": "string", "format": "attachment"}
+        arg = {"type": "string", "formatters": "attachment"}
     elif arg is int:
         arg = {"type": "integer"}
     elif arg is float:
@@ -182,9 +182,6 @@ class expose(object):
     def __get__(self, instance, owner):
         self._owner = owner
         self._instance = instance
-        print(self._owner)
-        print(self._instance)
-
         return self
 
     def __call__(self, *args, **kwargs):
@@ -275,7 +272,7 @@ class expose(object):
         elif arg is str:
             arg = {"type": "string"}
         elif arg is bytes:
-            arg = {"type": "string", "format": "attachment"}
+            arg = {"type": "string", "formatters": "attachment"}
         elif arg is int:
             arg = {"type": "integer"}
         elif arg is float:

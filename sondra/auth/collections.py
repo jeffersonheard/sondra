@@ -61,6 +61,7 @@ class Users(Collection):
     @expose_method
     def create_user(
             self,
+
             username: str,
             email: str,
             locale: str='en-US',
@@ -70,7 +71,8 @@ class Users(Collection):
             names: list=None,
             active: bool=True,
             roles: list=None,
-            confirmed_email: bool=False
+            confirmed_email: bool=False,
+            _user=None
     ) -> str:
         """Create a new user
 

@@ -188,8 +188,8 @@ def _auth_header(jwt):
 def test_all_users(suite, basic_user, application_level_user, collection_level_user):
     assert len(suite['auth']['users']) == 3
     assert len(suite['auth']['user-credentials']) == 3
-    assert len({cred['user'] for cred in suite['auth']['user-credentials']}) == 3
-    assert len({cred['secret'] for cred in suite['auth']['user-credentials']}) == 3
+    assert len({cred['user'] for cred in suite['auth']['user-credentials'].values()}) == 3
+    assert len({cred['secret'] for cred in suite['auth']['user-credentials'].values()}) == 3
     
     basic_jwt = _login(basic_user)
     application_level_jwt = _login(application_level_user)

@@ -6,14 +6,9 @@ import logging
 from abc import ABCMeta
 from collections.abc import MutableMapping
 from copy import deepcopy
-from datetime import datetime, date
-
-import iso8601
 import jsonschema
-import rethinkdb as r
-from slugify import slugify
+import heapq
 
-from sondra.exceptions import ValidationError
 from sondra.expose import method_schema
 
 try:
@@ -23,7 +18,7 @@ except:
     logging.warning("Shapely not imported. Geometry objects will not be supported directly.")
 
 from sondra import utils, help
-from sondra.utils import mapjson, split_camelcase
+from sondra.utils import mapjson, split_camelcase, natural_order
 from sondra.schema import merge
 from sondra.ref import Reference
 
@@ -44,56 +39,98 @@ def _reference(v):
 
 class DocumentMetaclass(ABCMeta):
     """
-    The metaclass for all documents merges definitions and schema into a single schema attribute and makes sure that
-    exposed methods are catalogued.
+    This refactored metaclass does most of what the other metaclass did, but also looks through to find property setters
+    and getters and pre-caches them.
     """
     def __new__(mcs, name, bases, attrs):
         definitions = {}
         schema = attrs.get('schema', {"type": "object", "properties": {}})
+        property_order = None
+        setters = {}
+        getters = {}
+        reqls = {}
+        jsons = {}
 
-        for base in bases:  # make sure this class inherits definitions and schemas
+        # make sure this class inherits definitions and schemas
+        for base in bases:
             if hasattr(base, "definitions") and base.definitions is not None:
                 definitions = merge(deepcopy(base.definitions), definitions)
             if hasattr(base, "schema") and base.schema is not None:
                 schema = merge(deepcopy(base.schema), schema)
+            if hasattr(base, "__doc__"):
+                docstring = base.__doc__
 
+        # merge definitions from this class into the definition list.
         if "definitions" in attrs:
             merge(attrs['definitions'], definitions)
         else:
             attrs['definitions'] = definitions
 
+        # set the title of the schema and class
         if 'title' not in attrs or (attrs['title'] is None):
             if 'title' in schema:
                 attrs['title'] = schema['title']
             else:
                 attrs['title'] = split_camelcase(name)
 
+        # for ordered representations of documents, take the extended keyword propertyOrder into account.
+        props = schema.get('properties', ())
+        ordered_properties = []
+        for p in props:
+            if 'propertyOrder' in props[p]:
+                heapq.heappush(ordered_properties, (props[p]['propertyOrder'], p))
+        property_order = [heapq.heappop(ordered_properties)[1] for i in range(len(ordered_properties))]
+
+        # use the modified schema
         attrs['schema'] = schema
-        attrs['schema']['title'] = attrs['title']
+        attrs['property_order'] = property_order
+
+        # go through the list of attributes and memoize property setters & getters.
+        # these serve as pre-processors for complicated properties that need processing
+        # before storage or serialization.
+        for attr in attrs:
+            if attr.startswith('set_'):
+                setters[attr[4:]] = attr
+            if attr.startswith('get_'):
+                getters[attr[4:]] = attr
+            if attr.startswith('json_'):
+                jsons[attr[5:]] = attr
+            if attr.startswith('reql_'):
+                reqls[attr[5:]] = attr
+
+        attrs['json_processors'] = jsons
+        attrs['reql_processors'] = reqls
+        attrs['get_processors'] = getters
+        attrs['set_processors'] = setters
 
         return super().__new__(mcs, name, bases, attrs)
 
     def __init__(cls, name, bases, nmspc):
-        super(DocumentMetaclass, cls).__init__(name, bases, nmspc)
         cls.exposed_methods = {}
 
+        # get a list of exposed methods. TODO do we really need to do this now, based on the decorator behavior?
         for base in bases:
             if hasattr(base, 'exposed_methods'):
                 cls.exposed_methods.update(base.exposed_methods)
 
         for name, method in (n for n in nmspc.items() if hasattr(n[1], 'exposed')):
-                cls.exposed_methods[name] = method
+            cls.exposed_methods[name] = method
 
-        if 'description' not in cls.schema and cls.__doc__:
-            cls.schema['description'] = cls.__doc__
-
+        # update schema
         cls.schema['methods'] = [m.slug for m in cls.exposed_methods.values()]
         cls.schema['definitions'] = nmspc.get('definitions', {})
-        cls.schema['template'] = nmspc.get('template','{id}')
+        cls.schema['template'] = nmspc.get('template','{id}')  # set the expected behavior of __str__.
 
+        # build the list of defaults from the schema
         cls.defaults = {k: cls.schema['properties'][k]['default']
                         for k in cls.schema['properties']
                         if 'default' in cls.schema['properties'][k]}
+
+
+        super(DocumentMetaclass, cls).__init__(name, bases, nmspc)
+
+
+
 
 
 class Document(MutableMapping, metaclass=DocumentMetaclass):
@@ -125,6 +162,7 @@ class Document(MutableMapping, metaclass=DocumentMetaclass):
         self.collection = collection
         self._saved = from_db
 
+
         if self.collection is not None:
             self.schema = self.collection.schema  # this means it's only calculated once. helpful.
         else:
@@ -133,6 +171,7 @@ class Document(MutableMapping, metaclass=DocumentMetaclass):
         self._url = None
         if self.collection.primary_key in obj:
             self._url = '/'.join((self.collection.url, _reference(obj[self.collection.primary_key])))
+
         if '_url' in obj:
             del obj['_url']
 
@@ -151,7 +190,7 @@ class Document(MutableMapping, metaclass=DocumentMetaclass):
                     self[k] = vh.default_value()
 
     def __str__(self):
-        return str(self.obj)
+        return self.template.format(**self.obj)
 
 
     @property
@@ -224,6 +263,8 @@ class Document(MutableMapping, metaclass=DocumentMetaclass):
 
         if key in self.specials:
             return self.specials[key].to_python_repr(v, self)
+        elif key in self.get_processors:
+            return getattr(self, self.get_processors[key])(v)
         else:
             return v
 
@@ -253,11 +294,14 @@ class Document(MutableMapping, metaclass=DocumentMetaclass):
         if key in self.specials:
             value = self.specials[key].to_json_repr(value, self)
 
+        if key in self.set_processors:
+            value = getattr(self, self.set_processors[key])(value)
+
         self.obj[key] = value
 
         for p in self.processors:
             if p.is_necessary(key):
-                p.run(self.obj)
+                p.run(self)
 
 
     def __delitem__(self, key):
@@ -291,179 +335,89 @@ class Document(MutableMapping, metaclass=DocumentMetaclass):
         return builder.rst
 
     def json(self, *args, **kwargs):
-        return json.dumps(self.obj, *args, **kwargs)
+        return json.dumps(self.json_repr(), *args, **kwargs)
 
     def rql_repr(self):
         ret = deepcopy(self.obj)
-        valuehandlers = self.specials or {}
-        for k, handler in valuehandlers.items():
+
+        value_handlers = self.specials or {}
+        for k, handler in value_handlers.items():
             if k in ret:
                 ret[k] = handler.to_rql_repr(ret[k], self)
 
+        for p in self.reql_processors:
+            ret[p] = self.reql_processors[p](ret[p])
+
         return ret
 
-    def json_repr(self):
-        return deepcopy(self.obj)
+    def json_repr(self, ordered=False):
+        js = deepcopy(self.obj)
+
+        for property, special in self.specials.items():
+            if property in js:
+                js[property] = special.to_json_repr(js[property], js)
+
+        for p in self.json_processors:
+            js[p] = self.json_processors[p](js[p])
+
+        if ordered:
+            js = natural_order(js, self.property_order)
+
+        if self._saved:
+            js['_url'] = self._url
+
+        return js
+
+    def geojson_repr(self, ordered=False):
+        js = self.json_repr()
+
+        if 'feature_geoemtry' in self.schema:
+            geom = js.get(self.schema['feature_geometry'], None)
+        else:
+            GEOM_TYPES = {'geometry', 'point','linestring','polygon','multipoint','multilinestring','multipolygon'}
+            geoms = filter(lambda v: isinstance(v, dict) and v.get('type', '').lower() in GEOM_TYPES, js.values())
+            try:
+                geom = next(geoms)
+            except StopIteration:
+                geom = None
+
+        if ordered:
+            js = natural_order(js, self.property_order)
+
+        if self._saved:
+            js['_url'] = self._url
+
+        return {
+            "type": "Feature",
+            "geometry": geom,
+            "properties": js
+        }
 
     def save(self, conflict='replace', *args, **kwargs):
-        return self.collection.save(self, conflict=conflict, *args, **kwargs)
+        self.pre_save()
+        ret = self.collection.save(self, conflict=conflict, *args, **kwargs)
+        self.post_save()
+        return ret
 
     def delete(self, **kwargs):
-        return self.collection.delete(self, **kwargs)
+        self.pre_delete()
+        ret =  self.collection.delete(self, **kwargs)
+        self.post_delete()
+        return ret
 
     def validate(self):
         jsonschema.validate(self.obj, self.schema)
 
+    def pre_save(self):
+        pass
 
+    def post_save(self):
+        for s in self.specials.values():
+            s.post_save(self)
 
-# class ValueHandler(object):
-#     """This is base class for transforming values to/from RethinkDB representations to standard representations.
-#
-#     Attributes:
-#         is_geometry (bool): Does this handle geometry/geographical values. Indicates to Sondra that indexing should
-#             be handled differently.
-#     """
-#     is_geometry = False
-#     has_default = False
-#
-#     def to_rql_repr(self, value):
-#         """Transform the object value into a ReQL object for storage.
-#
-#         Args:
-#             value: The value to transform
-#
-#         Returns:
-#             object: A ReQL object.
-#         """
-#         return value
-#
-#     def to_json_repr(self, value):
-#         """Transform the object from a ReQL value into a standard value.
-#
-#         Args:
-#             value (ReQL): The value to transform
-#
-#         Returns:
-#             dict: A Python object representing the value.
-#         """
-#         return value
-#
-#     def to_python_repr(self, value):
-#         """Transform the object from a ReQL value into a standard value.
-#
-#         Args:
-#             value (ReQL): The value to transform
-#
-#         Returns:
-#             dict: A Python object representing the value.
-#         """
-#         return value
-#
-#     def default_value(self):
-#         raise NotImplemented()
-#
-#
-# # class Geometry(ValueHandler):
-#     """A value handler for GeoJSON"""
-#     is_geometry = True
-#
-#     def __init__(self, *allowed_types):
-#         self.allowed_types = set(x.lower() for x in allowed_types) if allowed_types else None
-#
-#     def to_rql_repr(self, value):
-#         if self.allowed_types:
-#             if value['type'].lower() not in self.allowed_types:
-#                 raise ValidationError('value not in ' + ','.join(t for t in self.allowed_types))
-#         return r.geojson(value)
-#
-#     def to_json_repr(self, value):
-#         if isinstance(value, BaseGeometry):
-#             return mapping(value)
-#         elif '$reql_type$' in value:
-#             del value['$reql_type$']
-#             return value
-#         else:
-#             return value
-#
-#     def to_python_repr(self, value):
-#         if isinstance(value, BaseGeometry):
-#             return value
-#         if '$reql_type$' in value:
-#             del value['$reql_type$']
-#         return shape(value)
-#
-#
-# class DateTime(ValueHandler):
-#     """A value handler for Python datetimes"""
-#
-#     DEFAULT_TIMEZONE='Z'
-#     def __init__(self, timezone='Z'):
-#         self.timezone = timezone
-#
-#     def from_rql_tz(self, tz):
-#         if tz == 'Z':
-#             return 0
-#         else:
-#             posneg = -1 if tz[0] == '-' else 1
-#             hours, minutes = map(int, tz.split(":"))
-#             offset = posneg*(hours*60 + minutes)
-#             return offset
-#
-#     def to_rql_repr(self, value):
-#         if isinstance(value, str):
-#             return r.iso8601(value, default_timezone=self.DEFAULT_TIMEZONE).in_timezone(self.timezone)
-#         elif isinstance(value, int) or isinstance(value, float):
-#             return datetime.fromtimestamp(value).isoformat()
-#         elif isinstance(value, dict):
-#             return r.time(
-#                 value.get('year', None),
-#                 value.get('month', None),
-#                 value.get('day', None),
-#                 value.get('hour', None),
-#                 value.get('minute', None),
-#                 value.get('second', None),
-#                 value.get('timezone', self.timezone),
-#             ).in_timezone(self.timezone)
-#         else:
-#             return r.iso8601(value.isoformat(), default_timezone=self.DEFAULT_TIMEZONE).as_timezone(self.timezone)
-#
-#     def to_json_repr(self, value):
-#         if isinstance(value, date) or isinstance(value, datetime):
-#             return value.isoformat()
-#         elif isinstance(value, str):
-#             return value
-#         elif isinstance(value, int) or isinstance(value, float):
-#             return datetime.fromtimestamp(value).isoformat()
-#         else:
-#             return value.to_iso8601()
-#
-#     def to_python_repr(self, value):
-#         if isinstance(value, str):
-#             return iso8601.parse_date(value)
-#         elif isinstance(value, datetime):
-#             return value
-#         else:
-#             return iso8601.parse_date(value.to_iso8601())
-#
-#
-# class Now(DateTime):
-#     """Return a timestamp for right now if the value is null."""
-#     has_default = True
-#
-#     def from_rql_tz(self, tz):
-#         return 0
-#
-#     def to_rql_repr(self, value):
-#         value = value or datetime.utcnow()
-#         return super(Now, self).to_rql_repr(value)
-#
-#     def to_json_repr(self, value):
-#         value = value or datetime.utcnow()
-#         return super(Now, self).to_json_repr(value)
-#
-#     def to_python_repr(self, value):
-#         value = value or datetime.utcnow()
-#         return super(Now, self).to_python_repr(value)
-#
-#     def default_value(self):
-#         return datetime.utcnow()
+    def pre_delete(self):
+        for s in self.specials.values():
+            s.pre_delete(self)
+
+    def post_delete(self):
+        pass

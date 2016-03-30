@@ -362,7 +362,7 @@ def test_add_delete_documents():
     assert post.ok
 
     # get the first page of the docs added (one)
-    get_all = requests.get(simple_documents + ';json')
+    get_all = requests.get(simple_documents + ';json?limit=100')
     assert get_all.ok
     assert len(get_all.json()) < len(docs)
 

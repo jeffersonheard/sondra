@@ -179,7 +179,7 @@ class Geometry(ValueHandler):
             return value
         if '$reql_type$' in value:
             del value['$reql_type$']
-        return shape(value)
+        return value
 
 
 class DateTime(ValueHandler):
