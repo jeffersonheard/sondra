@@ -55,21 +55,43 @@ class QuerySet(object):
         objects = objects or []
         if len(objects):
             if 'index' in api_arguments:
-                q = self.coll.table.get_all(objects, index=api_arguments['index'])
+                q = self.coll.table.get_all(*objects, index=api_arguments['index'])
             else:
-                q = self.coll.table.get_all(objects)
+                q = self.coll.table.get_all(*objects)
         else:
             q = self.coll.table
 
+        q = self._handle_keys(api_arguments, q)
         q = self._handle_simple_filters(api_arguments, q)
         q = self._handle_spatial_filters(self.coll, api_arguments, q)
         q = self._handle_aggregations(api_arguments, q)
+        q = self._apply_ordering(api_arguments, q)
         q = self._handle_limits(api_arguments, q)
         return q
 
     def __call__(self, api_arguments, objects=None):
         q = self.get_query(api_arguments, objects)
         return self.coll.q(q)
+
+    def _apply_ordering(self, api_arguments, q):
+        if 'order_by_index' in api_arguments:
+            q = q.order_by(index=api_arguments['order_by_index'])
+        if 'order_by' in api_arguments:
+            if isinstance(api_arguments['order_by'], list):
+                ordering = api_arguments['order_by']
+            else:
+                ordering = (api_arguments['order_by'],)
+            q = q.order_by(*ordering)
+        else:
+            q = self.coll.apply_ordering(q)
+
+        return q
+
+    def _handle_keys(self, api_arguments, q):
+        if 'keys' in api_arguments:
+            q = q.get_all(api_arguments['keys'])
+        return q
+
 
     def _handle_simple_filters(self, api_arguments, q):
         # handle simple filters
@@ -80,8 +102,6 @@ class QuerySet(object):
                     else api_arguments['flt']
             if isinstance(flt, dict):
                 flt = [flt]
-
-            print(flt)
 
             for f in flt:
                 default = f.get('default', False)

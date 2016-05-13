@@ -157,6 +157,7 @@ class Document(MutableMapping, metaclass=DocumentMetaclass):
     template = "{id}"
     processors = []
     specials = {}
+    store_nulls = set()
 
     def __init__(self, obj, collection=None, from_db=False):
         self.collection = collection
@@ -287,15 +288,20 @@ class Document(MutableMapping, metaclass=DocumentMetaclass):
 
     def __setitem__(self, key, value):
         """Set the value of the property, saving it if it is an unsaved Document instance"""
-        value = _reference(value)
-        if isinstance(value, list) or isinstance(value, dict):
-            value = mapjson(_reference, value)
+        if value is None:
+            if key not in self.store_nulls:
+                if key in self.obj:
+                    del self.obj[key]
+        else:
+            value = _reference(value)
+            if isinstance(value, list) or isinstance(value, dict):
+                value = mapjson(_reference, value)
 
-        if key in self.specials:
-            value = self.specials[key].to_json_repr(value, self)
+            if key in self.specials:
+                value = self.specials[key].to_json_repr(value, self)
 
-        if key in self.set_processors:
-            value = getattr(self, self.set_processors[key])(value)
+            if key in self.set_processors:
+                value = getattr(self, self.set_processors[key])(value)
 
         self.obj[key] = value
 

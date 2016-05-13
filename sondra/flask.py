@@ -4,6 +4,8 @@ from flask.ext.cors import CORS
 import json
 import traceback
 
+from jsonschema import ValidationError
+
 from .api import APIRequest
 
 api_tree = Blueprint('api', __name__)
@@ -75,12 +77,40 @@ def api_request(path):
             return resp
 
         except PermissionError as denial:
-            abort(403, description=str(denial))
+            return Response(
+                status=403,
+                mimetype='application/json',
+                response=json.dumps({"err": "PermissionDenied", "reason": str(denial)})
+            )
 
         except KeyError as not_found:
-            abort(404, description=str(not_found))
+            return Response(
+                status=404,
+                mimetype='application/json',
+                response=json.dumps({"err": "NotFound", "reason": str(not_found)}))
 
-        # except Exception as error:
-        #     abort(500, description='\n'.join(traceback.format_exception(error)))
+        except ValidationError as invalid_entry:
+            return Response(
+                status=400,
+                mimetype='application/json',
+                response=json.dumps({
+                    "err": "InvalidRequest",
+                    "reason": str(invalid_entry),
+                    "request_data": request.data.decode('utf-8'),
+                    "request_path": current_app.suite.url + '/' + path,
+                    "method": request.method,
+                    "args": args
+                }, indent=4)
+            )
+
+        except Exception as error:
+            return Response(
+                status=500,
+                mimetype='application/json',
+                response=json.dumps({
+                    "err": error.__class__.__name__,
+                    "reason": str(error),
+                    "traceback": traceback.format_exc()
+                }, indent=4))
 
 

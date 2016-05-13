@@ -122,7 +122,8 @@ class Application(Mapping, metaclass=ApplicationMetaclass):
             "description": self.__doc__ or "*No description provided.*",
             "definitions": self.definitions,
             "collections": {name: coll.url for name, coll in self._collections.items()},
-            "methods": [m.slug for m in self.exposed_methods.values()]
+            "methods": {m.slug: method_schema(None, m) for m in self.exposed_methods.values()}
+
         }
         ret = mapjson(lambda x: x(context=self.suite) if callable(x) else x, ret)
         return ret

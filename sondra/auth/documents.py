@@ -11,13 +11,14 @@ import functools
 
 
 class Role(Document):
+    template = '${title}'
     schema = {
         "type": "object",
         "properties": {
             "title": {"type": "string"},
             "slug": {"type": "string"},
             "description": {"type": "string"},
-            "permissions": {"type": "array", "items": {"ref": "#/definitions/permission"}}
+            "permissions": {"type": "array", "items": {"$ref": "#/definitions/permission"}}
         }
     }
     definitions = {
@@ -81,69 +82,76 @@ class Role(Document):
 class User(Document):
     """A basic, but fairly complete system user record"""
     active_by_default = True
-    template = "{username}"
+    template = "${username}"
 
     schema = {
         'type': 'object',
         'required': ['email'],
         'properties': {
             'username': {
+                'title': 'Username',
                 'type': 'string',
                 'description': 'The user\'s username',
-                'propertyOrder': 0,
             },
             'email': {
+                'title': 'Email',
                 'type': 'string',
                 'description': 'The user\'s email address',
-                'formatters': 'email',
+                'format': 'email',
                 'pattern': '^(\w+[.|\w])*@(\w+[.])*\w+$'
             },
             'email_verified': {
+                'title': 'Email Verified',
                 'type': 'boolean',
                 'description': 'Whether or not this email address has been verified',
             },
             'picture': {
+                'title': 'Picture',
                 'type': 'string',
                 'description': 'A URL resource of a photograph',
             },
             'family_name': {
+                'title': 'Family Name',
                 'type': 'string',
                 'description': 'The user\'s family name',
             },
             'given_name': {
+                'title': 'Given Name',
                 'type': 'string',
                 'description': 'The user\'s family name',
             },
             'names': {
+                'title': 'Other Names',
                 'type': 'array',
                 'items': {'type': 'string'},
                 'description': 'A list of names that go between the given name and the family name.',
             },
             'locale': {
+                'title': 'Default Language',
                 'type': 'string',
                 'description': "The user's locale. Default is en-US",
                 'default': 'en-US'
             },
             'active': {
+                'title': 'Active',
                 'type': 'boolean',
                 'description': 'Whether or not the user is currently able to log into the system.',
                 'default': active_by_default
             },
-            'confirmed_email': {
-                'type': 'boolean',
-                'description': 'Whether or not the user has confirmed their email',
-                'default': False
-            },
             'admin': {
+                'title': 'Administrator',
                 'type': 'boolean',
                 'description': 'If true, this user can access all methods of all APIs.',
                 'default': False
             },
             'created': {
+                'title': 'Created',
+                'format': 'date-time',
                 'type': 'string',
                 'description': 'The timestamp this user was created',
             },
             "roles": {
+                'title': 'Roles',
                 "type": "array",
                 "items": fk('sondra.auth.collections.Roles'),
                 "description": "Roles that have been granted to this user",

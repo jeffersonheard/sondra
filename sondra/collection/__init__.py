@@ -9,7 +9,7 @@ import logging.config
 
 from sondra import help, utils
 from sondra.document import Document, signals as doc_signals
-from sondra.expose import method_schema, expose_method
+from sondra.expose import method_schema, expose_method, expose_method_explicit
 from . import signals
 from sondra.utils import mapjson, resolve_class, split_camelcase
 
@@ -72,8 +72,8 @@ class CollectionMetaclass(ABCMeta):
             if not cls.primary_key:
                 cls.schema['properties']['id'] = {"type": "string", "description": "The primary key.", "title": "ID"}
 
-            cls.schema["methods"] = [m.slug for m in cls.exposed_methods.values()]
-            cls.schema["documentMethods"] = [m.slug for m in cls.document_class.exposed_methods.values()]
+            cls.schema["methods"] = {m.slug: method_schema(None, m) for m in cls.exposed_methods.values()}
+            cls.schema["documentMethods"] = {m.slug: method_schema(None, m) for m in cls.document_class.exposed_methods.values()}
 
             if not 'description' in cls.schema:
                 cls.schema['description'] = cls.document_class.__doc__ or 'No Description Provided.'
@@ -166,6 +166,9 @@ class Collection(MutableMapping, metaclass=CollectionMetaclass):
     relations = []
     anonymous_reads = True
     abstract = False
+    autocomplete_props = None
+    order_by = None
+    order_by_index = None
 
     @property
     def suite(self):
@@ -202,6 +205,10 @@ class Collection(MutableMapping, metaclass=CollectionMetaclass):
         self.schema['id'] = self.url + ";schema"
         self.schema = mapjson(lambda x: x(context=self.application.suite) if callable(x) else x, self.schema)
         self.log = logging.getLogger(self.application.name + "." + self.name)
+
+        if self.autocomplete_props is None:
+            self.autocomplete_props = (self.primary_key,)
+
         if self.file_storage:
             self.file_storage = self.file_storage(self)
         signals.post_init.send(self.__class__, instance=self)
@@ -344,7 +351,8 @@ class Collection(MutableMapping, metaclass=CollectionMetaclass):
         doc_signals.post_delete.send(self.document_class, results=results)
 
     def __iter__(self):
-        for k in self.table.get_field(self.primary_key).run(self.application.connection):
+        query = self.apply_ordering(self.table).get_field(self.primary_key)
+        for k in query.run(self.application.connection):
             yield k
 
     def __contains__(self, item):
@@ -382,6 +390,16 @@ class Collection(MutableMapping, metaclass=CollectionMetaclass):
             if 'doc' in doc:
                 doc = doc['doc']  # some queries return results that encapsulate the document with metadata
             yield self.document_class(doc, collection=self, from_db=True)
+
+    def apply_ordering(self, query):
+        if self.order_by_index and self.order_by:
+            return query.order_by(index=self.order_by_index, *self.order_by)
+        elif self.order_by_index:
+            return query.order_by(index=self.order_by_index)
+        elif self.order_by:
+            return query.order_by(*self.order_by)
+        else:
+            return query
 
     def doc(self, value):
         """Return a document instance populated from a dict. Does **not** save document before returning.
@@ -526,15 +544,72 @@ class Collection(MutableMapping, metaclass=CollectionMetaclass):
         else:
             return {"type": "FeatureCollection", "features": values}
 
-    @expose_method
-    def count(self) -> int:
+    @expose_method_explicit(
+        title='Object Count',
+        side_effects=False,
+        request_schema={"type": "null"},
+        response_schema={"type": "object", "properties": {"_": {"type": "number"}}}
+    )
+    def count(self):
+        """The number of objects in the collection."""
         return len(self)
 
+    @expose_method_explicit(
+        title='Autocomplete',
+        side_effects=False,
+        request_schema={
+            "type": "object",
+            "properties": {
+                "partial": {
+                    "type": "string",
+                    "title": "Partial",
+                    "description": "A regular expression to match on any and all of the autocomplete fields."
+                }
+            }
+        },
+        response_schema={
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "k": {"type": "string"},
+                    "v": {"type": "string"}
+                }
+            }
+        }
+    )
+    def autocomplete(self, partial, limit=25):
+        """Search results based on a partial input as a regex"""
+        tpl = self.document_class.template.replace('$', '')  # switch back to Python format syntax.
+        partial = '(?i)' + partial
+        result = {}
+        reached_limit = False
+        pk = self.primary_key  #
+        for p in self.autocomplete_props:
+            if reached_limit:
+                break
+            for obj in self.table.filter(lambda x: x[p].match(partial)).run(self.application.connection):
+                if obj[pk] not in result:
+                    result[obj[pk]] = tpl.format(**obj)
+                if limit and len(result) >= limit:
+                    reached_limit = True
+                    break
+        return sorted([{"k": k, "v": v} for k, v in result.items()], key=lambda x: x['v'])
 
-    @expose_method
+    @expose_method_explicit(
+        title='Keys',
+        side_effects=False,
+        request_schema={"type": "null"},
+        response_schema={"type": "array", "items": {"type": "string"}}
+    )
     def key_list(self) -> list:
         return list(self.keys())
 
-    @expose_method
+    @expose_method_explicit(
+        title='Key Map',
+        side_effects=False,
+        request_schema={"type": "null"},
+        response_schema={"type": "object"}
+    )
     def key_map(self) -> dict:
         return {k: str(self[k]) for k in self}

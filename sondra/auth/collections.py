@@ -3,8 +3,9 @@ import datetime
 import rethinkdb as r
 
 from sondra.auth.decorators import authorized_method, authorization_required, authentication_required, anonymous_method
-from sondra.expose import expose_method
+from sondra.expose import expose_method, expose_method_explicit
 from sondra.collection import Collection
+from sondra.lazy import fk
 from .documents import Credentials, Role, User, LoggedInUser
 
 
@@ -13,6 +14,8 @@ from .documents import Credentials, Role, User, LoggedInUser
 class Roles(Collection):
     primary_key = 'slug'
     document_class = Role
+    autocomplete_props = ('title', 'description')
+    template = '${title}'
 
 
 class UserCredentials(Collection):
@@ -26,6 +29,7 @@ class Users(Collection):
     document_class = User
     primary_key = 'username'
     indexes = ['email']
+    order_by = ('family_name', 'given_name', 'username')
 
     def __init__(self, application):
         super(Users, self).__init__(application)
@@ -57,11 +61,7 @@ class Users(Collection):
         if len(password) < 6:
             raise ValueError("Password too short")
 
-    @authorized_method
-    @expose_method
-    def create_user(
-            self,
-
+    def user_data(self,
             username: str,
             email: str,
             locale: str='en-US',
@@ -71,8 +71,7 @@ class Users(Collection):
             names: list=None,
             active: bool=True,
             roles: list=None,
-            confirmed_email: bool=False,
-            _user=None
+            confirmed_email: bool=False
     ) -> str:
         """Create a new user
 
@@ -107,7 +106,7 @@ class Users(Collection):
         if username in self:
             raise PermissionError("Attempt to create duplicate user " + username)
 
-        user_data = {
+        user = {
             "username": username,
             "email": email,
             "email_verified": False,
@@ -119,28 +118,118 @@ class Users(Collection):
         }
 
         if family_name:
-            user_data['family_name'] = family_name
+            user['family_name'] = family_name
 
         if given_name:
-            user_data['given_name'] = given_name
+            user['given_name'] = given_name
 
         if names:
-            user_data['names'] = names
+            user['names'] = names
 
-        user = self.create(user_data)
+        credentials = None
         if active and password:
             self.validate_password(password)
             salt = bcrypt.gensalt()
             secret = bcrypt.gensalt(16)
             hashed_password = bcrypt.hashpw(password.encode('utf-8'), salt)
-            self.application['user-credentials'].create({
-                'user': user,
+            credentials = {
                 'password': hashed_password.decode('utf-8'),
                 'salt': salt.decode('utf-8'),
                 'secret': secret.decode('utf-8')
-            })
+            }
+
+        return user, credentials
+
+    @authorized_method
+    @expose_method_explicit(
+        title="Create User",
+        side_effects=True,
+        request_schema={
+            "type": "object",
+            "required": ['username', 'email'],
+            "description": "Create a new user in the system",
+            "properties": {
+                "username": {"type": "string", "title": "Username", "description": "The new username"},
+                "email": {"type": "string", "title": "email", "description": "The user's email"},
+                "locale": {"type": "string", "title": "Locale", "description": "The user's default language setting", "default": "en-US"},  #, "format": "locale"},
+                "password": {"type": "string", "title": "Password", "description": "The user's password. Leave blank to have it auto-generated."},
+                "family_name": {"type": "string", "title": "Family Name", "description": "The user's password"},
+                "given_name": {"type": "string", "title": "Given Name", "description": "The user's password"},
+                "names": {"type": "string", "title": "Middle Name(s)", "description": "The user's middle names"},
+                "active": {"type": "boolean", "title": "Can Login", "description": "The user can login", "default": True},
+                "roles": {"type": "array", "title": "Roles", "items": {"type": "string", "fk": "/auth/roles"}, "description": "The roles to assign to the new user.", "default": []},
+                "confirmed_email": {"type": "boolean", "default": False, "title": "Confirmed", "description": "Whether or not the user has confirmed their email address."}
+            }
+        },
+        response_schema={
+            "type": "object",
+            "properties": {"_": {"type": "string", "description": "The new user's URL."}}
+        },
+    )
+    def create_user(
+            self,
+            username: str,
+            email: str,
+            locale: str='en-US',
+            password: str=None,
+            family_name: str=None,
+            given_name: str=None,
+            names: list=None,
+            active: bool=True,
+            roles: list=None,
+            confirmed_email: bool=False,
+            _user=None
+    ) -> str:
+        """Create a new user
+
+        Args:
+            username (str): The username to use. Can be blank. If blank the username is the email.
+            password (str): The password to use.
+            email (str): The email address for the user. Should be unique
+            locale (str="en-US"): The name of the locale for the user
+            family_name (str): The user's family name
+            given_name (str): The user's given name
+            names (str): The user's middle name
+            active (bool): Default true. Whether or not the user is allowed to log in.
+            roles (list[roles]): List of role objects or urls. The list of roles a user is granted.
+            confirmed_email (bool): Default False. The user has confirmed their email address already.
+
+        Returns:
+            str: The url of the new user object.
+
+        Raises:
+            KeyError if the user already exists.
+            ValueError if the user's password does not pass muster.
+        """
+        user_record, credentials = self.user_data(
+            username=username,
+            email=email,
+            locale=locale,
+            password=password,
+            family_name=family_name,
+            given_name=given_name,
+            names=names,
+            active=active,
+            roles=roles,
+            confirmed_email=confirmed_email,
+        )
+        user = self.create(user_record)
+        if credentials:
+            credentials['user'] = username
+            self.application['user-credentials'].create(credentials)
 
         return user.url
+
+    def create_users(self, *users):
+        us = []
+        cs = []
+        for u, c in (self.user_data(**x) for x in users):
+            us.append(u)
+            if c is not None:
+                cs.append(c)
+        self.create(us)
+        if cs:
+            self.application['user-credentials'].create(cs)
 
     @anonymous_method
     @expose_method

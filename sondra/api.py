@@ -73,11 +73,7 @@ class APIRequest(object):
         self.formatter = self.formats[self.DEFAULT_FORMAT]
         self.formatter_kwargs = {}
         self.query = None
-
-        print(self.query)
-        print(self.query_params)
-        print(self.body)
-        print(self.files)
+        self.additional_filters = []
 
         self.reference = Reference(
             self.suite,
@@ -147,7 +143,8 @@ class APIRequest(object):
                 if k.startswith('__'):
                     continue
 
-                v = v[0]  # no list valued arguments in api-args
+                if isinstance(v, list):
+                    v = v[0]  # no list valued arguments in api-args
                 if v.startswith('"'):
                     v = v[1:-1]
                 else:
@@ -175,6 +172,8 @@ class APIRequest(object):
                     self.api_arguments.update(body_args['__q'])
                     self.request_method = body_args.get('__method', self.request_method).upper()
                     self.objects = body_args.get("__objs", [])
+                elif isinstance(body_args, dict):
+                    self.objects.append(body_args)
                 else:
                     self.objects.extend(body_args)
 
@@ -199,8 +198,8 @@ class APIRequest(object):
             schema = target.collection.schema
 
         for object in self.objects:
-            jsonschema.validate(object, schema)
-
+            if not isinstance(object, str):
+                jsonschema.validate(object, schema)
 
     def method_call(self):
         instance, method = self.reference.value
@@ -226,9 +225,15 @@ class APIRequest(object):
 
     def get_collection_items(self):
         coll = self.reference.get_collection()
+        if self.reference.format in {'schema', 'help'}:
+            return coll
 
         qs = QuerySet(coll)
-        return [x for x in qs(self.api_arguments, self.objects)]
+        q = qs.get_query(self.api_arguments, self.objects)
+        for f in self.additional_filters:
+            q = q.filter(f)
+
+        return [x for x in coll.q(q)]
 
     def add_collection_items(self):
         coll = self.reference.get_collection()
@@ -252,9 +257,9 @@ class APIRequest(object):
     def replace_collection_items(self):
         coll = self.reference.get_collection()
         docs = []
-        for k, new_value in self.objects:
-            doc = coll[k].doc(new_value)
-            doc.id = k
+        for new_value in self.objects:
+            assert coll.primary_key in new_value
+            doc = coll.doc(new_value)
             docs.append(doc)
 
         ret = coll.save(docs, conflict=self.conflict, durability=self.durability, return_changes=self.return_changes)
@@ -265,10 +270,15 @@ class APIRequest(object):
 
         qs = QuerySet(coll)
         q = qs.get_query(self.api_arguments, self.objects)
+        for f in self.additional_filters:
+            q = q.filter(f)
 
+        print("Delete collection items")
+        print(q)
         if not self.delete_all and not qs.is_restricted(self.api_arguments, self.objects):
             raise PermissionError("Cannot delete all collection items without a specific request.")
 
+        print([x for x in q.run(coll.application.connection)])
         return q.delete(durability=self.durability, return_changes=self.return_changes).run(coll.application.connection)
 
     def get_document(self):

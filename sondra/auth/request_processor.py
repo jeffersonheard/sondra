@@ -52,13 +52,13 @@ class AuthRequestProcessor(RequestProcessor):
     def process_api_request(self, request):
         reference = request.reference
         if reference.kind == 'subdocument':
-            _, auth_target, _, _ = reference.value
+            _, value, _, _ = reference.value
         else:
-            auth_target = reference.value
+            value = reference.value
 
         permission_name = self._get_permission_name(request)
-        authentication_target = self.authentication_requirement(auth_target, permission_name)
-        authorization_target = self.authorization_requirement(auth_target, permission_name)
+        authentication_target = self.authentication_requirement(value, permission_name)
+        authorization_target = self.authorization_requirement(value, permission_name)
 
         if authentication_target is None:  # authentication is not required
             return request
@@ -75,10 +75,11 @@ class AuthRequestProcessor(RequestProcessor):
                 auth_token = bearer[7:]  # skip "Bearer "
 
         if auth_token:  # check which user the token belongs to; that is the request's user
-            user = request.suite['auth'].check(auth_token)
+            user, decoded_token = request.suite['auth'].check(auth_token)
             request.user = user
         else:
             request.user = None
+            decoded_token = None
             user = None
 
         if ((authentication_target is not None) or (authorization_target is not None)) \
@@ -90,9 +91,26 @@ class AuthRequestProcessor(RequestProcessor):
         if authorization_target is None:  # we've authenticated, that's all we need.
             return request
 
+        filter_function = getattr(authorization_target, 'document_level_filter_function')
+        if filter_function:
+            flt = filter_function(user, decoded_token, permission_name)
+            request.additional_filters.append(flt)
+
+        if request.kind in {'document', 'subdocument'}:
+            document_auth_function = getattr(value, 'authorize', None)
+            if document_auth_function:
+                if not document_auth_function(user, decoded_token, permission_name):
+                    msg = "Permission '{name}' denied for '{user}' accessing '{url}'".format(
+                        user=user,
+                        url=reference.url,
+                        name=permission_name
+                    )
+                    raise PermissionError(msg)
+
         for role in user.fetch('roles'):  # check each role. return at the first successful authorization.
             if role.authorizes(authorization_target, permission_name):
                 return request
+
         else:  # we made it through all the user's roles and none authorized access.
             msg = "Permission '{name}' denied for '{user}' accessing '{url}'".format(
                 user=user,
@@ -102,7 +120,8 @@ class AuthRequestProcessor(RequestProcessor):
             request.suite.log.error(msg)
             raise PermissionError(msg)
 
-    def _get_permission_name(self, request):
+    @staticmethod
+    def _get_permission_name(request):
         if request.reference.kind.endswith('method'):
             return request.reference.value[1].slug
         if request.reference.format in ('help','schema'):

@@ -4,6 +4,8 @@ import re
 import inspect
 from sondra.exceptions import ParseError
 from sondra import help
+from functools import wraps
+from copy import deepcopy
 
 
 def expose_method(method):
@@ -12,16 +14,57 @@ def expose_method(method):
     return method
 
 
+def expose_method_explicit(request_schema=None, response_schema=None, side_effects=False, title=None, description=None):
+    request_schema = request_schema or {'type': 'null'}
+    response_schema = response_schema or {'type': 'null'}
+
+    def expose_method_decorator(func):
+
+        @wraps(func)
+        def func_wrapper(*args, **kwargs):
+            return func(*args, **kwargs)
+
+        func_wrapper.exposed = True
+        func_wrapper.slug = func.__name__.replace('_', '-')
+
+        # auto-fill request schema items based on metadata if they were not explicitly provided.
+        req_schema = deepcopy(request_schema)
+        if 'title' not in req_schema:
+            req_schema['title'] = title or func.__name__
+        if 'description' not in req_schema:
+            req_schema['description'] = req_schema.get('description', description or func.__doc__ or '*No description provided*')
+        req_schema['side_effects'] = side_effects
+
+        rsp_schema = deepcopy(response_schema)
+        if 'title' not in rsp_schema:
+            rsp_schema['title'] = title or func.__name__
+        if 'description' not in rsp_schema:
+            rsp_schema['description'] = rsp_schema.get('description', description or func.__doc__ or '*No description provided*')
+
+        func_wrapper.title = title or func.__name__
+        func_wrapper.request_schema = req_schema
+        func_wrapper.response_schema = rsp_schema
+
+        @wraps(func)
+        def invoke(*args, request=None):
+            func(*args, **request)
+
+        func_wrapper.invoke = invoke
+
+        return func_wrapper
+
+    return expose_method_decorator
+
+
 def method_url(instance, method):
     return instance.url + '.' + method.slug if instance is not None else method.slug
 
 
 def method_schema(instance, method):
     return {
-        "id": (instance.url if instance is not None else "") + "." + method.slug + ';schema',
-        "title": method.slug,
+        "id": (instance.url if instance is not None else "*") + "." + method.slug,
+        "title": getattr(method, 'title', method.__name__),
         "description": method.__doc__ or "*No description provided*",
-        "type": "object",
         "oneOf": [{"$ref": "#/definitions/method_request"}, {"$ref": "#/definitions/method_response"}],
         "definitions": {
             "method_request": method_request_schema(instance, method),
@@ -31,6 +74,9 @@ def method_schema(instance, method):
 
 
 def method_response_schema(instance, method):
+    if hasattr(method, 'response_schema'):
+        return method.response_schema
+
     # parse the return schema
     metadata = inspect.signature(method)
     if metadata.return_annotation is not metadata.empty:
@@ -59,6 +105,9 @@ def method_response_schema(instance, method):
 
 
 def method_request_schema(instance, method):
+    if hasattr(method, 'request_schema'):
+        return method.request_schema
+
     required_args = []
     metadata = inspect.signature(method)
     properties = {}
@@ -67,8 +116,9 @@ def method_request_schema(instance, method):
         if name.startswith('_'):
             continue  # skips parameters filled in by decorators
 
-        if i == 0:
-            continue
+        # if i == 0:  # skip the first arg.
+        #     continue
+
         schema = _parse_arg(instance, param.annotation)
         if param.default is not metadata.empty:
             schema['default'] = param.default

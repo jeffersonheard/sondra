@@ -311,6 +311,9 @@ class Reference(object):
 
     def get_document(self):
         """Return the Document for a given URL."""
+        if self.doc == '*':
+            return None
+
         try:
             return self.get_collection()[self.doc]
         except KeyError:
@@ -400,6 +403,9 @@ class Reference(object):
         """
 
         obj = self.get_document()
+        if obj is None:
+            obj = self.get_collection().document_class
+
         method = getattr(obj, self.doc_method, None)
         if not method:
             raise EndpointError("{0} is not a method of {1}".format(

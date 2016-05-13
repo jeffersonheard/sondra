@@ -3,7 +3,7 @@ import bcrypt
 import jwt
 
 from sondra.application import Application
-from sondra.expose import expose_method
+from sondra.expose import expose_method, expose_method_explicit
 from .collections import Users, UserCredentials, LoggedInUsers, Roles
 from .decorators import authenticated_method
 
@@ -26,7 +26,19 @@ class Auth(Application):
         }
         return claims
 
-    @expose_method
+    @expose_method_explicit(
+        request_schema={
+            "type": "object",
+            "properties": {
+                "username": {"type": "string"},
+                "password": {"type": "string"}}},
+        response_schema={
+            "type": "object",
+            "properties":
+                {"_": {"type": "string"}}},
+        side_effects=True,
+        title='Login'
+    )
     def login(self, username: str, password: str) -> str:
         """Log the user in and get a JWT (JSON Web Token).
 
@@ -40,9 +52,7 @@ class Auth(Application):
         Raises:
             PermissionError: if the password is invalid or the user does not exist
         """
-        try:
-            user = self['users'][username]
-        except KeyError:
+        if username not in self['users']:
             self.log.warning("Failed login attempt by nonexistent user: {0}".format(username))
             raise PermissionError("Login not valid")
 
@@ -138,7 +148,7 @@ class Auth(Application):
             token (str): the JWT token to check against.
             **claims: a dictionary of extra claims to check
         Returns:
-            User: the user the token came from.
+            User: the decoded auth token.
         Raisees:
             DecodeError: if the JWT token is out of date, not issued by this authority, or otherwise invalid.
             PermissionError: if a claim is not present, or if claims differ.
@@ -155,5 +165,5 @@ class Auth(Application):
                 raise PermissionError("Claim not present in {0}: {1}".format(decoded['user'], name))
             elif decoded[name] != value:
                 raise PermissionError("Claims differ for {0}: {1}".format(decoded['user'], name))
-        return self['users'][decoded['user']]
+        return self['users'][decoded['user']], decoded  # WAS: self['users'][decoded['user']]
 
