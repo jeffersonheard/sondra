@@ -177,6 +177,8 @@ class APIRequest(object):
                 else:
                     self.objects.extend(body_args)
 
+        self.objects = [{k: v for k, v in obj.items() if v is not None} for obj in self.objects]
+
         self.durability = self.api_arguments.get('durability', 'hard')
         self.return_changes = self.api_arguments.get('return_changes', 'false').lower() != 'false'
         self.dereference = self.api_arguments.get('dereference', 'false').lower() != 'false'

@@ -89,7 +89,8 @@ class QuerySet(object):
 
     def _handle_keys(self, api_arguments, q):
         if 'keys' in api_arguments:
-            q = q.get_all(api_arguments['keys'])
+            q = q.get_all(*json.loads(api_arguments['keys']))
+        print(q)
         return q
 
 

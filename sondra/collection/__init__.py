@@ -72,7 +72,7 @@ class CollectionMetaclass(ABCMeta):
             if not cls.primary_key:
                 cls.schema['properties']['id'] = {"type": "string", "description": "The primary key.", "title": "ID"}
 
-            cls.schema["methods"] = {m.slug: method_schema(None, m) for m in cls.exposed_methods.values()}
+            cls.schema["methods"] = {m.slug: method_schema(False, m) for m in cls.exposed_methods.values()}
             cls.schema["documentMethods"] = {m.slug: method_schema(None, m) for m in cls.document_class.exposed_methods.values()}
 
             if not 'description' in cls.schema:

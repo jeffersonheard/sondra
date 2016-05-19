@@ -155,12 +155,19 @@ class User(Document):
                 "type": "array",
                 "items": fk('sondra.auth.collections.Roles'),
                 "description": "Roles that have been granted to this user",
+            },
+            "dob": {
+                "title": "Date of Birth",
+                "type": "string",
+                "format": "date-time",
+                "description": "The user's birthday"
             }
         }
     }
     specials = {
         "created": DateTime(),
-        "roles": ListHandler(ForeignKey('auth','roles'))
+        "roles": ListHandler(ForeignKey('auth','roles')),
+        "dob": DateTime()
     }
 
     @expose_method

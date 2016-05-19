@@ -99,9 +99,10 @@ class KeyValueHandler(ValueHandler):
 
 
 class ForeignKey(ValueHandler):
-    def __init__(self, app, coll):
+    def __init__(self, app, coll, urlify=True):
         self._app = app
         self._coll = coll
+        self._urlify = urlify
 
     def to_rql_repr(self, value, document):
         """Should be just the 'id' of the document, not the full URL for portability"""
@@ -124,10 +125,14 @@ class ForeignKey(ValueHandler):
         elif isinstance(value, str):
             if value.startswith('/') or value.startswith('http'):
                 return value
-            else:
+            elif self._urlify:
                 return document.suite[self._app][self._coll][value].url
-        else:
+            else:
+                return value
+        elif self._urlify:
             return value.url
+        else:
+            return value.id
 
     def to_python_repr(self, value, document):
         """The document itself"""
@@ -242,6 +247,7 @@ class DateTime(ValueHandler):
             return value
         else:
             return iso8601.parse_date(value.to_iso8601())
+
 
 
 class Now(DateTime):

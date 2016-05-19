@@ -61,8 +61,16 @@ def method_url(instance, method):
 
 
 def method_schema(instance, method):
+    id = method.slug
+    if instance is not None:
+        if instance:
+            id = instance.url
+    else:
+        id = "*" + method.slug
+
+
     return {
-        "id": (instance.url if instance is not None else "*") + "." + method.slug,
+        "id": id,
         "title": getattr(method, 'title', method.__name__),
         "description": method.__doc__ or "*No description provided*",
         "oneOf": [{"$ref": "#/definitions/method_request"}, {"$ref": "#/definitions/method_response"}],
