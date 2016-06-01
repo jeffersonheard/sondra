@@ -1,3 +1,5 @@
+from functools import wraps
+
 def authorized_method(o):
     o.authentication_required = o.slug
     o.authorization_required = o.slug

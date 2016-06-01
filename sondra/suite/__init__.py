@@ -9,6 +9,8 @@ import logging
 import logging.config
 import os
 
+from jsonschema import Draft4Validator
+
 from sondra import help
 from sondra.ref import Reference
 from . import signals
@@ -99,72 +101,6 @@ BASIC_TYPES = {
             'get_intersecting',
             'get_nearest',
         ]
-    },
-    "geojsonGeometry": {
-        "type": "object",
-        "oneOf": [
-            {"$ref": "#/definitions/point"},
-            {"$ref": "#/definitions/lineString"},
-            {"$ref": "#/definitions/polygon"},
-        ]
-    },
-    "geojsonFeature": {
-        "type": "object",
-        "properties": {
-            "type": {"enum": ["Feature"]},
-            "geometry": {"$ref": "#/definitions/geojsonGeometry"},
-            "properties": {"type": "object"},
-        }
-    },
-    "geojsonFeatureCollection": {
-        "type": "object",
-        "properties": {
-            "type": {"enum": ["FeatureCollection"]},
-            "features": {"type": "array", "items": {"$ref": "#/definitions/geojsonFeature"}}
-        }
-    },
-    "pointCoordinates": {
-        "type": "array",
-        "items": {"type": "number"},
-        "minLength": 2,
-        "maxLength": 3
-    },
-    "point": {
-        "type": "object",
-        "properties": {
-            "type": {"enum": ["Point"]},
-            "coordinates": {"$ref": "#/definitions/pointCoordinates"}
-        }
-    },
-    "lineStringCoordinates": {
-        "type": "array",
-        "items": {
-            "type": "array",
-            "items": {"$ref": "#/definitions/pointCoordinates"}
-        },
-        "minLength": 2
-    },
-    "lineString": {
-        "type": "object",
-        "properties": {
-            "type": {"enum": ["Point"]},
-            "coordinates": {"$ref": "#/definitions/lineStringCoordinates"}
-        }
-    },
-    "polygonCoordinates": {
-        "type": "array",
-        "items": {
-            "type": "array",
-            "items": {"$ref": "#/definitions/lineStringCoordinates"}
-        },
-        "minLength": 4
-    },
-    "polygon": {
-        "type": "object",
-        "properties": {
-            "type": {"enum": ["Point"]},
-            "coordinates": {"$ref": "#/definitions/polygonCoordinates"}
-        }
     }
 }
 
@@ -318,6 +254,11 @@ class Suite(Mapping, metaclass=SuiteMetaclass):
         self.drop_database_objects()
         self.ensure_database_objects()
 
+    def clear_tables(self):
+        for app in self.values():
+            for collection in app.values():
+                collection.table.delete().run(app.connection)
+
     def __getitem__(self, item):
         """Application objects are indexed by "slug." Every Application object registered has its name slugified.
 
@@ -375,3 +316,12 @@ class Suite(Mapping, metaclass=SuiteMetaclass):
             return requests.get(url).json()  # TODO replace with client.
         else:
             return Reference(self, url).get_document()
+
+    def validate(self):
+        self.log.warning("Checking schemas for validity")
+        for application in self.applications.values():
+            self.log.warning("+ " + application.slug)
+            for collection in application.collections:
+                self.log.warning('--- ' + collection.slug)
+                Draft4Validator.check_schema(collection.schema)
+

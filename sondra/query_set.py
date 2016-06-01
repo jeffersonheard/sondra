@@ -52,14 +52,7 @@ class QuerySet(object):
         :param objects: A list of object IDs.
         :return:
         """
-        objects = objects or []
-        if len(objects):
-            if 'index' in api_arguments:
-                q = self.coll.table.get_all(*objects, index=api_arguments['index'])
-            else:
-                q = self.coll.table.get_all(*objects)
-        else:
-            q = self.coll.table
+        q = self.coll.table
 
         q = self._handle_keys(api_arguments, q)
         q = self._handle_simple_filters(api_arguments, q)
@@ -89,8 +82,10 @@ class QuerySet(object):
 
     def _handle_keys(self, api_arguments, q):
         if 'keys' in api_arguments:
-            q = q.get_all(*json.loads(api_arguments['keys']))
-        print(q)
+            if 'index' in api_arguments:
+                q = self.coll.table.get_all(*json.loads(api_arguments['keys']), index=api_arguments['index'])
+            else:
+                q = self.coll.table.get_all(*json.loads(api_arguments['keys']))
         return q
 
 

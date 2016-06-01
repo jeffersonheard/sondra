@@ -18,9 +18,9 @@ class Schema(object):
             kwargs['indent'] = int(kwargs['indent'])
 
         if 'method' in reference.kind:
-            ordered_schema = natural_order(method_schema(*reference.value))
-            return 'application/json', json.dumps(ordered_schema, **kwargs)
+            # ordered_schema = natural_order(method_schema(*reference.value))
+            return 'application/json', json.dumps(method_schema(*reference.value), **kwargs)
         else:
-            ordered_schema = natural_order(reference.value.schema)
-            return 'application/json', json.dumps(ordered_schema, **kwargs)
+            # ordered_schema = natural_order(reference.value.schema)
+            return 'application/json', json.dumps(reference.value.schema, **kwargs)
 

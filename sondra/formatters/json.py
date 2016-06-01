@@ -13,6 +13,7 @@ class JSON(object):
     * **indent** (int) - Formats the JSON output for human reading by inserting newlines and indenting ``indent`` spaces.
     * **fetch** (string) - A key in the document. Fetches the sub-document(s) associated with that key.
     * **ordered** (bool) - Sorts the keys in dictionary order.
+    * **bare_keys** (bool) - Sends bare foreign keys instead of URLs.
     """
     # TODO make dotted keys work in the fetch parameter.
 
@@ -35,18 +36,26 @@ class JSON(object):
         else:
             fetch = []
 
+        if 'bare_keys' in kwargs:
+            bare_keys = bool(kwargs.get('bare_keys', False))
+            del kwargs['bare_keys']
+        else:
+            bare_keys = False
+
+        print(bare_keys)
+
         # note this is a closure around the fetch parameter. Consider before refactoring out of the method.
         def serialize(doc):
             if isinstance(doc, document.Document):
-                ret = doc.json_repr(ordered=ordered)
+                ret = doc.json_repr(ordered=ordered, bare_keys=bare_keys)
                 for f in fetch:
                     if f in ret:
                         if isinstance(doc[f], list):
-                            ret[f] = [d.json_repr(ordered=ordered) for d in doc[f]]
+                            ret[f] = [d.json_repr(ordered=ordered, bare_keys=bare_keys) for d in doc[f]]
                         elif isinstance(doc[f], dict):
-                            ret[f] = {k: v.json_repr(ordered=ordered) for k, v in doc[f].items()}
+                            ret[f] = {k: v.json_repr(ordered=ordered, bare_keys=bare_keys) for k, v in doc[f].items()}
                         else:
-                            ret[f] = doc[f].json_repr(ordered=ordered)
+                            ret[f] = doc[f].json_repr(ordered=ordered, bare_keys=bare_keys)
                 return ret
             else:
                 return doc

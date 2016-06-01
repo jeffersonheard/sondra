@@ -1,4 +1,4 @@
-
+from collections import OrderedDict
 from collections.abc import MutableMapping
 from abc import ABCMeta
 from copy import deepcopy, copy
@@ -66,14 +66,18 @@ class CollectionMetaclass(ABCMeta):
             cls.abstract = False
             cls.schema = deepcopy(cls.document_class.schema)
 
-            if 'id' in cls.schema['properties']:
-                raise CollectionException('Document schema should not have an "id" property')
-
             if not cls.primary_key:
                 cls.schema['properties']['id'] = {"type": "string", "description": "The primary key.", "title": "ID"}
 
-            cls.schema["methods"] = {m.slug: method_schema(False, m) for m in cls.exposed_methods.values()}
-            cls.schema["documentMethods"] = {m.slug: method_schema(None, m) for m in cls.document_class.exposed_methods.values()}
+            cls.schema["methods"] = {}
+            for m in cls.exposed_methods.values():
+                cls.schema['methods'][m.slug] = method_schema(False, m)
+
+            print("Cataloging document methods")
+            cls.schema['documentMethods'] = {}
+            for m in cls.document_class.exposed_methods.values():
+                cls.schema["documentMethods"][m.slug] = method_schema(None, m)
+            print("End catalog step")
 
             if not 'description' in cls.schema:
                 cls.schema['description'] = cls.document_class.__doc__ or 'No Description Provided.'
@@ -282,7 +286,7 @@ class Collection(MutableMapping, metaclass=CollectionMetaclass):
                 else:
                     self.table.index_create(index, multi=multi, geo=geo).run(self.application.connection)
             except r.ReqlError as e:
-                self.log.info('Index on table {0}.{1} already exists.'.format(self.application.db, self.name))
+                self.log.info('Index {2} on table {0}.{1} already exists.'.format(self.application.db, self.name, index))
 
         signals.post_table_creation.send(
             self.__class__, instance=self, table_name=self.name, db_name=self.application.db)
@@ -472,8 +476,12 @@ class Collection(MutableMapping, metaclass=CollectionMetaclass):
             if isinstance(value, Document):
                 for s in value.specials.values():
                     s.pre_delete(value)
+                value.pre_delete()
         values = [v.id if isinstance(v, Document) else v for v in docs]
-        return self.table.get_all(*values).delete(**kwargs).run(self.application.connection)
+        ret = self.table.get_all(*values).delete(**kwargs).run(self.application.connection)
+        for value in docs:
+            value.post_delete()
+        return ret
 
     def save(self, docs, **kwargs):
         """Save a document or list of documents to the database.
@@ -490,41 +498,44 @@ class Collection(MutableMapping, metaclass=CollectionMetaclass):
 
         values = []
         doc_signals.pre_save.send(self.document_class, docs=docs)
-        for value in docs:
-            if not isinstance(value, Document):
-                value = self.document_class(value)
 
-            value.validate()
-            value._saved = True
-            rql = value.rql_repr()
+        for doc in docs:
+            if not isinstance(doc, Document):
+                doc = self.document_class(doc)
+
+            doc.pre_save()
+            doc.validate()
+            doc._saved = True
+            rql = doc.rql_repr()
             values.append(rql)
 
         ret = self.table.insert(values, **kwargs).run(self.application.connection)
         if docs and isinstance(docs[0], Document):
-            for i, value in enumerate(docs):
-                value._saved = True
+            for i, doc in enumerate(docs):
+                doc._saved = True
                 if 'generated_keys' in ret:
-                    value.id = ret['generated_keys'][i]
-                    for s in value.specials.values():
-                        s.post_save(value)
-                doc_signals.post_save.send(self.document_class, instance=value)
+                    doc.id = ret['generated_keys'][i]
+                    for s in doc.specials.values():
+                        s.post_save(doc)
+                doc.post_save()
+                doc_signals.post_save.send(self.document_class, instance=doc)
 
         return ret
 
-    def json_repr(self, docs, ordered=False):
+    def json_repr(self, docs, ordered=False, bare_keys=False):
         pop = False
         if not isinstance(docs, list):
             docs = [docs]
             pop = True
 
-        values = [v.json_repr(ordered) for v in docs]
+        values = [v.json_repr(ordered, bare_keys) for v in docs]
 
         if pop:
             return values[0]
         else:
             return values
 
-    def geojson_repr(self, docs, ordered=False):
+    def geojson_repr(self, docs, ordered=False, bare_keys=False):
         pop = False
         if not isinstance(docs, list):
             docs = [docs]
@@ -537,7 +548,7 @@ class Collection(MutableMapping, metaclass=CollectionMetaclass):
                 v['_url'] = value.url
                 value = v
 
-            values.append(value.geojson_repr(ordered))
+            values.append(value.geojson_repr(ordered, bare_keys))
 
         if pop:
             return values[0]

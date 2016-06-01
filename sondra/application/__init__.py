@@ -208,7 +208,23 @@ class Application(Mapping, metaclass=ApplicationMetaclass):
             self.log.warning("Creating collection for {0}/{1}".format(self.slug, collection_class.slug))
             if name in self._collections:
                 raise ApplicationException(name + " already exists in " + self.name)
-            self._collections[name] = collection_class(self)
+            coll = collection_class(self)
+
+            # inherit definitions from this suite
+            if self.suite.definitions and 'definitions' not in coll.schema:
+                coll.schema['definitions'] = {}
+            for k, v in self.suite.definitions.items():
+                if k not in coll.schema['definitions']:
+                    coll.schema['definitions'][k] = v
+
+            # inherit definitions from this application
+            if self.definitions and 'definitions' not in coll.schema:
+                coll.schema['definitions'] = {}
+            for k, v in self.definitions.items():
+                if k not in coll.schema['definitions']:
+                    coll.schema['definitions'][k] = v
+
+            self._collections[name] = coll
         signals.post_init.send(self.__class__, instance=self)
 
     def __hash__(self):

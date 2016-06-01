@@ -25,12 +25,28 @@ def camelcase_slugify(name):
 
 
 def mapjson(fun, doc):
-    if isinstance(doc, dict):
+    if isinstance(doc, OrderedDict):   # preserve order
+        ret = OrderedDict()
+        for k, v in doc.items():
+            ret[k] = mapjson(fun, v)
+        return ret
+    elif isinstance(doc, dict):
         return {k: mapjson(fun, v) for k, v in doc.items()}
     elif isinstance(doc, list):
         return [mapjson(fun, v) for v in doc]
     else:
         return fun(doc)
+
+
+def apply_title(schema, parent_property_name=None):
+    if 'title' not in schema and parent_property_name:
+        schema['title'] = parent_property_name.replace('_', ' ').title()
+    if schema['type'] == 'object':
+        for property, schema in schema.get('properties', {}).items():
+            apply_title(schema, parent_property_name=property)
+    if "definitions" in schema:
+        for name, schema in schema['definitions'].items():
+            apply_title(schema, parent_property_name=name)
 
 
 def qiter(o):

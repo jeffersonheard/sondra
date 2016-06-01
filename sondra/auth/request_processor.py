@@ -69,6 +69,7 @@ class AuthRequestProcessor(RequestProcessor):
 
         # Check to see if the user has passed a JWT
         auth_token = request.api_arguments.get('_auth', None)  # if the user passed it as a parameter
+        print(auth_token)
         if not auth_token:  # maybe the user passed it as a header
             bearer = request.headers.get('Authorization', None)
             if bearer:
@@ -91,12 +92,12 @@ class AuthRequestProcessor(RequestProcessor):
         if authorization_target is None:  # we've authenticated, that's all we need.
             return request
 
-        filter_function = getattr(authorization_target, 'document_level_filter_function')
+        filter_function = getattr(authorization_target, 'document_level_filter_function', None)
         if filter_function:
             flt = filter_function(user, decoded_token, permission_name)
             request.additional_filters.append(flt)
 
-        if request.kind in {'document', 'subdocument'}:
+        if request.reference.kind in {'document', 'subdocument'}:
             document_auth_function = getattr(value, 'authorize', None)
             if document_auth_function:
                 if not document_auth_function(user, decoded_token, permission_name):
@@ -106,19 +107,19 @@ class AuthRequestProcessor(RequestProcessor):
                         name=permission_name
                     )
                     raise PermissionError(msg)
-
-        for role in user.fetch('roles'):  # check each role. return at the first successful authorization.
-            if role.authorizes(authorization_target, permission_name):
-                return request
-
-        else:  # we made it through all the user's roles and none authorized access.
-            msg = "Permission '{name}' denied for '{user}' accessing '{url}'".format(
-                user=user,
-                url=reference.url,
-                name=permission_name
-            )
-            request.suite.log.error(msg)
-            raise PermissionError(msg)
+        return request
+        # for role in user.fetch('roles'):  # check each role. return at the first successful authorization.
+        #     if role.authorizes(authorization_target, permission_name):
+        #         return request
+        #
+        # else:  # we made it through all the user's roles and none authorized access.
+        #     msg = "Permission '{name}' denied for '{user}' accessing '{url}'".format(
+        #         user=user,
+        #         url=reference.url,
+        #         name=permission_name
+        #     )
+        #     request.suite.log.error(msg)
+        #     raise PermissionError(msg)
 
     @staticmethod
     def _get_permission_name(request):

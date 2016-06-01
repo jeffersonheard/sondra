@@ -68,7 +68,6 @@ def method_schema(instance, method):
     else:
         id = "*" + method.slug
 
-
     return {
         "id": id,
         "title": getattr(method, 'title', method.__name__),

@@ -1,3 +1,4 @@
+from collections import OrderedDict
 from copy import copy, deepcopy
 from functools import partial
 
@@ -20,7 +21,7 @@ def merge(a, b, path=None):
 
 
 def extend(proto, *values, **kwargs):
-    ret = copy(proto) if proto != {} else proto
+    ret = deepcopy(proto) if proto else OrderedDict()
     for v in values:
         ret.update(v)
     ret.update(kwargs)
@@ -28,7 +29,7 @@ def extend(proto, *values, **kwargs):
 
 
 def remove(proto, *keys):
-    ret = copy(proto)
+    ret = deepcopy(proto)
     for key in keys:
         if key in ret:
             del ret[key]
@@ -38,22 +39,26 @@ def remove(proto, *keys):
 # fragments to extend.
 
 class S(object):
-
     @staticmethod
     def object(properties=None, **kwargs):
-        return extend({
+        properties = properties or OrderedDict()
+        for pname, pschema in properties.items():
+            if 'title' not in pschema:
+                pschema['title'] = pname.replace('_', ' ').title()
+        ret = extend(OrderedDict(), {
             "type": "object",
-            "properties": properties or {},
+            "properties": properties,
         }, **kwargs)
+        return ret
 
     string = partial(extend, {"type": "string"})
     array = partial(extend, {"type": "array"})
     integer = partial(extend, {"type": "integer"})
     number = partial(extend, {"type": "number"})
     boolean = partial(extend, {"type": "boolean"})
-    date = partial(extend, {"type": "string", "formatters": "date"})
+    date = partial(extend, {"type": "string", "format": "date-time"})
     color = partial(extend, {"type": "string", "formatters": "color"})
-    datetime = partial(extend, {"type": "string", "formatters": "datetime"})
+    datetime = partial(extend, {"type": "string", "format": "date-time"})
     datetime_local = partial(extend, {"type": "string", "formatters": "datetime-local"})
     email = partial(extend, {"type": "string", "formatters": "email"})
     month = partial(extend, {"type": "string", "formatters": "month"})
@@ -66,8 +71,49 @@ class S(object):
     week = partial(extend, {"type": "string", "formatters": "week"})
 
     @staticmethod
-    def nullable(o):
-        return { "oneOf": [{"type": "null"}, o]}
+    def props(*args):
+        properties = OrderedDict()
+        for k, v in args:
+            properties[k] = v
 
+        return properties
+
+    @staticmethod
+    def fk(suite, app, collection, **kwargs):
+        return S.string({"type": "string", "fk": '/'.join([app, collection])}, **kwargs)
+
+    @staticmethod
+    def fk_array(suite, app, collection, **kwargs):
+        return S.array(items=S.fk(suite, app, collection), **kwargs)
+
+    @staticmethod
+    def external_key(url, **kwargs):
+        return S.string({"type": "string", "fk": url}, **kwargs)
+
+    @staticmethod
+    def ref(definition, **kwargs):
+        url = "#/definitions/{definition}".format(**locals())
+        return extend({"$ref": url}, kwargs)
+
+    @staticmethod
+    def ref_array(definition, **kwargs):
+        return S.array(items=S.ref(definition), **kwargs)
+
+    @staticmethod
+    def foreign_ref(suite, app, collection, definition, **kwargs):
+        url = '/'.join((suite, app, collection, "#/definitions/{definition}".format(**locals())))
+        return extend({"$ref": url, "suite": suite, "app": app, "collection": collection}, kwargs)
+
+    def external_ref(self, url, **kwargs):
+        return extend({"$ref": url}, kwargs)
+
+    @staticmethod
+    def nullable(o):
+        if isinstance(o.get('type', 'string'), list):
+            o['type'].append('null')
+        else:
+            o['type'] = [o.get('type', 'string'), 'null']
+
+        return o
 
 

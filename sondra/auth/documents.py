@@ -47,7 +47,7 @@ class Role(Document):
     def authorizes(self, value, perm=None):
         if isinstance(value, Application):
             application = value.slug
-            for permission in self['permissions']:
+            for permission in self.get('permissions', []):
                 if permission.get('application', None) == application:
                     return perm in permission['allowed']
             else:
@@ -56,7 +56,7 @@ class Role(Document):
         elif isinstance(value, Collection):
             collection = value.slug
             application = value.application.slug
-            for permission in self['permissions']:
+            for permission in self.get('permissions', []):
                 if permission.get('collection', None) == collection and \
                         permission.get('application', None) == application:
                     return perm in permission['allowed']
@@ -67,7 +67,7 @@ class Role(Document):
             document = value.slug
             collection = value.collection.slug
             application = value.application.slug
-            for permission in self['permissions']:
+            for permission in self.get('permissions', []):
                 if permission.get('collection', None) == collection and \
                         permission.get('application', None) == application and \
                         permission.get('document', None) == document:

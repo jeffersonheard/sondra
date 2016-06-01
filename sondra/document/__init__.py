@@ -4,11 +4,13 @@ import json
 import logging
 
 from abc import ABCMeta
+from collections import OrderedDict
 from collections.abc import MutableMapping
 from copy import deepcopy
 import jsonschema
 import heapq
 
+from sondra.document.valuehandlers import ForeignKey, ListHandler
 from sondra.expose import method_schema
 
 try:
@@ -19,7 +21,7 @@ except:
 
 from sondra import utils, help
 from sondra.utils import mapjson, split_camelcase, natural_order
-from sondra.schema import merge
+from sondra.schema import merge, S
 from sondra.ref import Reference
 
 __all__ = (
@@ -44,8 +46,7 @@ class DocumentMetaclass(ABCMeta):
     """
     def __new__(mcs, name, bases, attrs):
         definitions = {}
-        schema = attrs.get('schema', {"type": "object", "properties": {}})
-        property_order = None
+        schema = attrs.get('schema', S.object())
         setters = {}
         getters = {}
         reqls = {}
@@ -73,17 +74,8 @@ class DocumentMetaclass(ABCMeta):
             else:
                 attrs['title'] = split_camelcase(name)
 
-        # for ordered representations of documents, take the extended keyword propertyOrder into account.
-        props = schema.get('properties', ())
-        ordered_properties = []
-        for p in props:
-            if 'propertyOrder' in props[p]:
-                heapq.heappush(ordered_properties, (props[p]['propertyOrder'], p))
-        property_order = [heapq.heappop(ordered_properties)[1] for i in range(len(ordered_properties))]
-
         # use the modified schema
         attrs['schema'] = schema
-        attrs['property_order'] = property_order
 
         # go through the list of attributes and memoize property setters & getters.
         # these serve as pre-processors for complicated properties that need processing
@@ -126,7 +118,6 @@ class DocumentMetaclass(ABCMeta):
                         for k in cls.schema['properties']
                         if 'default' in cls.schema['properties'][k]}
 
-
         super(DocumentMetaclass, cls).__init__(name, bases, nmspc)
 
 
@@ -154,7 +145,7 @@ class Document(MutableMapping, metaclass=DocumentMetaclass):
     """
     title = None
     defaults = {}
-    template = "{id}"
+    template = "${id}"
     processors = []
     specials = {}
     store_nulls = set()
@@ -162,7 +153,6 @@ class Document(MutableMapping, metaclass=DocumentMetaclass):
     def __init__(self, obj, collection=None, from_db=False):
         self.collection = collection
         self._saved = from_db
-
 
         if self.collection is not None:
             self.schema = self.collection.schema  # this means it's only calculated once. helpful.
@@ -183,7 +173,10 @@ class Document(MutableMapping, metaclass=DocumentMetaclass):
 
         for k in self.defaults:
             if k not in self:
-                self[k] = self.defaults[k]
+                if callable(self.defaults[k]):
+                    self[k] = self.defaults[k](self.suite)
+                else:
+                    self[k] = self.defaults[k]
 
         for k, vh in self.specials.items():
             if k not in self:
@@ -245,7 +238,13 @@ class Document(MutableMapping, metaclass=DocumentMetaclass):
 
     def __eq__(self, other):
         """True if and only if the primary keys are the same"""
-        return self.id and (self.id == other.id)
+        if isinstance(other, Document):
+            return self.id and (self.id == other.id)
+        elif isinstance(other, dict):
+            return self.id and (self.id == other[self.collection.primary_key])
+        else:
+            return self.id == other
+
 
     def __contains__(self, item):
         return item in self.obj
@@ -356,12 +355,36 @@ class Document(MutableMapping, metaclass=DocumentMetaclass):
 
         return ret
 
-    def json_repr(self, ordered=False):
+    def json_repr(self, ordered=False, bare_keys=False):
         js = deepcopy(self.obj)
 
         for property, special in self.specials.items():
             if property in js:
-                js[property] = special.to_json_repr(js[property], js)
+                convert = True
+                if bare_keys:
+                    if isinstance(special, ForeignKey):
+                        convert = False
+                    elif isinstance(special, ListHandler):
+                        sp = special
+                        while isinstance(sp, ListHandler):
+                            sp = sp.sub_handler
+                        if isinstance(sp, ForeignKey):
+                            convert = False
+
+                if convert:
+                    js[property] = special.to_json_repr(js[property], js)
+                elif isinstance(special, ForeignKey):
+                    js[property] = self[property].id
+                elif isinstance(special, ListHandler):
+                    def descend(o):
+                        if isinstance(o, Document):
+                            return o.id
+                        elif isinstance(o, list):
+                            return [descend(x) for x in o]
+                        else:
+                            return o
+                    js[property] = descend(self[property])
+
 
         for p in self.json_processors:
             js[p] = self.json_processors[p](js[p])
@@ -374,8 +397,8 @@ class Document(MutableMapping, metaclass=DocumentMetaclass):
 
         return js
 
-    def geojson_repr(self, ordered=False):
-        js = self.json_repr()
+    def geojson_repr(self, ordered=False, bare_keys=False):
+        js = self.json_repr(ordered, bare_keys)
 
         if 'feature_geoemtry' in self.schema:
             geom = js.get(self.schema['feature_geometry'], None)
@@ -400,15 +423,11 @@ class Document(MutableMapping, metaclass=DocumentMetaclass):
         }
 
     def save(self, conflict='replace', *args, **kwargs):
-        self.pre_save()
         ret = self.collection.save(self, conflict=conflict, *args, **kwargs)
-        self.post_save()
         return ret
 
     def delete(self, **kwargs):
-        self.pre_delete()
         ret =  self.collection.delete(self, **kwargs)
-        self.post_delete()
         return ret
 
     def validate(self):
@@ -418,12 +437,10 @@ class Document(MutableMapping, metaclass=DocumentMetaclass):
         pass
 
     def post_save(self):
-        for s in self.specials.values():
-            s.post_save(self)
+        pass
 
     def pre_delete(self):
-        for s in self.specials.values():
-            s.pre_delete(self)
+        pass
 
     def post_delete(self):
         pass
