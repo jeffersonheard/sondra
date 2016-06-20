@@ -98,7 +98,7 @@ class User(Document):
                 'type': 'string',
                 'description': 'The user\'s email address',
                 'format': 'email',
-                'pattern': '^(\w+[.|\w])*@(\w+[.])*\w+$'
+                'pattern': '^[^@]+@[^@]+\.[^@]+$'
             },
             'email_verified': {
                 'title': 'Email Verified',

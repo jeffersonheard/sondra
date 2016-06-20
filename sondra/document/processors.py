@@ -54,5 +54,6 @@ class TimestampOnCreate(DocumentProcessor):
         return True
 
     def run(self, document):
-        self.dest_prop = datetime.utcnow()
+        if document.collection.primary_key not in document:
+            self.dest_prop = datetime.utcnow()
 

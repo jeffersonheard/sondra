@@ -312,7 +312,7 @@ class Document(MutableMapping, metaclass=DocumentMetaclass):
     def __delitem__(self, key):
         del self.obj[key]
         if self.collection:
-            for p in self.collection.processors:
+            for p in self.processors:
                 if p.is_necessary(key):
                     p.run(self.obj)
 

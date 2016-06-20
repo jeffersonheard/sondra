@@ -52,6 +52,9 @@ class S(object):
         return ret
 
     string = partial(extend, {"type": "string"})
+    file = partial(extend, {"type": "string", "file": True})
+    image = partial(extend, {"type": "string", "image": True})
+    geo = partial(extend, {"type": "object", "geo": True})
     array = partial(extend, {"type": "array"})
     integer = partial(extend, {"type": "integer"})
     number = partial(extend, {"type": "number"})
@@ -65,7 +68,7 @@ class S(object):
     range = partial(extend, {"type": "string", "formatters": "range"})
     tel = partial(extend, {"type": "string", "formatters": "tel"})
     text = partial(extend, {"type": "string", "formatters": "text"})
-    textarea = partial(extend, {"type": "string", "formatters": "textarea"})
+    textarea = partial(extend, {"type": "string", "formatters": "textarea", "long": True})
     time = partial(extend, {"type": "string", "formatters": "time"})
     url = partial(extend, {"type": "string", "formatters": "url"})
     week = partial(extend, {"type": "string", "formatters": "week"})

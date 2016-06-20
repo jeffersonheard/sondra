@@ -503,6 +503,9 @@ class Collection(MutableMapping, metaclass=CollectionMetaclass):
             if not isinstance(doc, Document):
                 doc = self.document_class(doc)
 
+            for p in doc.processors:
+                if p.run_before_save():
+                    p.run(doc)
             doc.pre_save()
             doc.validate()
             doc._saved = True
