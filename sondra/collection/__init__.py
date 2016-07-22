@@ -15,6 +15,86 @@ from sondra.utils import mapjson, resolve_class, split_camelcase
 
 _validator = jsonschema.Draft4Validator
 
+
+class QWrapper(object):
+    """Wraps a rethinkdb query so that we can return instances when we want to and not use the raw interface"""
+    def __init__(self, flt, name):
+        self.name = name
+        self.flt = flt
+
+    def __call__(self, *args, **kwargs):
+        res = getattr(self.flt.query, self.name)(*args, **kwargs)
+        self.flt.query = res
+        return self.flt
+
+
+class QuerySet(object):
+    """Wraps a rethinkdb query so that we can return instances when we want to and not use the raw interface"""
+    def __init__(self, coll):
+        self.coll = coll
+        self.query = self.coll.table
+        self.result = None
+
+    def __getattribute__(self, name):
+        if name.startswith('__') or name in { 'query', 'coll', 'result', 'clear' }:
+            return object.__getattribute__(self, name)
+        else:
+            return QWrapper(self, name)
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *args):
+        pass
+
+    def __call__(self):
+        return self.coll.q(self.query)
+
+    def __iter__(self):
+        return self.coll.q(self.query)
+
+    def __bool__(self):
+        return len(self) > 0
+
+    def __len__(self):
+        return self.query.count().run(self.coll.application.connection)
+
+
+class RawQuerySet(object):
+    def __init__(self, coll, cls=None):
+        self.coll = coll
+        self.query = self.coll.table
+        self.result = None
+        self.cls = cls
+
+    def __getattribute__(self, name):
+        if name.startswith('__') or name in { 'query', 'coll', 'result', 'clear', 'cls'}:
+            return object.__getattribute__(self, name)
+        else:
+            return QWrapper(self, name)
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *args):
+        pass
+
+    def __call__(self):
+        return self.query.run(self.coll.application.connection)
+
+    def __iter__(self):
+        if self.cls:
+            return (self.cls(d) for d in self.query.run(self.coll.application.connection))
+        else:
+            return self.query.run(self.coll.application.connection)
+
+    def __bool__(self):
+        return len(self) > 0
+
+    def __len__(self):
+        return self.query.count().run(self.coll.application.connection)
+
+
 class CollectionException(Exception):
     """Represents a misconfiguration in a :class:`Collection` class definition"""
 
@@ -219,6 +299,24 @@ class Collection(MutableMapping, metaclass=CollectionMetaclass):
 
     def __str__(self):
         return self.url
+
+    @property
+    def query(self):
+        return QuerySet(self)
+
+    @property
+    def raw_query(self):
+        return RawQuerySet(self)
+
+    def filter(self, **kwargs):
+        return QuerySet(self).filter(kwargs)
+
+    def create_if_empty(self, q, doc):
+        qs = self.filter(**q)
+        if qs:
+            return next(iter(qs))
+        else:
+            return self.create(doc)
 
     def help(self, out=None, initial_heading_level=0):
         """Return full reStructuredText help for this class"""
