@@ -1,9 +1,10 @@
 from sondra.suite import Suite
-from sondra.document import Document
+from sondra.document import Document, ListHandler
 from sondra.collection import Collection
 from sondra.application import Application
 from sondra.document.processors import SlugPropertyProcessor, TimestampOnCreate, TimestampOnUpdate
-from sondra.document.valuehandlers import ListHandler, KeyValueHandler, ForeignKey, DateTime
+from sondra.document.valuehandlers import ListHandler, ForeignKey, DateTime
+from sondra.document.schema_parser import KeyValueHandler, ForeignKey, DateTime
 from sondra.schema import S
 from sondra.lazy import ref, fk
 from sondra import auth, expose

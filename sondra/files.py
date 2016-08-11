@@ -2,7 +2,7 @@ from functools import lru_cache
 import os
 import rethinkdb as r
 
-from sondra.document.valuehandlers import ValueHandler
+from sondra.document.schema_parser import ValueHandler
 
 try:
     from werkzeug.utils import secure_filename

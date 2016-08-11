@@ -14,7 +14,7 @@ class EndpointError(Exception):
 
 class Reference(object):
     """Contains the application, collection, document, methods, and fragment the URL refers to"""
-    FORMATS = {'help', 'schema', 'json', 'geojson'}
+    FORMATS = {'help', 'schema', 'json', 'geojson', 'html'}
 
     def __str__(self):
         return self.url
@@ -33,7 +33,7 @@ class Reference(object):
         self.doc = kw.get("doc")
         self.doc_method = kw.get("doc_method")
         self.fragment = kw.get("fragment")
-        self.format = format = kw.get("formatters", 'json')
+        self.format = format = kw.get("format", 'json')
         self.query = query = kw.get("query")
         self.vargs = vargs = kw.get("vargs", [])
         self.kwargs = kwargs = kw.get("kwargs", {})
@@ -112,13 +112,13 @@ class Reference(object):
             kwargs = {k: v for k, v in (kv.split('=') for kv in params if '=' in kv)}
 
         # determine output formatters
-        if vargs and 'formatters' not in kwargs:
+        if vargs and 'format' not in kwargs:
             format = vargs[0]
-        elif 'formatters' in kwargs:
-            format = kwargs['formatters']
+        elif 'format' in kwargs:
+            format = kwargs['format']
 
         if format not in self.FORMATS:
-            raise ParseError('Unknown output formatters: {0}'.format(format))
+            raise ParseError('Unknown output format: {0}'.format(format))
 
         # check basic validity of URL
         if app_method and any((coll, coll_method, doc, doc_method)):
@@ -316,8 +316,8 @@ class Reference(object):
 
         try:
             return self.get_collection()[self.doc]
-        except KeyError:
-            raise EndpointError("{0} document not found.".format(self.url))
+        except KeyError as e:
+            raise EndpointError("{0} document not found.\n{1}".format(self.url, e))
 
     def get_subdocument(self):
         """Return the fragment within the Document referred to by this URL."""

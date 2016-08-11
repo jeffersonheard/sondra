@@ -8,6 +8,8 @@ import random
 import time
 import sys
 from importlib import import_module
+import warnings
+import functools
 
 
 def split_camelcase(name):
@@ -194,3 +196,30 @@ def natural_order(json_repr, first=None):
         return [natural_order(item, first) for item in json_repr]
     else:
         return json_repr
+
+
+def deprecated(func):
+    '''This is a decorator which can be used to mark functions
+    as deprecated. It will result in a warning being emitted
+    when the function is used.'''
+
+    @functools.wraps(func)
+    def new_func(*args, **kwargs):
+        try:
+            filename = func.func_code.co_filename
+        except:
+            filename = 'unknown'
+
+        try:
+            lineno = func.func_code.co_firstlineno + 1
+        except:
+            lineno = 0
+
+        warnings.warn_explicit(
+            "Call to deprecated function {}.".format(func.__name__),
+            category=DeprecationWarning,
+            filename=filename,
+            lineno=lineno
+        )
+        return func(*args, **kwargs)
+    return new_func

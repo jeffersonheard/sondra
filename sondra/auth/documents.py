@@ -2,10 +2,10 @@ from sondra.application import Application
 from sondra.auth.decorators import authorized_method
 from sondra.collection import Collection
 from sondra.expose import expose_method
-from sondra.document import Document
+from sondra.document import Document, ListHandler
 from sondra.document.processors import SlugPropertyProcessor
-from sondra.document.valuehandlers import DateTime, ForeignKey, ListHandler
-from sondra.lazy import fk
+from sondra.document.schema_parser import ForeignKey, DateTime
+from sondra.schema import S
 import operator
 import functools
 
@@ -22,7 +22,7 @@ class Role(Document):
         }
     }
     definitions = {
-        "permission":   {
+        "permission": {
             "type": "object",
             "properties": {
                 "application": {"type": "string"},
@@ -40,9 +40,6 @@ class Role(Document):
     processors = [
         SlugPropertyProcessor('title')
     ]
-    specials = {
-        'created': DateTime()
-    }
 
     def authorizes(self, value, perm=None):
         if isinstance(value, Application):
@@ -153,7 +150,7 @@ class User(Document):
             "roles": {
                 'title': 'Roles',
                 "type": "array",
-                "items": fk('sondra.auth.collections.Roles'),
+                "items": S.fk('api', 'auth', 'roles'),
                 "description": "Roles that have been granted to this user",
             },
             "dob": {
@@ -163,11 +160,6 @@ class User(Document):
                 "description": "The user's birthday"
             }
         }
-    }
-    specials = {
-        "created": DateTime(),
-        "roles": ListHandler(ForeignKey('auth','roles')),
-        "dob": DateTime()
     }
 
     @expose_method
@@ -194,9 +186,9 @@ class Credentials(Document):
     """A set of credentials for a user"""
     schema = {
         'type': 'object',
-        'required': ['password','salt','secret'],
+        'required': ['password', 'salt', 'secret'],
         'properties': {
-            'user': fk('sondra.auth.collections.Users'),
+            'user': S.fk('api', 'auth', 'users'),
             'password': {
                 'type': 'string',
                 'description': "The user's (encrypted) password."
@@ -220,10 +212,6 @@ class Credentials(Document):
         }
     }
 
-    specials = {
-        'user': ForeignKey('auth','users')
-    }
-
 
 class LoggedInUser(Document):
     schema = {
@@ -233,9 +221,6 @@ class LoggedInUser(Document):
             "secret": {"type": "string"},
             "expires": {"type": "string"}
         }
-    }
-    specials = {
-        "expires": DateTime(),
     }
 
 

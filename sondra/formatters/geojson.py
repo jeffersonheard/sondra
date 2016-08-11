@@ -1,7 +1,7 @@
 import json
 
 from sondra import collection, document
-from sondra.document.valuehandlers import Geometry
+from sondra.document.schema_parser import Geometry
 from sondra.utils import mapjson
 
 class GeoJSON(object):

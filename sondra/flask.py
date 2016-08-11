@@ -3,6 +3,7 @@ from flask.ext.cors import CORS
 
 import json
 import traceback
+import sys
 
 from jsonschema import ValidationError
 
@@ -40,15 +41,77 @@ def suite_help():
     )
     return resp
 
+def format_error(req, code, err, reason):
+    if isinstance(reason, Exception):
+        kind, value, tb = sys.exc_info()
+        reason = "{kind}: {value}\n------\n\n{tb}".format(
+            kind=reason.__class__.__name__,
+            value=value,
+            tb='\n'.join(traceback.format_tb(tb, limit=100))
+        )
+    else:
+        reason = str(reason)
+
+    try:
+        if req.reference.format == 'json':
+            return Response(
+                status=code,
+                mimetype='application/json',
+                response=json.dumps({"err": err, "reason": str(reason)})
+            )
+        else:
+            rsp = """<!doctype html><html>
+            <head>
+                <title>{code} - {url}</title>
+            </head>
+            <body>
+                <h1>{code} - {err}</h1>
+                <dl>
+                    <dt>URL</dt>
+                    <dd>{url}</dd>
+
+                    <dt>Method</dt>
+                    <dd>{method}</dd>
+
+                </dl>
+                <h3>Reason</h3>
+                <pre>
+    {reason}
+                </pre>
+            </body>
+    </html>""".format(
+                code=code,
+                url=req.reference.url,
+                err=err,
+                method=req.request_method,
+                reason=reason
+            )
+            return Response(
+                status=code,
+                mimetype='text/html',
+                response=rsp
+            )
+    except:
+        return Response(
+            status=code,
+            mimetype='application/json',
+            response=json.dumps({
+                "err": "InvalidRequest",
+                "reason": reason,
+                "request_data": req.body.decode('utf-8'),
+                "request_path": req.reference.url,
+                "method": req.method,
+            }, indent=4)
+        )
+
+
 @api_tree.route('/<path:path>', methods=['GET','POST','PUT','PATCH', 'DELETE'])
 def api_request(path):
     if request.method == 'HEAD':
         return Response(status=200)
     else:
         args = {k:v for k, v in request.values.items()}
-
-        try:
-            r = APIRequest(
+        r = APIRequest(
                 current_app.suite,
                 request.headers,
                 request.data,
@@ -58,6 +121,7 @@ def api_request(path):
                 request.files
             )
 
+        try:
             # Run any number of post-processing steps on this request, including
             try:
                 for p in current_app.suite.api_request_processors:
@@ -77,40 +141,15 @@ def api_request(path):
             return resp
 
         except PermissionError as denial:
-            return Response(
-                status=403,
-                mimetype='application/json',
-                response=json.dumps({"err": "PermissionDenied", "reason": str(denial)})
-            )
+            return format_error(r, 403, "PermissionDenied", denial)
 
         except KeyError as not_found:
-            return Response(
-                status=404,
-                mimetype='application/json',
-                response=json.dumps({"err": "NotFound", "reason": str(not_found)}))
+            return format_error(r, 404, "NotFound", not_found)
 
         except ValidationError as invalid_entry:
-            return Response(
-                status=400,
-                mimetype='application/json',
-                response=json.dumps({
-                    "err": "InvalidRequest",
-                    "reason": str(invalid_entry),
-                    "request_data": request.data.decode('utf-8'),
-                    "request_path": current_app.suite.url + '/' + path,
-                    "method": request.method,
-                    "args": args
-                }, indent=4)
-            )
+            return format_error(r, 400, "InvalidRequest", invalid_entry)
 
         except Exception as error:
-            return Response(
-                status=500,
-                mimetype='application/json',
-                response=json.dumps({
-                    "err": error.__class__.__name__,
-                    "reason": str(error),
-                    "traceback": traceback.format_exc()
-                }, indent=4))
+            return format_error(r, 500, "ServerError", error)
 
 

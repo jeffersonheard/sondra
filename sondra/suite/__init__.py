@@ -13,6 +13,7 @@ from jsonschema import Draft4Validator
 
 from sondra import help
 from sondra.ref import Reference
+from sondra.schema import merge
 from . import signals
 
 CSS_PATH = os.path.join(os.getcwd(), 'static', 'css', 'help.css')
@@ -160,6 +161,7 @@ class Suite(Mapping, metaclass=SuiteMetaclass):
         logging (dict): A dict-config for logging.
         log (logging.Logger): A logger object configured with the above dictconfig.
         cross_origin (bool=False): Allow cross origin API requests from the browser.
+        db_prefix: (str=""): A default string to prepend to all the database names in this suite.
         schema (dict): The schema of a suite is a dict where the keys are the names of :class:`Application` objects
             registered to the suite. The values are the schemas of the named app.  See :class:`Application` for more
             details on application schemas.
@@ -180,6 +182,7 @@ class Suite(Mapping, metaclass=SuiteMetaclass):
         'default': {}
     }
     working_directory = os.getcwd()
+    db_prefix = ""
 
     @property
     def schema_url(self):
@@ -207,8 +210,10 @@ class Suite(Mapping, metaclass=SuiteMetaclass):
             "definitions": self.definitions
         }
 
-    def __init__(self):
+    def __init__(self, db_prefix=""):
         self.applications = {}
+
+        self.db_prefix = db_prefix
 
         if self.logging:
             logging.config.dictConfig(self.logging)

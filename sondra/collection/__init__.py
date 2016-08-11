@@ -9,7 +9,7 @@ import logging.config
 
 from sondra import help, utils
 from sondra.document import Document, signals as doc_signals
-from sondra.expose import method_schema, expose_method, expose_method_explicit
+from sondra.expose import method_schema, expose_method_explicit
 from . import signals
 from sondra.utils import mapjson, resolve_class, split_camelcase
 
@@ -36,7 +36,7 @@ class QuerySet(object):
         self.result = None
 
     def __getattribute__(self, name):
-        if name.startswith('__') or name in { 'query', 'coll', 'result', 'clear' }:
+        if name.startswith('__') or name in { 'query', 'coll', 'result', 'first' }:
             return object.__getattribute__(self, name)
         else:
             return QWrapper(self, name)
@@ -59,6 +59,12 @@ class QuerySet(object):
     def __len__(self):
         return self.query.count().run(self.coll.application.connection)
 
+    def first(self):
+        try:
+            return next(iter(self))
+        except StopIteration:
+            return None
+
 
 class RawQuerySet(object):
     def __init__(self, coll, cls=None):
@@ -68,7 +74,7 @@ class RawQuerySet(object):
         self.cls = cls
 
     def __getattribute__(self, name):
-        if name.startswith('__') or name in { 'query', 'coll', 'result', 'clear', 'cls'}:
+        if name.startswith('__') or name in { 'query', 'coll', 'result', 'clear', 'cls', 'first'}:
             return object.__getattribute__(self, name)
         else:
             return QWrapper(self, name)
@@ -93,6 +99,12 @@ class RawQuerySet(object):
 
     def __len__(self):
         return self.query.count().run(self.coll.application.connection)
+
+    def first(self):
+        try:
+            return next(iter(self))
+        except StopIteration:
+            return None
 
 
 class CollectionException(Exception):
@@ -489,9 +501,13 @@ class Collection(MutableMapping, metaclass=CollectionMetaclass):
             Document instances.
         """
         for doc in query.run(self.application.connection):
+            meta = {}
             if 'doc' in doc:
+                meta = doc
                 doc = doc['doc']  # some queries return results that encapsulate the document with metadata
-            yield self.document_class(doc, collection=self, from_db=True)
+                del meta['doc']
+
+            yield self.document_class(doc, collection=self, from_db=True, metadata=meta)
 
     def apply_ordering(self, query):
         if self.order_by_index and self.order_by:
@@ -575,6 +591,9 @@ class Collection(MutableMapping, metaclass=CollectionMetaclass):
                 for s in value.specials.values():
                     s.pre_delete(value)
                 value.pre_delete()
+                for p in value.processors:
+                    p.run_before_delete(value)
+
         values = [v.id if isinstance(v, Document) else v for v in docs]
         ret = self.table.get_all(*values).delete(**kwargs).run(self.application.connection)
         for value in docs:
@@ -602,18 +621,19 @@ class Collection(MutableMapping, metaclass=CollectionMetaclass):
                 doc = self.document_class(doc)
 
             for p in doc.processors:
-                if p.run_before_save():
-                    p.run(doc)
-            doc.pre_save()
+                p.run_before_save(doc)
+
+            doc.pre_save()   # deprecated. use signals
             doc.validate()
-            doc._saved = True
+            doc.saved = True
             rql = doc.rql_repr()
             values.append(rql)
 
         ret = self.table.insert(values, **kwargs).run(self.application.connection)
+
         if docs and isinstance(docs[0], Document):
             for i, doc in enumerate(docs):
-                doc._saved = True
+                doc.saved = True
                 if 'generated_keys' in ret:
                     doc.id = ret['generated_keys'][i]
                     for s in doc.specials.values():

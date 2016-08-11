@@ -1,17 +1,15 @@
-from blinker import signal
-from collections import OrderedDict
-from collections.abc import Mapping
-from abc import ABCMeta
-
-import rethinkdb as r
 import logging
 import logging.config
+from abc import ABCMeta
+from collections.abc import Mapping
 
+import rethinkdb as r
 
 from sondra import help, utils
+from sondra.document.schema_parser import SchemaParser
 from sondra.expose import method_schema
-from . import signals
 from sondra.utils import mapjson
+from . import signals
 
 
 class ApplicationException(Exception):
@@ -190,7 +188,10 @@ class Application(Mapping, metaclass=ApplicationMetaclass):
         self.name = name or self.__class__.__name__
         self.title = utils.split_camelcase(self.name)
         self.slug = utils.camelcase_slugify(self.name)
-        self.db = utils.convert_camelcase(self.name)
+        if suite.db_prefix:
+            self.db = suite.db_prefix + utils.convert_camelcase(self.name)
+        else:
+            self.db = utils.convert_camelcase(self.name)
         self.connection = suite.connections[self.connection]
         self._collections = {}
         self._url = '/'.join((self.suite.url, self.slug))
@@ -223,6 +224,8 @@ class Application(Mapping, metaclass=ApplicationMetaclass):
             for k, v in self.definitions.items():
                 if k not in coll.schema['definitions']:
                     coll.schema['definitions'][k] = v
+
+            coll.document_class.specials = SchemaParser(coll.schema, coll.schema['definitions'])()
 
             self._collections[name] = coll
         signals.post_init.send(self.__class__, instance=self)

@@ -1,4 +1,5 @@
-from sondra.document.valuehandlers import DateTime, Geometry, Now
+from sondra.document.valuehandlers import DateTime, Now
+from sondra.document.schema_parser import Geometry, DateTime, Now
 from shapely.geometry import Point
 from datetime import datetime
 import rethinkdb as r

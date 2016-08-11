@@ -26,3 +26,4 @@ Sphinx==1.2.3
 sphinxcontrib-napoleon==0.3.11
 Unidecode==0.4.18
 Werkzeug==0.11.2
+slugify

@@ -32,6 +32,7 @@ class APIRequest(object):
     formats = {
         'help': formatters.Help(),
         'json': formatters.JSON(),
+        'html': formatters.HTML(),
         'schema': formatters.Schema(),
         'geojson': formatters.GeoJSON()
     }
@@ -223,6 +224,10 @@ class APIRequest(object):
                 ret = method(**self.objects[0])
             else:
                 ret = method()
+
+        if isinstance(ret, QuerySet):
+            ret = list(ret())
+
         return ret
 
     def get_collection_items(self):

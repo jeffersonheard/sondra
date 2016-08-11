@@ -10,8 +10,8 @@ from copy import deepcopy
 import jsonschema
 import heapq
 
-from sondra.document.valuehandlers import ForeignKey, ListHandler
-from sondra.expose import method_schema
+from sondra.document.schema_parser import ListHandler, ForeignKey
+from sondra.expose import method_schema, expose_method_explicit
 
 try:
     from shapely.geometry import mapping, shape
@@ -20,8 +20,8 @@ except:
     logging.warning("Shapely not imported. Geometry objects will not be supported directly.")
 
 from sondra import utils, help
-from sondra.utils import mapjson, split_camelcase, natural_order
-from sondra.schema import merge, S
+from sondra.utils import mapjson, split_camelcase, natural_order, deprecated
+from sondra.schema import S, merge
 from sondra.ref import Reference
 
 __all__ = (
@@ -47,10 +47,6 @@ class DocumentMetaclass(ABCMeta):
     def __new__(mcs, name, bases, attrs):
         definitions = {}
         schema = attrs.get('schema', S.object())
-        setters = {}
-        getters = {}
-        reqls = {}
-        jsons = {}
 
         # make sure this class inherits definitions and schemas
         for base in bases:
@@ -76,24 +72,6 @@ class DocumentMetaclass(ABCMeta):
 
         # use the modified schema
         attrs['schema'] = schema
-
-        # go through the list of attributes and memoize property setters & getters.
-        # these serve as pre-processors for complicated properties that need processing
-        # before storage or serialization.
-        for attr in attrs:
-            if attr.startswith('set_'):
-                setters[attr[4:]] = attr
-            if attr.startswith('get_'):
-                getters[attr[4:]] = attr
-            if attr.startswith('json_'):
-                jsons[attr[5:]] = attr
-            if attr.startswith('reql_'):
-                reqls[attr[5:]] = attr
-
-        attrs['json_processors'] = jsons
-        attrs['reql_processors'] = reqls
-        attrs['get_processors'] = getters
-        attrs['set_processors'] = setters
 
         return super().__new__(mcs, name, bases, attrs)
 
@@ -121,12 +99,9 @@ class DocumentMetaclass(ABCMeta):
         super(DocumentMetaclass, cls).__init__(name, bases, nmspc)
 
 
-
-
-
 class Document(MutableMapping, metaclass=DocumentMetaclass):
     """
-    The base type of an individual RethinkDB record.
+    The base type of an persistent Document, corresponding to one RethinkDB record.
 
     Each record is an instance of exactly one document class. To combine schemas and object definitions, you can use
     Python inheritance normally.  Inherit from multiple Document classes to create one Document class whose schema and
@@ -134,14 +109,24 @@ class Document(MutableMapping, metaclass=DocumentMetaclass):
 
     Most Document subclasses will define at the very least a docstring,
 
+    Args:
+        obj: a source Document or dict-like object
+        collection (sondra.collections.Collection, optional): The Collection instance that this document belongs to, if any.
+        from_db (bool=False): Set to true of this was constructed from a stored database object.
+        metadata: Some kinds of queries return metadata about the object. If a db query returned metadata, it will be passed here.
+
     Attributes:
-        collection (sondra.collection.Collection): The collection this document belongs to. FIXME could also use URL.
+        collection (sondra.collection.Collection): The collection this document belongs to.
         defaults (dict): The list of default values for this document's properties.
         title (str): The title of the document schema. Defaults to the case-split name of the class.
         template (string): A template string for formatting documents for rendering.  Can be markdown.
         schema (dict): A JSON-serializable object that is the JSON schema of the document.
         definitions (dict): A JSON-serializable object that holds the schemas of all referenced object subtypes.
         exposed_methods (list): A list of method slugs of all the exposed methods in the document.
+        saved (bool): if this document exists in the database.
+        metadata (dict): A set of metadata from the database about this object (query-dependent)
+        debug_validate_on_retrieval (bool=True): Set at the class derivation level. If when debugging, a validation
+            step should happen when documents are retrieved from the database.
     """
     title = None
     defaults = {}
@@ -149,32 +134,36 @@ class Document(MutableMapping, metaclass=DocumentMetaclass):
     processors = []
     specials = {}
     store_nulls = set()
+    debug_validate_on_retrieval = True
 
-    def __init__(self, obj, collection=None, from_db=False):
-        self.collection = collection
-        self._saved = from_db
+    def constructor(self, obj):
+        """
+        This is the document constructor.  It contains the business logic behind building the document
+        from an input document or from the database.
 
-        if self.collection is not None:
-            self.schema = self.collection.schema  # this means it's only calculated once. helpful.
-        else:
-            self.schema = mapjson(lambda x: x(context=self) if callable(x) else x, self.schema)  # turn URL references into URLs
-
-        self._url = None
+        Args:
+            obj: the obj passed in __init__
+        """
         if self.collection.primary_key in obj:
             self._url = '/'.join((self.collection.url, _reference(obj[self.collection.primary_key])))
 
         if '_url' in obj:
             del obj['_url']
 
-        self.obj = {}
         if obj:
             for k, v in obj.items():
-                self[k] = v
+                try:
+                    self[k] = v
+                except Exception as e:
+                    raise KeyError(k, str(e))
 
         for k in self.defaults:
             if k not in self:
                 if callable(self.defaults[k]):
-                    self[k] = self.defaults[k](self.suite)
+                    try:
+                        self[k] = self.defaults[k]()
+                    except:
+                        self[k] = self.defaults[k](self.suite)
                 else:
                     self[k] = self.defaults[k]
 
@@ -182,6 +171,26 @@ class Document(MutableMapping, metaclass=DocumentMetaclass):
             if k not in self:
                 if vh.has_default:
                     self[k] = vh.default_value()
+
+        for p in self.processors:
+            p.run_on_constructor(self)
+
+        if self.debug_validate_on_retrieval and self.saved and self.suite.debug:
+            self.validate()
+
+    def __init__(self, obj, collection=None, from_db=False, metadata=None):
+        self.collection = collection
+        self.saved = from_db
+        self.metadata = metadata or {}
+        self.obj = OrderedDict()
+
+        if self.collection is not None:
+            self.schema = self.collection.schema  # this means it's only calculated once. helpful.
+        else:
+            self.schema = mapjson(lambda x: x(context=self) if callable(x) else x, self.schema)  # turn URL references into URLs
+
+        self._url = None
+        self.constructor(obj)
 
     def __str__(self):
         return self.template.format(**self.obj)
@@ -200,7 +209,7 @@ class Document(MutableMapping, metaclass=DocumentMetaclass):
     @property
     def id(self):
         """The value of the primary key field. None if the value has not yet been saved."""
-        if self._saved:
+        if self.saved:
             return self.obj[self.collection.primary_key]
         else:
             return None
@@ -245,7 +254,6 @@ class Document(MutableMapping, metaclass=DocumentMetaclass):
         else:
             return self.id == other
 
-
     def __contains__(self, item):
         return item in self.obj
 
@@ -263,8 +271,6 @@ class Document(MutableMapping, metaclass=DocumentMetaclass):
 
         if key in self.specials:
             return self.specials[key].to_python_repr(v, self)
-        elif key in self.get_processors:
-            return getattr(self, self.get_processors[key])(v)
         else:
             return v
 
@@ -291,33 +297,111 @@ class Document(MutableMapping, metaclass=DocumentMetaclass):
             if key not in self.store_nulls:
                 if key in self.obj:
                     del self.obj[key]
+            for p in self.processors:
+                p.run_after_set(self, key)
         else:
-            value = _reference(value)
-            if isinstance(value, list) or isinstance(value, dict):
-                value = mapjson(_reference, value)
+            # value = _reference(value)
+            # if isinstance(value, list) or isinstance(value, dict):
+            #     value = mapjson(_reference, value)
 
+            # if the key needs further processing, e.g. foreign keys, geometry, or dates, process.
             if key in self.specials:
-                value = self.specials[key].to_json_repr(value, self)
+                value = self.specials[key].to_json_repr(value, self, bare_keys=True)
+                if value is None:
+                    if key in self.obj:
+                        del self.obj[key]
+                        for p in self.processors:
+                            p.run_after_set(self, key)
+                    return
 
-            if key in self.set_processors:
-                value = getattr(self, self.set_processors[key])(value)
+            # use the processed value as the value of the key.
+            self.obj[key] = value
 
-        self.obj[key] = value
-
-        for p in self.processors:
-            if p.is_necessary(key):
-                p.run(self)
+            # post-process the document after the value changes
+            for p in self.processors:
+                p.run_after_set(self, key)
 
 
     def __delitem__(self, key):
         del self.obj[key]
-        if self.collection:
-            for p in self.processors:
-                if p.is_necessary(key):
-                    p.run(self.obj)
+        for p in self.processors:
+            p.run_after_set(self, key)
 
     def __iter__(self):
         return iter(self.obj)
+
+    def update(*args, **kwargs):
+        self, *args = args  # to conform to MutableMapping sig
+
+        def sub_update(s, v, *k):
+            if len(k) > 1:
+                return sub_update(s[k[0]], v, k[1:])
+            else:
+                s[k[0]] = v
+                return s
+
+        for k, v in args:
+            if '.' in k:
+                k0, *ks = k.split('.')
+                self[k0] = sub_update(self[k0], v, *ks)
+            else:
+                self[k] = v
+
+        for k, v in kwargs.items():
+            if '.' in k:
+                k0, *ks = k.split('.')
+                self[k0] = sub_update(self[k0], v, *ks)
+            else:
+                self[k] = v
+
+        self.save()
+        return self.collection[self.id]
+
+
+    @expose_method_explicit(
+        title='Related Documents',
+        description='Reverse relation.  Get a query set of all documents in a collection that have foreign keys that '
+                    'point to this document.',
+        request_schema=S.object(
+            required=['app','coll'],
+            properties=S.props(
+                ('app', S.string(description="The slug of the application ``coll`` is in.")),
+                ('coll', S.string(description="The slug of the collection to search for documents in.")),
+                ('related_key', S.string(description="The name of the key to search for this document in."
+                    "If none, defaults to the first matching foreign key element.")),
+        )),
+        response_schema=S.object(properties=S.props()),
+    )
+    def rel(self, app, coll, related_key=None):
+        """
+        Reverse relation.  Get a query set of all documents in a collection that have foreign keys that point to this
+            document.
+
+        Args:
+            app (str): The slug of the application ``coll`` is in.
+            coll (str): The slug of the collection to search for documents in.
+            related_key (:obj:`str`, optional): The name of the key to search for this document in.
+                If none, defaults to the first matching foreign key element.
+
+        Returns:
+            A sondra.collection.QuerySet object
+
+        Raises:
+            KeyError: If there are no foreign keys to this document's collection specified on the target's schema. An
+                empty result will be just that.  This error is only raised when the foreign-key is not specified.
+
+        """
+        c = self.suite[app][coll]
+        if not related_key:
+            for k, v in c.document_class.specials.items():
+                if isinstance(v, ForeignKey) and v.app == self.application.slug and v.coll == self.collection.slug:
+                    related_key = k
+                    break
+            else:
+                raise KeyError("Cannot find any foreign keys to {0}/{1}".format(app, coll))
+
+        return c.filter(**{related_key: self.id})
+
 
     def help(self, out=None, initial_heading_level=0):
         """Return full reStructuredText help for this class"""
@@ -350,9 +434,6 @@ class Document(MutableMapping, metaclass=DocumentMetaclass):
             if k in ret:
                 ret[k] = handler.to_rql_repr(ret[k], self)
 
-        for p in self.reql_processors:
-            ret[p] = self.reql_processors[p](ret[p])
-
         return ret
 
     def json_repr(self, ordered=False, bare_keys=False):
@@ -360,39 +441,12 @@ class Document(MutableMapping, metaclass=DocumentMetaclass):
 
         for property, special in self.specials.items():
             if property in js:
-                convert = True
-                if bare_keys:
-                    if isinstance(special, ForeignKey):
-                        convert = False
-                    elif isinstance(special, ListHandler):
-                        sp = special
-                        while isinstance(sp, ListHandler):
-                            sp = sp.sub_handler
-                        if isinstance(sp, ForeignKey):
-                            convert = False
+                js[property] = special.to_json_repr(js[property], self, bare_keys=bare_keys)
 
-                if convert:
-                    js[property] = special.to_json_repr(js[property], js)
-                elif isinstance(special, ForeignKey):
-                    js[property] = self[property].id
-                elif isinstance(special, ListHandler):
-                    def descend(o):
-                        if isinstance(o, Document):
-                            return o.id
-                        elif isinstance(o, list):
-                            return [descend(x) for x in o]
-                        else:
-                            return o
-                    js[property] = descend(self[property])
+        # if ordered:
+        #     js = natural_order(js, self.property_order)
 
-
-        for p in self.json_processors:
-            js[p] = self.json_processors[p](js[p])
-
-        if ordered:
-            js = natural_order(js, self.property_order)
-
-        if self._saved:
+        if self.saved:
             js['_url'] = self._url
 
         return js
@@ -400,7 +454,7 @@ class Document(MutableMapping, metaclass=DocumentMetaclass):
     def geojson_repr(self, ordered=False, bare_keys=False):
         js = self.json_repr(ordered, bare_keys)
 
-        if 'feature_geoemtry' in self.schema:
+        if 'feature_geometry' in self.schema:
             geom = js.get(self.schema['feature_geometry'], None)
         else:
             GEOM_TYPES = {'geometry', 'point','linestring','polygon','multipoint','multilinestring','multipolygon'}
@@ -410,10 +464,10 @@ class Document(MutableMapping, metaclass=DocumentMetaclass):
             except StopIteration:
                 geom = None
 
-        if ordered:
-            js = natural_order(js, self.property_order)
+        # if ordered:
+        #     js = natural_order(js, self.property_order)
 
-        if self._saved:
+        if self.saved:
             js['_url'] = self._url
 
         return {
@@ -433,14 +487,18 @@ class Document(MutableMapping, metaclass=DocumentMetaclass):
     def validate(self):
         jsonschema.validate(self.obj, self.schema)
 
+    @deprecated
     def pre_save(self):
         pass
 
+    @deprecated
     def post_save(self):
         pass
 
+    @deprecated
     def pre_delete(self):
         pass
 
+    @deprecated
     def post_delete(self):
         pass

@@ -1,7 +1,7 @@
 from collections import OrderedDict
 from copy import copy, deepcopy
 from functools import partial
-
+import datetime
 
 def merge(a, b, path=None):
     "merges b into a"
@@ -54,7 +54,12 @@ class S(object):
     string = partial(extend, {"type": "string"})
     file = partial(extend, {"type": "string", "file": True})
     image = partial(extend, {"type": "string", "image": True})
-    geo = partial(extend, {"type": "object", "geo": True})
+    geo = partial(extend, {
+        "type": "object",
+        "geo": True,
+        "properties": {
+            "type": {"type": "string"},
+            "coordinates": {"type": "array", "items": {"type": "number"}}}})
     array = partial(extend, {"type": "array"})
     integer = partial(extend, {"type": "integer"})
     number = partial(extend, {"type": "number"})
@@ -62,6 +67,8 @@ class S(object):
     date = partial(extend, {"type": "string", "format": "date-time"})
     color = partial(extend, {"type": "string", "formatters": "color"})
     datetime = partial(extend, {"type": "string", "format": "date-time"})
+    creation_timestamp = partial(extend, {"type": "string", "format": "date-time", "on_creation": True})
+    update_timestamp = partial(extend, {"type": "string", "format": "date-time", "on_update": True})
     datetime_local = partial(extend, {"type": "string", "formatters": "datetime-local"})
     email = partial(extend, {"type": "string", "formatters": "email"})
     month = partial(extend, {"type": "string", "formatters": "month"})
@@ -82,7 +89,13 @@ class S(object):
         return properties
 
     @staticmethod
-    def fk(suite, app, collection, **kwargs):
+    def fk(*args, **kwargs):
+        if len(args) == 3:
+            _, app, collection = args
+        elif len(args) == 2:
+            app, collection = args
+        else:
+            raise TypeError("Must provide at least app and collection to this function")
         return S.string({"type": "string", "fk": '/'.join([app, collection])}, **kwargs)
 
     @staticmethod
@@ -118,5 +131,4 @@ class S(object):
             o['type'] = [o.get('type', 'string'), 'null']
 
         return o
-
 

@@ -31,7 +31,7 @@ from uuid import uuid4
 import os
 from flask import request
 
-from sondra.document.valuehandlers import ValueHandler
+from sondra.document.schema_parser import ValueHandler
 
 
 class LocalFileStorage(object):
