@@ -99,8 +99,14 @@ class S(object):
         return S.string({"type": "string", "fk": '/'.join([app, collection])}, **kwargs)
 
     @staticmethod
-    def fk_array(suite, app, collection, **kwargs):
-        return S.array(items=S.fk(suite, app, collection), **kwargs)
+    def fk_array(*args, **kwargs):
+        if len(args) == 3:
+            _, app, collection = args
+        elif len(args) == 2:
+            app, collection = args
+        else:
+            raise TypeError("Must provide at least app and collection to this function")
+        return S.array(items=S.fk(app, collection), **kwargs)
 
     @staticmethod
     def external_key(url, **kwargs):

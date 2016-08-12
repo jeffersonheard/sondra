@@ -10,6 +10,8 @@ import sys
 from importlib import import_module
 import warnings
 import functools
+import pytz
+import datetime
 
 
 def split_camelcase(name):
@@ -223,3 +225,9 @@ def deprecated(func):
         )
         return func(*args, **kwargs)
     return new_func
+
+
+def utc_timestamp():
+    now = datetime.datetime.utcnow()
+    return now.replace(tzinfo=pytz.utc)
+    
