@@ -1,9 +1,10 @@
 import datetime
+
 import bcrypt
 import jwt
 
+from sondra.api.expose import expose_method, expose_method_explicit
 from sondra.application import Application
-from sondra.expose import expose_method, expose_method_explicit
 from .collections import Users, UserCredentials, LoggedInUsers, Roles
 from .decorators import authenticated_method
 

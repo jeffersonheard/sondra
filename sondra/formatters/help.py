@@ -1,4 +1,4 @@
-from sondra.expose import method_help
+from sondra.api.expose import method_help
 
 class Help(object):
     def __call__(self, reference, result):

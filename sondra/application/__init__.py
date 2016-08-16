@@ -6,8 +6,8 @@ from collections.abc import Mapping
 import rethinkdb as r
 
 from sondra import help, utils
+from sondra.api.expose import method_schema
 from sondra.document.schema_parser import SchemaParser
-from sondra.expose import method_schema
 from sondra.utils import mapjson
 from . import signals
 
@@ -199,14 +199,14 @@ class Application(Mapping, metaclass=ApplicationMetaclass):
         self.application = self
 
         signals.pre_registration.send(self.__class__, instance=self)
-        self.log.warning("Registering application {0}".format(self.slug))
+        self.log.info("Registering application {0}".format(self.slug))
         suite.register_application(self)
         signals.post_registration.send(self.__class__, instance=self)
 
         signals.pre_init.send(self.__class__, instance=self)
         for collection_class in self.collections:
             name = collection_class.slug
-            self.log.warning("Creating collection for {0}/{1}".format(self.slug, collection_class.slug))
+            self.log.info("Creating collection for {0}/{1}".format(self.slug, collection_class.slug))
             if name in self._collections:
                 raise ApplicationException(name + " already exists in " + self.name)
             coll = collection_class(self)
@@ -245,7 +245,14 @@ class Application(Mapping, metaclass=ApplicationMetaclass):
     def __contains__(self, item):
         return item in self._collections
 
-    def create_tables(self, *args, **kwargs):
+    def clear_tables(self):
+        tables = {t for t in r.db(self.db).table_list().run(self.connection)}
+        for coll in self._collections.values():
+            if coll.name in tables:
+                coll.raw_query.delete()()
+                coll.ensure_indexes()
+
+    def create_tables(self, *args, warn_if_exists=False, **kwargs):
         """Create tables in the db for all collections in the application.
 
         If the table exists, log a warning.
@@ -267,11 +274,13 @@ class Application(Mapping, metaclass=ApplicationMetaclass):
         """
         signals.pre_create_tables.send(self.__class__, instance=self, args=args, kwargs=kwargs)
 
-        for collection_class in self._collections.values():
-            try:
-                collection_class.create_table(*args, **kwargs)
-            except Exception as e:
-                self.log.warning(str(e))
+        tables = {t for t in r.db(self.db).table_list().run(self.connection)}
+        for coll in self._collections.values():
+            if coll.name not in tables:
+                coll.create_table(*args, **kwargs)
+            elif warn_if_exists:
+                self.log.warning("{0}.{1} table exists.".format(self.name, coll.name))
+            coll.ensure_indexes()
 
         signals.post_create_tables.send(self.__class__, instance=self)
 
@@ -298,11 +307,10 @@ class Application(Mapping, metaclass=ApplicationMetaclass):
 
         signals.pre_delete_tables.send(self.__class__, instance=self, args=args, kwargs=kwargs)
 
+        tables = {t for t in r.db(self.db).table_list().run(self.connection)}
         for collection_class in self._collections.values():
-            try:
+            if collection_class.name in tables:
                 collection_class.drop_table(*args, **kwargs)
-            except Exception as e:
-                self.log.warning(str(e))
 
         signals.post_delete_tables.send(self.__class__, instance=self)
 
@@ -315,10 +323,9 @@ class Application(Mapping, metaclass=ApplicationMetaclass):
             None
         """
 
-        try:
+        dbs = r.db_list().run(self.connection)
+        if self.db not in dbs:
             r.db_create(self.db).run(self.connection)
-        except r.ReqlError as e:
-            self.log.warning(str(e))
 
     def drop_database(self):
         """Drop the db for the application.
@@ -329,7 +336,6 @@ class Application(Mapping, metaclass=ApplicationMetaclass):
             None
         """
 
-        try:
+        dbs = r.db_list().run(self.connection)
+        if self.db in dbs:
             r.db_drop(self.db).run(self.connection)
-        except r.ReqlError as e:
-            self.log.warning(str(e))

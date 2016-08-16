@@ -4,7 +4,7 @@ import re
 import inspect
 from sondra.document import Document
 from sondra.collection import Collection
-from sondra.ref import Reference
+from sondra.api.ref import Reference
 from sondra import help
 
 class ParseError(Exception):

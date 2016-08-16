@@ -2,7 +2,26 @@ import json
 
 from sondra import document
 from sondra.utils import mapjson
-from sondra.ref import Reference
+from sondra.api.ref import Reference
+from datetime import datetime
+
+def json_serial(bare_keys=False):
+    def inner(obj):
+        """JSON serializer for objects not serializable by default json code"""
+
+        if isinstance(obj, datetime):
+            serial = obj.isoformat()
+            return serial
+        elif isinstance(obj, document.Document):
+            if bare_keys:
+                return obj.id
+            else:
+                return obj.url
+
+        raise TypeError ("Type not serializable")
+
+    return inner
+
 
 class JSON(object):
     """
@@ -65,4 +84,4 @@ class JSON(object):
         if not (isinstance(result, dict) or isinstance(result, list)):
             result = {"_": result}
 
-        return 'application/json', json.dumps(result, **kwargs)
+        return 'application/json', json.dumps(result, default=json_serial(bare_keys=bare_keys), **kwargs)

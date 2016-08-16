@@ -8,7 +8,7 @@ from shapely.geometry.base import BaseGeometry
 
 import sondra.document
 from sondra.exceptions import ValidationError
-from sondra.ref import Reference
+from sondra.api.ref import Reference
 
 
 class ValueHandler(object):

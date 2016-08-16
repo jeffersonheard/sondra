@@ -2,16 +2,15 @@
 """
 import json
 import logging
-
 from abc import ABCMeta
 from collections import OrderedDict
 from collections.abc import MutableMapping
 from copy import deepcopy
-import jsonschema
-import heapq
 
+import jsonschema
+
+from sondra.api.expose import method_schema, expose_method_explicit
 from sondra.document.schema_parser import ListHandler, ForeignKey
-from sondra.expose import method_schema, expose_method_explicit
 
 try:
     from shapely.geometry import mapping, shape
@@ -19,10 +18,10 @@ try:
 except:
     logging.warning("Shapely not imported. Geometry objects will not be supported directly.")
 
-from sondra import utils, help
-from sondra.utils import mapjson, split_camelcase, natural_order, deprecated
+from sondra import help
+from sondra.utils import mapjson, split_camelcase, deprecated
 from sondra.schema import S, merge
-from sondra.ref import Reference
+from sondra.api.ref import Reference
 
 __all__ = (
     "Document",
@@ -372,7 +371,7 @@ class Document(MutableMapping, metaclass=DocumentMetaclass):
         )),
         response_schema=S.object(properties=S.props()),
     )
-    def rel(self, app, coll, related_key=None):
+    def rel(self, app, coll, related_key=None, related_index=None):
         """
         Reverse relation.  Get a query set of all documents in a collection that have foreign keys that point to this
             document.
@@ -382,9 +381,43 @@ class Document(MutableMapping, metaclass=DocumentMetaclass):
             coll (str): The slug of the collection to search for documents in.
             related_key (:obj:`str`, optional): The name of the key to search for this document in.
                 If none, defaults to the first matching foreign key element.
+            related_index (:obj:`str`, optional): The name of the index to search for this document in.
+                If none, defaults to the first matching foreign key element.
 
         Returns:
             A sondra.collection.QuerySet object
+
+        Raises:
+            KeyError: If there are no foreign keys to this document's collection specified on the target's schema. An
+                empty result will be just that.  This error is only raised when the foreign-key is not specified.
+
+        """
+        c = self.suite[app][coll]
+        if related_index:
+            return c.query.get_all(self.id, index=related_index)
+        elif not related_key:
+            for k, v in c.document_class.specials.items():
+                if isinstance(v, ForeignKey) and v.app == self.application.slug and v.coll == self.collection.slug:
+                    related_key = k
+                    break
+            else:
+                raise KeyError("Cannot find any foreign keys to {0}/{1}".format(app, coll))
+
+        return c.filter(**{related_key: self.id})
+
+    def raw_rel(self, app, coll, related_key=None):
+        """
+        Reverse relation.  Get a raw query set of all documents in a collection that have foreign keys that point to this
+            document.
+
+        Args:
+            app (str): The slug of the application ``coll`` is in.
+            coll (str): The slug of the collection to search for documents in.
+            related_key (:obj:`str`, optional): The name of the key to search for this document in.
+                If none, defaults to the first matching foreign key element.
+
+        Returns:
+            A sondra.collection.RawQuerySet object
 
         Raises:
             KeyError: If there are no foreign keys to this document's collection specified on the target's schema. An
@@ -400,8 +433,7 @@ class Document(MutableMapping, metaclass=DocumentMetaclass):
             else:
                 raise KeyError("Cannot find any foreign keys to {0}/{1}".format(app, coll))
 
-        return c.filter(**{related_key: self.id})
-
+        return c.raw_query.filter({related_key: self.id})
 
     def help(self, out=None, initial_heading_level=0):
         """Return full reStructuredText help for this class"""

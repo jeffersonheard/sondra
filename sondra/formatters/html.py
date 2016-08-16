@@ -2,9 +2,8 @@ import json
 
 from sondra import document
 from sondra.utils import mapjson
-from sondra.ref import Reference
+from sondra.api.ref import Reference
 from io import StringIO
-from json2html import json2html
 
 class HTML(object):
     """
@@ -128,6 +127,7 @@ class HTML(object):
         if not (isinstance(result, dict) or isinstance(result, list)):
             result = {"_": result}
 
+        from json2html import json2html
         rsp = StringIO()
         rsp.write("""<!doctype html>
 <html>

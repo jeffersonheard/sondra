@@ -1,4 +1,4 @@
-from sondra.api import RequestProcessor
+from sondra.api.request_processor import RequestProcessor
 from sondra.suite import Suite
 from sondra.document import Document
 from sondra.collection import Collection

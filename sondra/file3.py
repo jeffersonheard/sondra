@@ -25,7 +25,7 @@ from urllib.parse import urlparse
 
 from werkzeug.utils import secure_filename
 
-from sondra.api import RequestProcessor
+from sondra.api.request_processor import RequestProcessor
 import rethinkdb as r
 from uuid import uuid4
 import os

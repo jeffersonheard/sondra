@@ -20,6 +20,70 @@ def merge(a, b, path=None):
     return a
 
 
+def list_meld(a, b):
+    a_len = len(a)
+    b_len = len(b)
+    trunc_len = min(a_len, b_len)
+    a_remainder = None if a_len < trunc_len else deepcopy(a[trunc_len:])
+    b_remainder = None if b_len < trunc_len else deepcopy(b[trunc_len:])
+
+    ret = []
+    for i in range(trunc_len):
+        x = a[i]
+        y = b[i]
+        if isinstance(x, dict) and isinstance(y, dict):
+            ret.append(deep_merge(x, y, 'meld'))
+        elif isinstance(x, list) and isinstance(y, list):
+            ret.append(list_meld(x, y))
+        else:
+            ret.append(y)
+
+    if a_remainder:
+        ret.extend(a_remainder)
+    if b_remainder:
+        ret.extend(b_remainder)
+    return ret
+
+
+def deep_merge(a, b, list_merge_method='set'):
+    """
+    Merges dicts b into a, including expanding list items
+
+    Args:
+        a: dict
+        b: dict
+        list_merge_method: 'set', 'replace', 'extend', or 'meld'
+
+    Returns:
+        A deeply merged structure.
+
+    """
+
+
+    a = deepcopy(a)
+
+    for key in b:
+        if key not in a:
+            a[key] = deepcopy(b[key])
+        elif a[key] != b[key]:
+            if isinstance(a[key], dict) and isinstance(b[key], dict):
+                a[key] = deep_merge(a[key], b[key], list_merge_method)
+            elif hasattr(a[key], '__iter__') and hasattr(b[key], '__iter__'):
+                if list_merge_method == 'replace':
+                    a[key] = deepcopy(b[key])
+                if list_merge_method == 'set':
+                    a[key] = list(set(a[key]).union(set(b[key])))
+                elif list_merge_method == 'extend':
+                    a[key].extend(deepcopy(b[key]))
+                elif list_merge_method == 'meld':
+                    a[key] = list_meld(a[key], b[key])
+                else:
+                    raise ValueError('list_expansion_method should be set, replace, extend. Was {0}'.format(
+                        list_merge_method))
+            else:
+                a[key] = b[key]  # prefer b to a
+    return a
+
 def extend(proto, *values, **kwargs):
     ret = deepcopy(proto) if proto else OrderedDict()
     for v in values:
@@ -138,3 +202,18 @@ class S(object):
 
         return o
 
+    @staticmethod
+    def compose(*schemas):
+        """
+        Composes schemas in order, with subsequent schemas taking precedence over earlier ones.
+
+        Args:
+            *schemas: A list of schemas. Definitions may be included
+
+        Returns:
+            A JSON schema
+        """
+        result = OrderedDict()
+        for s in schemas:
+            result = deep_merge(result, s)
+        return result

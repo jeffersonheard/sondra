@@ -1,13 +1,13 @@
+import functools
+import operator
+
+from sondra.api.expose import expose_method
 from sondra.application import Application
 from sondra.auth.decorators import authorized_method
 from sondra.collection import Collection
-from sondra.expose import expose_method
-from sondra.document import Document, ListHandler
+from sondra.document import Document
 from sondra.document.processors import SlugPropertyProcessor
-from sondra.document.schema_parser import ForeignKey, DateTime
 from sondra.schema import S
-import operator
-import functools
 
 
 class Role(Document):

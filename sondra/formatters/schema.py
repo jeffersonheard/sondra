@@ -1,6 +1,7 @@
 import json
-from sondra.utils import natural_order
-from sondra.expose import method_schema
+
+from sondra.api.expose import method_schema
+
 
 class Schema(object):
     """

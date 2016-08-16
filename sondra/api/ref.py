@@ -1,7 +1,8 @@
 from urllib.parse import urlencode, urlparse, parse_qs
 
-from sondra.expose import method_schema
-from .utils import is_exposed
+from sondra.utils import is_exposed
+
+from sondra.api.expose import method_schema
 
 
 class ParseError(Exception):
@@ -321,7 +322,7 @@ class Reference(object):
 
     def get_subdocument(self):
         """Return the fragment within the Document referred to by this URL."""
-        from .document import Document
+        from sondra.document import Document
         path = self.fragment
         frag = parent = d = self.get_document()
         frag.collection.application.dereference(frag)

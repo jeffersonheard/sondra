@@ -1,110 +1,21 @@
-from collections import OrderedDict
-from collections.abc import MutableMapping
-from abc import ABCMeta
-from copy import deepcopy, copy
-import jsonschema
-import rethinkdb as r
 import logging
 import logging.config
+from abc import ABCMeta
+from collections.abc import MutableMapping
+from copy import deepcopy, copy
+
+import jsonschema
+import rethinkdb as r
 
 from sondra import help, utils
+from sondra.api.expose import method_schema, expose_method_explicit
+from sondra.collection.query_set import QuerySet, RawQuerySet
 from sondra.document import Document, signals as doc_signals
-from sondra.expose import method_schema, expose_method_explicit
-from . import signals
+from sondra.exceptions import ValidationError
 from sondra.utils import mapjson, resolve_class, split_camelcase
+from . import signals
 
 _validator = jsonschema.Draft4Validator
-
-
-class QWrapper(object):
-    """Wraps a rethinkdb query so that we can return instances when we want to and not use the raw interface"""
-    def __init__(self, flt, name):
-        self.name = name
-        self.flt = flt
-
-    def __call__(self, *args, **kwargs):
-        res = getattr(self.flt.query, self.name)(*args, **kwargs)
-        self.flt.query = res
-        return self.flt
-
-
-class QuerySet(object):
-    """Wraps a rethinkdb query so that we can return instances when we want to and not use the raw interface"""
-    def __init__(self, coll):
-        self.coll = coll
-        self.query = self.coll.table
-        self.result = None
-
-    def __getattribute__(self, name):
-        if name.startswith('__') or name in { 'query', 'coll', 'result', 'first' }:
-            return object.__getattribute__(self, name)
-        else:
-            return QWrapper(self, name)
-
-    def __enter__(self):
-        return self
-
-    def __exit__(self, *args):
-        pass
-
-    def __call__(self):
-        return self.coll.q(self.query)
-
-    def __iter__(self):
-        return self.coll.q(self.query)
-
-    def __bool__(self):
-        return len(self) > 0
-
-    def __len__(self):
-        return self.query.count().run(self.coll.application.connection)
-
-    def first(self):
-        try:
-            return next(iter(self))
-        except StopIteration:
-            return None
-
-
-class RawQuerySet(object):
-    def __init__(self, coll, cls=None):
-        self.coll = coll
-        self.query = self.coll.table
-        self.result = None
-        self.cls = cls
-
-    def __getattribute__(self, name):
-        if name.startswith('__') or name in { 'query', 'coll', 'result', 'clear', 'cls', 'first'}:
-            return object.__getattribute__(self, name)
-        else:
-            return QWrapper(self, name)
-
-    def __enter__(self):
-        return self
-
-    def __exit__(self, *args):
-        pass
-
-    def __call__(self):
-        return self.query.run(self.coll.application.connection)
-
-    def __iter__(self):
-        if self.cls:
-            return (self.cls(d) for d in self.query.run(self.coll.application.connection))
-        else:
-            return self.query.run(self.coll.application.connection)
-
-    def __bool__(self):
-        return len(self) > 0
-
-    def __len__(self):
-        return self.query.count().run(self.coll.application.connection)
-
-    def first(self):
-        try:
-            return next(iter(self))
-        except StopIteration:
-            return None
 
 
 class CollectionException(Exception):
@@ -158,18 +69,17 @@ class CollectionMetaclass(ABCMeta):
             cls.abstract = False
             cls.schema = deepcopy(cls.document_class.schema)
 
-            if not cls.primary_key:
+            if cls.primary_key == 'id':
                 cls.schema['properties']['id'] = {"type": "string", "description": "The primary key.", "title": "ID"}
+                cls.document_class.schema['properties']['id'] = {"type": "string", "description": "The primary key.", "title": "ID"}
 
             cls.schema["methods"] = {}
             for m in cls.exposed_methods.values():
                 cls.schema['methods'][m.slug] = method_schema(False, m)
 
-            print("Cataloging document methods")
             cls.schema['documentMethods'] = {}
             for m in cls.document_class.exposed_methods.values():
                 cls.schema["documentMethods"][m.slug] = method_schema(None, m)
-            print("End catalog step")
 
             if not 'description' in cls.schema:
                 cls.schema['description'] = cls.document_class.__doc__ or 'No Description Provided.'
@@ -307,6 +217,7 @@ class Collection(MutableMapping, metaclass=CollectionMetaclass):
 
         if self.file_storage:
             self.file_storage = self.file_storage(self)
+
         signals.post_init.send(self.__class__, instance=self)
 
     def __str__(self):
@@ -360,21 +271,33 @@ class Collection(MutableMapping, metaclass=CollectionMetaclass):
 
         return builder.rst
 
-    def create_table(self, *args, **kwargs):
-        """Create the database table for this collection. Args and keyword args are sent along to the rethinkdb
-        table_create function.  Sends pre_table_creation and post_table_creation signals.
-        """
-        signals.pre_table_creation.send(
-            self.__class__, instance=self, table_name=self.name, db_name=self.application.db)
+    def ensure_indexes(self):
+        existing_indexes = {i for i in self.table.index_list().run(self.application.connection)}
+        required_indexes = set(self.indexes)
+        extra_indexes = existing_indexes.difference(required_indexes)
+        missing_indexes = required_indexes.difference(existing_indexes)
 
-        try:
-            r.db(self.application.db)\
-                .table_create(self.name, primary_key=self.primary_key, *args, **kwargs)\
-                .run(self.application.connection)
-        except r.ReqlError as e:
-            self.log.info('Table {0}.{1} already exists.'.format(self.application.db, self.name))
+        if missing_indexes:
+            self._create_indexes(missing_indexes)
 
-        for index in self.indexes:
+        for index in extra_indexes:
+            self.table.index_drop(index).run(self.application.connection)
+
+    def validate_documents(self, batch_exceptions=True):
+        validation_exceptions = {}
+        for k, doc in self.items():
+            try:
+                doc.validate()
+            except ValidationError as e:
+                if batch_exceptions:
+                    validation_exceptions[k] = e
+                else:
+                    raise e
+        if validation_exceptions:
+            raise ValidationError(validation_exceptions)
+
+    def _create_indexes(self, indexes):
+        for index in indexes:
             if isinstance(index, tuple):
                 index, index_function = index
             else:
@@ -392,12 +315,31 @@ class Collection(MutableMapping, metaclass=CollectionMetaclass):
 
             try:
                 if index_function:
-                    self.table.index_create(index, index_function, multi=multi, geo=geo).run(self.application.connection)
+                    self.table.index_create(index, index_function, multi=multi, geo=geo).run(
+                        self.application.connection)
                 else:
                     self.table.index_create(index, multi=multi, geo=geo).run(self.application.connection)
+                self.table.index_wait(index).run(self.application.connection)
+                self.log.info('Created Index {2} on table {0}.{1}'.format(self.application.db, self.name, index))
             except r.ReqlError as e:
-                self.log.info('Index {2} on table {0}.{1} already exists.'.format(self.application.db, self.name, index))
+                self.log.info(
+                    'Index {2} on table {0}.{1} already exists.'.format(self.application.db, self.name, index))
 
+    def create_table(self, *args, **kwargs):
+        """Create the database table for this collection. Args and keyword args are sent along to the rethinkdb
+        table_create function.  Sends pre_table_creation and post_table_creation signals.
+        """
+        signals.pre_table_creation.send(
+            self.__class__, instance=self, table_name=self.name, db_name=self.application.db)
+
+        try:
+            r.db(self.application.db)\
+                .table_create(self.name, primary_key=self.primary_key, *args, **kwargs)\
+                .run(self.application.connection)
+        except r.ReqlError as e:
+            self.log.info('Table {0}.{1} already exists.'.format(self.application.db, self.name))
+
+        self._create_indexes(self.indexes)
         signals.post_table_creation.send(
             self.__class__, instance=self, table_name=self.name, db_name=self.application.db)
 
@@ -415,6 +357,18 @@ class Collection(MutableMapping, metaclass=CollectionMetaclass):
             self.__class__, instance=self, table_name=self.name, db_name=self.application.db)
 
         return ret
+
+    def clear_table(self):
+        signals.pre_table_clear.send(
+            self.__class__, instance=self, table_name=self.name, db_name=self.application.db)
+
+        try:
+            self.q(self.table.delete())
+        except:
+            self.create_table()
+
+        signals.post_table_clear.send(
+            self.__class__, instance=self, table_name=self.name, db_name=self.application.db)
 
     def __hash__(self):
         return hash(self.name)

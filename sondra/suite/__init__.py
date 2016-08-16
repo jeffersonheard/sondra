@@ -12,7 +12,7 @@ import os
 from jsonschema import Draft4Validator
 
 from sondra import help
-from sondra.ref import Reference
+from sondra.api.ref import Reference
 from sondra.schema import merge
 from . import signals
 
@@ -173,6 +173,7 @@ class Suite(Mapping, metaclass=SuiteMetaclass):
     definitions = BASIC_TYPES
     url = "http://localhost:5000/api"
     logging = None
+    log_level = None
     docstring_processor_name = 'preformatted'
     cross_origin = False
     allow_anonymous_formats = {'help', 'schema'}
@@ -217,8 +218,10 @@ class Suite(Mapping, metaclass=SuiteMetaclass):
 
         if self.logging:
             logging.config.dictConfig(self.logging)
+        elif self.log_level:
+            logging.basicConfig(level=self.log_level)
         else:
-            logging.basicConfig(level=logging.DEBUG if self.debug else logging.WARNING)
+            logging.basicConfig(level=logging.DEBUG if self.debug else logging.INFO)
 
         self.log = logging.getLogger(self.__class__.__name__)  # use root logger for the environment
 
@@ -226,9 +229,9 @@ class Suite(Mapping, metaclass=SuiteMetaclass):
 
         self.connections = {name: r.connect(**kwargs) for name, kwargs in self.connection_config.items()}
         for name in self.connections:
-            self.log.warning("Connection established to '{0}'".format(name))
+            self.log.info("Connection established to '{0}'".format(name))
 
-        self.log.warning("Suite base url is: '{0}".format(self.url))
+        self.log.info("Suite base url is: '{0}".format(self.url))
 
         self.docstring_processor = DOCSTRING_PROCESSORS[self.docstring_processor_name]
         self.log.info('Docstring processor is {0}')
@@ -261,8 +264,7 @@ class Suite(Mapping, metaclass=SuiteMetaclass):
 
     def clear_tables(self):
         for app in self.values():
-            for collection in app.values():
-                collection.table.delete().run(app.connection)
+            app.clear_tables()
 
     def __getitem__(self, item):
         """Application objects are indexed by "slug." Every Application object registered has its name slugified.
@@ -323,10 +325,10 @@ class Suite(Mapping, metaclass=SuiteMetaclass):
             return Reference(self, url).get_document()
 
     def validate(self):
-        self.log.warning("Checking schemas for validity")
+        self.log.info("Checking schemas for validity")
         for application in self.applications.values():
-            self.log.warning("+ " + application.slug)
+            self.log.info("+ " + application.slug)
             for collection in application.collections:
-                self.log.warning('--- ' + collection.slug)
+                self.log.info('--- ' + collection.slug)
                 Draft4Validator.check_schema(collection.schema)
 

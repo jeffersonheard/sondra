@@ -2,7 +2,7 @@ from sondra.auth import Auth, Credentials, User, Role
 import pytest
 
 from sondra import suite
-from sondra.ref import Reference
+from sondra.api.ref import Reference
 
 class ConcreteSuite(suite.Suite):
     url = "http://localhost:5000/api"

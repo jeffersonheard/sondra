@@ -1,14 +1,15 @@
-from sondra import document, suite, collection, application
-from sondra.document.processors import SlugPropertyProcessor
 from sondra.document.valuehandlers import DateTime, Now, Geometry
-from sondra.document.schema_parser import ForeignKey, Geometry, DateTime, Now
-from sondra.document import ListHandler
-from sondra.file3 import FileUploadProcessor, LocalFileStorage, FileHandler
-from sondra.auth.request_processor import AuthRequestProcessor
+
+from sondra import document, suite, collection, application
+from sondra.api.expose import expose_method
 from sondra.auth.decorators import authentication_required, authorization_required, authenticated_method, authorized_method
-from sondra.expose import expose_method
+from sondra.auth.request_processor import AuthRequestProcessor
+from sondra.document import ListHandler
+from sondra.document.processors import SlugPropertyProcessor
+from sondra.document.schema_parser import ForeignKey, Geometry, DateTime, Now
+from sondra.file3 import FileUploadProcessor, LocalFileStorage
+from sondra.lazy import fk
 from sondra.schema import S
-from sondra.lazy import fk, ref
 
 
 class ConcreteSuite(suite.Suite):

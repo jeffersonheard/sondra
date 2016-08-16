@@ -1,11 +1,11 @@
-import bcrypt
 import datetime
+
+import bcrypt
 import rethinkdb as r
 
+from sondra.api.expose import expose_method, expose_method_explicit
 from sondra.auth.decorators import authorized_method, authorization_required, authentication_required, anonymous_method
-from sondra.expose import expose_method, expose_method_explicit
 from sondra.collection import Collection
-from sondra.lazy import fk
 from .documents import Credentials, Role, User, LoggedInUser
 
 

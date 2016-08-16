@@ -1,28 +1,15 @@
 """Sondra's JSON API Services."""
 import json
-import jsonschema
-from urllib.parse import urlencode
 from textwrap import dedent
+from urllib.parse import urlencode
+
+import jsonschema
+from sondra.api.query_set import QuerySet
+from sondra.api.ref import Reference
 
 from sondra import formatters
+from sondra.api.expose import method_schema
 from sondra.exceptions import ValidationError
-from sondra.expose import method_schema
-from sondra.ref import Reference
-from sondra.query_set import QuerySet
-
-
-class RequestProcessor(object):
-    """
-    Request Processors are arbitrary thunks run before the request is executed. For an example, see the auth application.
-    """
-    def process_api_request(self, r):
-        return r
-
-    def cleanup_after_exception(self, r, e):
-        pass
-
-    def __call__(self, r):
-        return self.process_api_request(r)
 
 
 class APIRequest(object):

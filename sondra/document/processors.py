@@ -33,6 +33,9 @@ class DocumentProcessor(object):
 
 
 class CascadingDelete(DocumentProcessor):
+    """
+    Cascades deletes from one document to a set of related documents.
+    """
     def __init__(self, app, coll, related_key=None):
         self.app = app
         self.coll = coll
@@ -42,10 +45,13 @@ class CascadingDelete(DocumentProcessor):
         self.run(document)
 
     def run(self, document):
-        document.rel(self.app, self.coll, related_key=self.related_key).delete()()
+        document.rel(self.app, self.coll, related_key=self.related_key).drop()
 
 
 class CascadingOperation(DocumentProcessor):
+    """
+
+    """
     def __init__(self, operation, changed_properties, app, coll, related_key=None):
         self.changed_properties = changed_properties
         self.operation = operation
