@@ -223,4 +223,11 @@ class LoggedInUser(Document):
         }
     }
 
-
+class IssuedToken(Document):
+    schema = S.object(
+        properties=S.props(
+            ('token', S.string()),
+            ('user', S.fk('auth','users')),
+            ('exp', S.datetime()),
+        )
+    )

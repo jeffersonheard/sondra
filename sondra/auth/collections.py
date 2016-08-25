@@ -6,7 +6,7 @@ import rethinkdb as r
 from sondra.api.expose import expose_method, expose_method_explicit
 from sondra.auth.decorators import authorized_method, authorization_required, authentication_required, anonymous_method
 from sondra.collection import Collection
-from .documents import Credentials, Role, User, LoggedInUser
+from .documents import Credentials, Role, User, LoggedInUser, IssuedToken
 
 
 @authorization_required('write')
@@ -306,3 +306,11 @@ class LoggedInUsers(Collection):
         self.q(
             self.table.filter(r.row['expires'] <= r.now())
         )
+
+
+class IssuedTokens(Collection):
+    primary_key = 'token'
+    document_class = IssuedToken
+    indexes = ['user', 'exp']
+
+    private = True

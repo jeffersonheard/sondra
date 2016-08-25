@@ -14,6 +14,35 @@ def expose_method(method):
     return method
 
 
+# TODO validate input against schema.
+# TODO Add document processors and invoke method with properly dereferenced documents instead of keys
+def invoke_method(request, method):
+    pass
+
+# TODO validate output against schema.
+# TODO Fix formatter to handle referencing or dereferencing documents as requested.
+def method_return(request, method):
+    pass
+
+
+# TODO indicate that the API request should be passed as a parameter and what its name is, by default _request
+def accepts_request():
+    pass
+
+
+def ignore_request():
+    pass
+
+
+# TODO indicate that this method should ignore the _user parameter, even if it is authenticated.
+def ignore_user():
+    pass
+
+# TODO indicate that this method accepts a user parameter and what its name is, by default _user
+def accepts_user():
+    pass
+
+
 def expose_method_explicit(request_schema=None, response_schema=None, side_effects=False, title=None, description=None):
     request_schema = request_schema or {'type': 'null'}
     response_schema = response_schema or {'type': 'null'}

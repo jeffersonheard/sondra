@@ -130,6 +130,7 @@ class Document(MutableMapping, metaclass=DocumentMetaclass):
     title = None
     defaults = {}
     template = "${id}"
+    display_name_template = "{id}"
     processors = []
     specials = {}
     store_nulls = set()
@@ -148,6 +149,9 @@ class Document(MutableMapping, metaclass=DocumentMetaclass):
 
         if '_url' in obj:
             del obj['_url']
+
+        if '_display_name' in obj:
+            del obj['_display_name']
 
         if obj:
             for k, v in obj.items():
@@ -204,6 +208,9 @@ class Document(MutableMapping, metaclass=DocumentMetaclass):
     def suite(self):
         """The suite instance this document's application is attached to."""
         return self.application.suite
+
+    def display_name(self):
+        return self.display_name_template.format(self.obj)
 
     @property
     def id(self):
@@ -478,8 +485,9 @@ class Document(MutableMapping, metaclass=DocumentMetaclass):
         # if ordered:
         #     js = natural_order(js, self.property_order)
 
-        if self.saved:
-            js['_url'] = self._url
+        # if self.saved:
+        #     js['_url'] = self._url
+        #     js['_display_name'] = self.display_name()
 
         return js
 
