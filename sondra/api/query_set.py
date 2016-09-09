@@ -26,13 +26,13 @@ class QuerySet(object):
     }
 
     GEOSPATIAL_OPS = {
-        'distance',
         'get_intersecting',
         'get_nearest',
     }
 
     def __init__(self, coll):
         self.coll = coll
+        self.use_raw_results = False
 
     def is_restricted(self, api_arguments, objects=None):
         """
@@ -57,8 +57,8 @@ class QuerySet(object):
         q = self._handle_keys(api_arguments, q)
         q = self._handle_simple_filters(api_arguments, q)
         q = self._handle_spatial_filters(self.coll, api_arguments, q)
-        q = self._handle_aggregations(api_arguments, q)
         q = self._apply_ordering(api_arguments, q)
+        q = self._handle_aggregations(api_arguments, q)
         q = self._handle_limits(api_arguments, q)
         return q
 
@@ -158,9 +158,10 @@ class QuerySet(object):
         # handle aggregation queries
         if 'agg' in api_arguments:
             op = json.loads(api_arguments['agg'])
-            if op['name'] not in self.SAFE_OPS:
+            if op['op'] not in self.SAFE_OPS:
                 raise ValidationError("Cannot perform unsafe op in GET")
-            q = getattr(q, op['name'])(*op.get('args',[]), **op.get('kwargs', {}))
+            q = getattr(q, op['op'])(*op.get('args',[]), **op.get('kwargs', {}))
+            self.use_raw_results = True
         return q
 
     def _handle_limits(self, api_arguments, q):

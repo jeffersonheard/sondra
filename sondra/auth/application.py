@@ -90,9 +90,10 @@ class Auth(Application):
         hashed_given_password = bcrypt.hashpw(password.encode('utf-8'), credentials['salt'].encode('utf-8'))
         if hashed_real_password == hashed_given_password:
             if credentials['secret'] in self['logged-in-users']:
-                self['logged-in-users'][credentials['secret']].delete()
-
-            return self.issue(username, credentials)
+                # self['logged-in-users'][credentials['secret']].delete()
+                return self['logged-in-users'][credentials['secret']]['token']  # return the current logged in token for tihs user.  Less secure but more expected.
+            else:
+                return self.issue(username, credentials)
         else:
             self.log.warning("Failed login attempt by registered user: {0}".format(username))
             raise PermissionError("Login not valid")

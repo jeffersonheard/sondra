@@ -20,6 +20,7 @@ def init(app):
 
 @api_tree.route('/schema')
 @api_tree.route(';schema')
+@api_tree.route(';format=schema')
 def suite_schema():
     resp = Response(
         json.dumps(current_app.suite.schema, indent=4),
@@ -30,6 +31,7 @@ def suite_schema():
 
 @api_tree.route('/help')
 @api_tree.route(';help')
+@api_tree.route(';format=help')
 def suite_help():
     h = current_app.suite.help()
     help_text = current_app.suite.docstring_processor(h)

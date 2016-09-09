@@ -119,6 +119,9 @@ class APIRequest(object):
 
     def _parse_query(self):
         self.formatter_kwargs = self.reference.kwargs
+        if 'format' in self.formatter_kwargs:
+            del self.formatter_kwargs['format']
+
         self.objects = []
 
         if self.query_params:
@@ -187,9 +190,12 @@ class APIRequest(object):
         else:
             schema = target.collection.schema
 
-        for object in self.objects:
-            if not isinstance(object, str):
-                jsonschema.validate(object, schema)
+        if self.request_method != 'PATCH':
+            for object in self.objects:
+                if not isinstance(object, str):
+                    jsonschema.validate(object, schema)
+        else:
+            pass  # TODO validate individual keys
 
     def method_call(self):
         instance, method = self.reference.value
@@ -227,7 +233,14 @@ class APIRequest(object):
         for f in self.additional_filters:
             q = q.filter(f)
 
-        return [x for x in coll.q(q)]
+        if qs.use_raw_results:
+            results = q.run(coll.application.connection)
+            try:
+                return [x for x in results]
+            except:
+                return {"_": results}
+        else:
+            return [x for x in coll.q(q)]
 
     def add_collection_items(self):
         coll = self.reference.get_collection()
@@ -289,10 +302,12 @@ class APIRequest(object):
 
     def update_document(self):
         doc = self.reference.get_document()
-        if doc.collection.primary_key in self.objects[0]:
-            del self.objects[0][doc.collection.primary_key]
-        for k, v in self.objects[0].items():
-            doc[k] = v
+        coll = self.reference.get_collection()
+        for obj in self.objects:
+            if coll.primary_key in obj:
+                del obj[coll.primary_key]
+            for k, v in obj.items():
+                doc[k] = v
         ret = doc.save(conflict='replace', durability=self.durability, return_changes=self.return_changes)
         return ret
 

@@ -143,6 +143,7 @@ class S(object):
     time = partial(extend, {"type": "string", "formatters": "time"})
     url = partial(extend, {"type": "string", "formatters": "url"})
     week = partial(extend, {"type": "string", "formatters": "week"})
+    null = partial(extend, {"type": "null"})
 
     @staticmethod
     def props(*args):

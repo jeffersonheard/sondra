@@ -119,7 +119,7 @@ class Application(Mapping, metaclass=ApplicationMetaclass):
             "type": "object",
             "description": self.__doc__ or "*No description provided.*",
             "definitions": self.definitions,
-            "collections": {name: coll.url for name, coll in self._collections.items()},
+            "collections": {name: coll.url for name, coll in self._collections.items() if not coll.private},
             "methods": {m.slug: method_schema(None, m) for m in self.exposed_methods.values()}
 
         }

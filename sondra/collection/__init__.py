@@ -81,6 +81,8 @@ class CollectionMetaclass(ABCMeta):
             for m in cls.document_class.exposed_methods.values():
                 cls.schema["documentMethods"][m.slug] = method_schema(None, m)
 
+            cls.schema['primary_key'] = 'id' if not cls.primary_key else cls.primary_key
+
             if not 'description' in cls.schema:
                 cls.schema['description'] = cls.document_class.__doc__ or 'No Description Provided.'
 
