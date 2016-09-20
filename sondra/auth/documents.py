@@ -84,82 +84,82 @@ class User(Document):
     schema = {
         'type': 'object',
         'required': ['email'],
-        'properties': {
-            'username': {
+        'properties': S.props(
+            ('username', {
                 'title': 'Username',
                 'type': 'string',
                 'description': 'The user\'s username',
-            },
-            'email': {
+            }),
+            ('email', {
                 'title': 'Email',
                 'type': 'string',
                 'description': 'The user\'s email address',
                 'format': 'email',
                 'pattern': '^[^@]+@[^@]+\.[^@]+$'
-            },
-            'email_verified': {
+            }),
+            ('email_verified', {
                 'title': 'Email Verified',
                 'type': 'boolean',
                 'description': 'Whether or not this email address has been verified',
-            },
-            'picture': {
+            }),
+            ('picture', {
                 'title': 'Picture',
                 'type': 'string',
                 'description': 'A URL resource of a photograph',
-            },
-            'family_name': {
+            }),
+            ('family_name', {
                 'title': 'Family Name',
                 'type': 'string',
                 'description': 'The user\'s family name',
-            },
-            'given_name': {
+            }),
+            ('given_name', {
                 'title': 'Given Name',
                 'type': 'string',
                 'description': 'The user\'s family name',
-            },
-            'names': {
+            }),
+            ('names', {
                 'title': 'Other Names',
                 'type': 'array',
                 'items': {'type': 'string'},
                 'description': 'A list of names that go between the given name and the family name.',
-            },
-            'locale': {
+            }),
+            ('locale', {
                 'title': 'Default Language',
                 'type': 'string',
                 'description': "The user's locale. Default is en-US",
                 'default': 'en-US'
-            },
-            'active': {
+            }),
+            ('active', {
                 'title': 'Active',
                 'type': 'boolean',
                 'description': 'Whether or not the user is currently able to log into the system.',
                 'default': active_by_default
-            },
-            'admin': {
+            }),
+            ('admin', {
                 'title': 'Administrator',
                 'type': 'boolean',
                 'description': 'If true, this user can access all methods of all APIs.',
                 'default': False
-            },
-            'created': {
+            }),
+            ('created', {
                 'title': 'Created',
                 'format': 'date-time',
                 'type': 'string',
                 'description': 'The timestamp this user was created',
-            },
-            "roles": {
+            }),
+            ("roles", {
                 'title': 'Roles',
                 "type": "array",
                 "items": S.fk('api', 'auth', 'roles'),
                 "description": "Roles that have been granted to this user",
-            },
-            "dob": {
+            }),
+            ("dob", {
                 "title": "Date of Birth",
                 "type": "string",
                 "format": "date-time",
                 "description": "The user's birthday"
-            }
-        }
+            })
+        )
     }
 
     @expose_method
