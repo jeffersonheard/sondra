@@ -198,6 +198,12 @@ class Document(MutableMapping, metaclass=DocumentMetaclass):
     def __str__(self):
         return self.template.format(**self.obj)
 
+    def refresh(self):
+        new = self.collection[self.id]
+        self.obj = new.obj
+
+        return self
+
 
     @property
     def application(self):
