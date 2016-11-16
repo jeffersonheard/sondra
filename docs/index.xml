@@ -109,10 +109,10 @@ if __name__ == &#39;__main__&#39;:
       <description>&lt;p&gt;The tutorial walks you through building the classic to-do list app with Sondra.&lt;/p&gt;
 
 &lt;ol&gt;
-&lt;li&gt;&lt;a href=&#34;tutorial-1&#34;&gt;Getting Started&lt;/a&gt;&lt;/li&gt;
-&lt;li&gt;&lt;a href=&#34;tutorial-2&#34;&gt;Expose it to the web&lt;/a&gt;&lt;/li&gt;
-&lt;li&gt;&lt;a href=&#34;tutorial-3&#34;&gt;Accessing Schemas&lt;/a&gt;&lt;/li&gt;
-&lt;li&gt;&lt;a href=&#34;tutorial-4&#34;&gt;Adding Data&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href=&#34;https://jeffersonheard.github.io/sondra/basics/tutorial-1&#34;&gt;Getting Started&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href=&#34;https://jeffersonheard.github.io/sondra/basics/tutorial-2&#34;&gt;Expose it to the web&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href=&#34;https://jeffersonheard.github.io/sondra/basics/tutorial-3&#34;&gt;Accessing Schemas&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href=&#34;https://jeffersonheard.github.io/sondra/basics/tutorial-4&#34;&gt;Adding Data&lt;/a&gt;&lt;/li&gt;
 &lt;/ol&gt;
 </description>
     </item>
@@ -348,13 +348,13 @@ dictionary-like objects. The keys are dash-cased versions of the classnames (thi
 &lt;h2 id=&#34;table-of-contents&#34;&gt;Table of Contents&lt;/h2&gt;
 
 &lt;ul&gt;
-&lt;li&gt;&lt;a href=&#34;flask&#34;&gt;Exposing your API with Flask&lt;/a&gt;&lt;/li&gt;
-&lt;li&gt;&lt;a href=&#34;querying&#34;&gt;Querying over the web&lt;/a&gt;&lt;/li&gt;
-&lt;li&gt;&lt;a href=&#34;documents&#34;&gt;Working with Documents&lt;/a&gt;&lt;/li&gt;
-&lt;li&gt;&lt;a href=&#34;documents&#34;&gt;Working with Collections&lt;/a&gt;&lt;/li&gt;
-&lt;li&gt;&lt;a href=&#34;documents&#34;&gt;Working with Applications&lt;/a&gt;&lt;/li&gt;
-&lt;li&gt;&lt;a href=&#34;documents&#34;&gt;Working with Suites&lt;/a&gt;&lt;/li&gt;
-&lt;li&gt;&lt;a href=&#34;querysets&#34;&gt;QuerySets in Python&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href=&#34;https://jeffersonheard.github.io/sondra/topical-guides/flask&#34;&gt;Exposing your API with Flask&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href=&#34;https://jeffersonheard.github.io/sondra/topical-guides/querying&#34;&gt;Querying over the web&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href=&#34;https://jeffersonheard.github.io/sondra/topical-guides/documents&#34;&gt;Working with Documents&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href=&#34;https://jeffersonheard.github.io/sondra/topical-guides/collections&#34;&gt;Working with Collections&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href=&#34;https://jeffersonheard.github.io/sondra/topical-guides/applications&#34;&gt;Working with Applications&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href=&#34;https://jeffersonheard.github.io/sondra/topical-guides/suites&#34;&gt;Working with Suites&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href=&#34;https://jeffersonheard.github.io/sondra/topical-guides/querysets&#34;&gt;QuerySets in Python&lt;/a&gt;&lt;/li&gt;
 &lt;/ul&gt;
 </description>
     </item>
@@ -859,10 +859,10 @@ would access it via the API as &lt;code&gt;http://localhost:5000/api/todo-app/it
 &lt;h2 id=&#34;table-of-contents&#34;&gt;Table of Contents&lt;/h2&gt;
 
 &lt;ul&gt;
-&lt;li&gt;&lt;a href=&#34;output-formats&#34;&gt;Adding new Output Formats&lt;/a&gt;&lt;/li&gt;
-&lt;li&gt;&lt;a href=&#34;request-processors&#34;&gt;Getting info and editing requests with RequestProcessors&lt;/a&gt;&lt;/li&gt;
-&lt;li&gt;&lt;a href=&#34;document-processors&#34;&gt;Adding data to documents with DocumentProcessors&lt;/a&gt;&lt;/li&gt;
-&lt;li&gt;&lt;a href=&#34;value-handlers&#34;&gt;Treating JSON properties specially with ValueHandlers&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href=&#34;https://jeffersonheard.github.io/sondra/extending/output-formats&#34;&gt;Adding new Output Formats&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href=&#34;https://jeffersonheard.github.io/sondra/extending/request-processors&#34;&gt;Getting info and editing requests with RequestProcessors&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href=&#34;https://jeffersonheard.github.io/sondra/extending/document-processors&#34;&gt;Adding data to documents with DocumentProcessors&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href=&#34;https://jeffersonheard.github.io/sondra/extending/value-handlers&#34;&gt;Treating JSON properties specially with ValueHandlers&lt;/a&gt;&lt;/li&gt;
 &lt;/ul&gt;
 </description>
     </item>

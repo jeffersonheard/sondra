@@ -137,13 +137,13 @@ argument.&lt;/p&gt;
 &lt;h2 id=&#34;table-of-contents&#34;&gt;Table of Contents&lt;/h2&gt;
 
 &lt;ul&gt;
-&lt;li&gt;&lt;a href=&#34;flask&#34;&gt;Exposing your API with Flask&lt;/a&gt;&lt;/li&gt;
-&lt;li&gt;&lt;a href=&#34;querying&#34;&gt;Querying over the web&lt;/a&gt;&lt;/li&gt;
-&lt;li&gt;&lt;a href=&#34;documents&#34;&gt;Working with Documents&lt;/a&gt;&lt;/li&gt;
-&lt;li&gt;&lt;a href=&#34;documents&#34;&gt;Working with Collections&lt;/a&gt;&lt;/li&gt;
-&lt;li&gt;&lt;a href=&#34;documents&#34;&gt;Working with Applications&lt;/a&gt;&lt;/li&gt;
-&lt;li&gt;&lt;a href=&#34;documents&#34;&gt;Working with Suites&lt;/a&gt;&lt;/li&gt;
-&lt;li&gt;&lt;a href=&#34;querysets&#34;&gt;QuerySets in Python&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href=&#34;https://jeffersonheard.github.io/sondra/topical-guides/flask&#34;&gt;Exposing your API with Flask&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href=&#34;https://jeffersonheard.github.io/sondra/topical-guides/querying&#34;&gt;Querying over the web&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href=&#34;https://jeffersonheard.github.io/sondra/topical-guides/documents&#34;&gt;Working with Documents&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href=&#34;https://jeffersonheard.github.io/sondra/topical-guides/collections&#34;&gt;Working with Collections&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href=&#34;https://jeffersonheard.github.io/sondra/topical-guides/applications&#34;&gt;Working with Applications&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href=&#34;https://jeffersonheard.github.io/sondra/topical-guides/suites&#34;&gt;Working with Suites&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href=&#34;https://jeffersonheard.github.io/sondra/topical-guides/querysets&#34;&gt;QuerySets in Python&lt;/a&gt;&lt;/li&gt;
 &lt;/ul&gt;
 </description>
     </item>
