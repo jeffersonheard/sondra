@@ -1,0 +1,605 @@
+<!DOCTYPE html>
+  
+  
+  
+  
+   <html class="no-js"> 
+
+  <head lang="en-us">
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,user-scalable=no,initial-scale=1,maximum-scale=1">
+    <meta http-equiv="X-UA-Compatible" content="IE=10" />
+    <title>Collections - Sondra Documentation</title>
+    <meta name="generator" content="Hugo 0.17" />
+
+    
+    <meta name="description" content="A framework for creating rich APIs with Python and RethinkDB.">
+    
+    <link rel="canonical" href="https://sondra.github.io/topical-guides/collections/">
+    
+    <meta name="author" content="Jefferson Heard">
+    
+
+    <meta property="og:url" content="https://sondra.github.io/topical-guides/collections/">
+    <meta property="og:title" content="Sondra Documentation">
+    <meta property="og:image" content="https://sondra.github.io/img/sondra.svg">
+    <meta name="apple-mobile-web-app-title" content="Sondra Documentation">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+
+    <link rel="shortcut icon" type="image/x-icon" href="https://sondra.github.ioimages/favicon.ico">
+    <link rel="icon" type="image/x-icon" href="https://sondra.github.ioimages/favicon.ico">
+
+    <style>
+      @font-face {
+        font-family: 'Icon';
+        src: url('https://sondra.github.iofonts/icon.eot?52m981');
+        src: url('https://sondra.github.iofonts/icon.eot?#iefix52m981')
+               format('embedded-opentype'),
+             url('https://sondra.github.iofonts/icon.woff?52m981')
+               format('woff'),
+             url('https://sondra.github.iofonts/icon.ttf?52m981')
+               format('truetype'),
+             url('https://sondra.github.iofonts/icon.svg?52m981#icon')
+               format('svg');
+        font-weight: normal;
+        font-style: normal;
+      }
+    </style>
+    <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/highlight.js/9.6.0/styles/default.min.css">
+    <script src="//cdnjs.cloudflare.com/ajax/libs/highlight.js/9.6.0/highlight.min.js"></script>
+    <script>hljs.initHighlightingOnLoad();</script>
+
+    <link rel="stylesheet" href="https://sondra.github.iostylesheets/application.css">
+    <link rel="stylesheet" href="https://sondra.github.iostylesheets/temporary.css">
+    <link rel="stylesheet" href="https://sondra.github.iostylesheets/palettes.css">
+    <link rel="stylesheet" href="https://sondra.github.iostylesheets/highlight/highlight.css">
+
+    
+    
+    
+    <link rel="stylesheet" href="//fonts.googleapis.com/css?family=Ubuntu:400,700|Ubuntu&#43;Mono">
+    <style>
+      body, input {
+        font-family: 'Ubuntu', Helvetica, Arial, sans-serif;
+      }
+      pre, code {
+        font-family: 'Ubuntu Mono', 'Courier New', 'Courier', monospace;
+      }
+    </style>
+
+    
+    <script src="https://sondra.github.iojavascripts/modernizr.js"></script>
+
+    
+
+  </head>
+  <body class="palette-primary-brown palette-accent-teal">
+
+
+
+	
+	
+
+
+<div class="backdrop">
+	<div class="backdrop-paper"></div>
+</div>
+
+<input class="toggle" type="checkbox" id="toggle-drawer">
+<input class="toggle" type="checkbox" id="toggle-search">
+<label class="toggle-button overlay" for="toggle-drawer"></label>
+
+<header class="header">
+	<nav aria-label="Header">
+  <div class="bar default">
+    <div class="button button-menu" role="button" aria-label="Menu">
+      <label class="toggle-button icon icon-menu" for="toggle-drawer">
+        <span></span>
+      </label>
+    </div>
+    <div class="stretch">
+      <div class="title">
+        Collections
+      </div>
+    </div>
+
+    
+    <div class="button button-twitter" role="button" aria-label="Twitter">
+       <a href="https://twitter.com/jeffersonheard" title="@jeffersonheard on Twitter" target="_blank" class="toggle-button icon icon-twitter"></a>
+    </div>
+    
+
+    
+    <div class="button button-github" role="button" aria-label="GitHub">
+      <a href="https://github.com/JeffHeard" title="@JeffHeard on GitHub" target="_blank" class="toggle-button icon icon-github"></a>
+    </div>
+    
+    
+        
+  </div>
+  <div class="bar search">
+    <div class="button button-close" role="button" aria-label="Close">
+      <label class="toggle-button icon icon-back" for="toggle-search"></label>
+    </div>
+    <div class="stretch">
+      <div class="field">
+        <input class="query" type="text" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck>
+      </div>
+    </div>
+    <div class="button button-reset" role="button" aria-label="Search">
+      <button class="toggle-button icon icon-close" id="reset-search"></button>
+    </div>
+  </div>
+</nav>
+</header>
+
+<main class="main">
+	<div class="drawer">
+		<nav aria-label="Navigation">
+  <a href="https://github.com/JeffHeard/sondra" class="project">
+    <div class="banner">
+      
+        <div class="logo">
+          <img src="https://sondra.github.io/img/sondra.svg">
+        </div>
+      
+      <div class="name">
+        <strong>Sondra Documentation <span class="version">1.0.0</span></strong>
+        
+          <br>
+          JeffHeard/sondra
+        
+      </div>
+    </div>
+  </a>
+
+  <div class="scrollable">
+    <div class="wrapper">
+      
+        <ul class="repo">
+          <li class="repo-download">
+            <a href="https://github.com/JeffHeard/sondra/archive/master.zip" target="_blank" title="Download" data-action="download">
+              <i class="icon icon-download"></i> Download
+            </a>
+          </li>
+          <li class="repo-stars">
+            <a href="https://github.com/JeffHeard/sondra/stargazers" target="_blank" title="Stargazers" data-action="star">
+              <i class="icon icon-star"></i> Stars
+              <span class="count">&ndash;</span>
+            </a>
+          </li>
+        </ul>
+        <hr>
+      
+
+      <div class="toc">
+        
+        <ul>
+          
+
+
+
+
+<li>
+  
+    <span class="section">Extending</span>
+    <ul>
+      
+        
+        
+
+
+
+<a  title="Document Processors" href="https://sondra.github.io/extending/document-processors/">
+	
+	Document Processors
+</a>
+
+
+
+      
+    </ul>
+  
+</li>
+
+
+
+<li>
+  
+    
+
+
+
+<a  title="Introduction" href="https://sondra.github.io/">
+	
+	Introduction
+</a>
+
+
+
+  
+</li>
+
+
+
+<li>
+  
+    <span class="section">Tutorial</span>
+    <ul>
+      
+        
+        
+
+
+
+<a  title="Getting Started" href="https://sondra.github.io/basics/tutorial-1/">
+	
+	Getting Started
+</a>
+
+
+
+      
+        
+        
+
+
+
+<a  title="Expose it to the Web" href="https://sondra.github.io/basics/tutorial-2/">
+	
+	Expose it to the Web
+</a>
+
+
+
+      
+        
+        
+
+
+
+<a  title="Accessing Schemas" href="https://sondra.github.io/basics/tutorial-3/">
+	
+	Accessing Schemas
+</a>
+
+
+
+      
+        
+        
+
+
+
+<a  title="Adding and Accessing Data" href="https://sondra.github.io/basics/tutorial-4/">
+	
+	Adding and Accessing Data
+</a>
+
+
+
+      
+    </ul>
+  
+</li>
+
+
+
+<li>
+  
+    <span class="section">Topical Guides</span>
+    <ul>
+      
+        
+        
+
+
+
+<a  title="Applications" href="https://sondra.github.io/topical-guides/applications/">
+	
+	Applications
+</a>
+
+
+
+      
+        
+        
+
+
+
+<a class="current" title="Collections" href="https://sondra.github.io/topical-guides/collections/">
+	
+	Collections
+</a>
+
+
+<ul id="scrollspy">
+</ul>
+
+
+      
+        
+        
+
+
+
+<a  title="Documents" href="https://sondra.github.io/topical-guides/documents/">
+	
+	Documents
+</a>
+
+
+
+      
+        
+        
+
+
+
+<a  title="Exposing Methods" href="https://sondra.github.io/topical-guides/methods/">
+	
+	Exposing Methods
+</a>
+
+
+
+      
+        
+        
+
+
+
+<a  title="Output Formats" href="https://sondra.github.io/extending/output-formats/">
+	
+	Output Formats
+</a>
+
+
+
+      
+        
+        
+
+
+
+<a  title="Queries over HTTP/S" href="https://sondra.github.io/topical-guides/querying/">
+	
+	Queries over HTTP/S
+</a>
+
+
+
+      
+        
+        
+
+
+
+<a  title="QuerySets in Python" href="https://sondra.github.io/topical-guides/querysets/">
+	
+	QuerySets in Python
+</a>
+
+
+
+      
+        
+        
+
+
+
+<a  title="Request Processors" href="https://sondra.github.io/extending/request-processors/">
+	
+	Request Processors
+</a>
+
+
+
+      
+        
+        
+
+
+
+<a  title="Suites" href="https://sondra.github.io/topical-guides/suites/">
+	
+	Suites
+</a>
+
+
+
+      
+        
+        
+
+
+
+<a  title="Value Handlers" href="https://sondra.github.io/extending/value-handlers/">
+	
+	Value Handlers
+</a>
+
+
+
+      
+    </ul>
+  
+</li>
+
+
+        </ul>
+        
+
+        
+        <hr>
+        <span class="section">The author</span>
+        
+        <ul>
+          
+          <li>
+            <a href="https://twitter.com/jeffersonheard" target="_blank" title="@jeffersonheard on Twitter">
+              @jeffersonheard on Twitter
+            </a>
+          </li>
+          
+
+          
+          <li>
+            <a href="https://github.com/JeffHeard" target="_blank" title="@JeffHeard on GitHub">
+              @JeffHeard on GitHub
+            </a>
+          </li>
+          
+
+          
+          <li>
+            <a href="mailto:jefferson.r.heard@gmail.com" title="Email of jefferson.r.heard@gmail.com">
+              Contact via email
+            </a>
+          </li>
+          
+        </ul>
+        
+      </div>
+    </div>
+  </div>
+</nav>
+
+	</div>
+
+	<article class="article">
+		<div class="wrapper">
+			<h1>Collections </h1>
+
+			<p>Coming Soon&hellip;</p>
+
+
+			<aside class="copyright" role="note">
+				
+				&copy; 2016 Released under the MIT license &ndash;
+				
+				Documentation built with
+				<a href="https://www.gohugo.io" target="_blank">Hugo</a>
+				using the
+				<a href="http://github.com/digitalcraftsman/hugo-material-docs" target="_blank">Material</a> theme.
+			</aside>
+
+			<footer class="footer">
+				
+
+<nav class="pagination" aria-label="Footer">
+  <div class="previous">
+  
+      <a href="https://sondra.github.io/topical-guides/applications/" title="Applications">
+        <span class="direction">
+          Previous
+        </span>
+        <div class="page">
+          <div class="button button-previous" role="button" aria-label="Previous">
+            <i class="icon icon-back"></i>
+          </div>
+          <div class="stretch">
+            <div class="title">
+              Applications
+            </div>
+          </div>
+        </div>
+      </a>
+  
+  </div>
+
+  <div class="next">
+  
+      <a href="https://sondra.github.io/extending/document-processors/" title="Document Processors">
+        <span class="direction">
+          Next
+        </span>
+        <div class="page">
+          <div class="stretch">
+            <div class="title">
+              Document Processors
+            </div>
+          </div>
+          <div class="button button-next" role="button" aria-label="Next">
+            <i class="icon icon-forward"></i>
+          </div>
+        </div>
+      </a>
+  
+  </div>
+</nav>
+
+
+
+
+
+			</footer>
+		</div>
+	</article>
+
+	<div class="results" role="status" aria-live="polite">
+		<div class="scrollable">
+			<div class="wrapper">
+				<div class="meta"></div>
+				<div class="list"></div>
+			</div>
+		</div>
+	</div>
+</main>
+
+    <script>
+    
+      var base_url = 'https:\/\/sondra.github.io';
+      var repo_id  = 'JeffHeard\/sondra';
+    
+    </script>
+
+    <script src="https://sondra.github.iojavascripts/application.js"></script>
+    
+
+    <script>
+      /* Add headers to scrollspy */
+      var headers   = document.getElementsByTagName("h2");
+      var scrollspy = document.getElementById('scrollspy');
+
+      if(scrollspy) {
+        if(headers.length > 0) {
+          for(var i = 0; i < headers.length; i++) {
+            var li = document.createElement("li");
+            li.setAttribute("class", "anchor");
+
+            var a  = document.createElement("a");
+            a.setAttribute("href", "#" + headers[i].id);
+            a.setAttribute("title", headers[i].innerHTML);
+            a.innerHTML = headers[i].innerHTML;
+            
+            li.appendChild(a)
+            scrollspy.appendChild(li);
+          }
+        } else {
+          scrollspy.parentElement.removeChild(scrollspy)
+        }
+        
+
+        /* Add permanent link next to the headers */
+        var headers = document.querySelectorAll("h1, h2, h3, h4, h5, h6");
+
+        for(var i = 0; i < headers.length; i++) {
+            var a = document.createElement("a");
+            a.setAttribute("class", "headerlink");
+            a.setAttribute("href", "#" + headers[i].id);
+            a.setAttribute("title", "Permanent link")
+            a.innerHTML = "#";
+            headers[i].appendChild(a);
+        }
+      }
+    </script>
+
+    
+
+    <script src="//gohugo.io/js/highlight.pack.js"></script>
+    <script>hljs.initHighlightingOnLoad();</script>
+  </body>
+</html>

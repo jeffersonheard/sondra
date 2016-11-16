@@ -102,11 +102,7 @@ class User(Document):
                 'type': 'boolean',
                 'description': 'Whether or not this email address has been verified',
             }),
-            ('picture', {
-                'title': 'Picture',
-                'type': 'string',
-                'description': 'A URL resource of a photograph',
-            }),
+            ('picture', S.image(description='A URL resource of a photograph')),
             ('family_name', {
                 'title': 'Family Name',
                 'type': 'string',

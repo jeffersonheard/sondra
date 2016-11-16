@@ -134,7 +134,7 @@ class Document(MutableMapping, metaclass=DocumentMetaclass):
     processors = []
     specials = {}
     store_nulls = set()
-    debug_validate_on_retrieval = True
+    debug_validate_on_retrieval = False
 
     def constructor(self, obj):
         """
@@ -312,10 +312,6 @@ class Document(MutableMapping, metaclass=DocumentMetaclass):
             for p in self.processors:
                 p.run_after_set(self, key)
         else:
-            # value = _reference(value)
-            # if isinstance(value, list) or isinstance(value, dict):
-            #     value = mapjson(_reference, value)
-
             # if the key needs further processing, e.g. foreign keys, geometry, or dates, process.
             if key in self.specials:
                 value = self.specials[key].to_json_repr(value, self, bare_keys=True)

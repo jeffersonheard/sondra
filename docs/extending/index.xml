@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes" ?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>Extending-rsses on Sondra Documentation</title>
+    <link>https://sondra.github.io/extending/index.xml</link>
+    <description>Recent content in Extending-rsses on Sondra Documentation</description>
+    <generator>Hugo -- gohugo.io</generator>
+    <language>en-us</language>
+    <copyright>Released under the MIT license</copyright>
+    <lastBuildDate>Wed, 12 Oct 2016 16:38:34 -0400</lastBuildDate>
+    <atom:link href="https://sondra.github.io/extending/index.xml" rel="self" type="application/rss+xml" />
+    
+    <item>
+      <title>Document Processors</title>
+      <link>https://sondra.github.io/extending/document-processors/</link>
+      <pubDate>Wed, 12 Oct 2016 16:38:34 -0400</pubDate>
+      
+      <guid>https://sondra.github.io/extending/document-processors/</guid>
+      <description>&lt;p&gt;Coming Soon&amp;hellip;&lt;/p&gt;
+</description>
+    </item>
+    
+    <item>
+      <title>Output Formats</title>
+      <link>https://sondra.github.io/extending/output-formats/</link>
+      <pubDate>Wed, 12 Oct 2016 16:38:34 -0400</pubDate>
+      
+      <guid>https://sondra.github.io/extending/output-formats/</guid>
+      <description>&lt;p&gt;Coming Soon&amp;hellip;&lt;/p&gt;
+</description>
+    </item>
+    
+    <item>
+      <title>Request Processors</title>
+      <link>https://sondra.github.io/extending/request-processors/</link>
+      <pubDate>Wed, 12 Oct 2016 16:38:34 -0400</pubDate>
+      
+      <guid>https://sondra.github.io/extending/request-processors/</guid>
+      <description>&lt;p&gt;Coming Soon&amp;hellip;&lt;/p&gt;
+</description>
+    </item>
+    
+    <item>
+      <title>Value Handlers</title>
+      <link>https://sondra.github.io/extending/value-handlers/</link>
+      <pubDate>Wed, 12 Oct 2016 16:38:34 -0400</pubDate>
+      
+      <guid>https://sondra.github.io/extending/value-handlers/</guid>
+      <description>&lt;p&gt;Coming Soon&amp;hellip;&lt;/p&gt;
+</description>
+    </item>
+    
+    <item>
+      <title>Extending</title>
+      <link>https://sondra.github.io/extending/</link>
+      <pubDate>Wed, 12 Oct 2016 16:38:08 -0400</pubDate>
+      
+      <guid>https://sondra.github.io/extending/</guid>
+      <description>
+
+&lt;h2 id=&#34;table-of-contents&#34;&gt;Table of Contents&lt;/h2&gt;
+
+&lt;ul&gt;
+&lt;li&gt;&lt;a href=&#34;output-formats&#34;&gt;Adding new Output Formats&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href=&#34;request-processors&#34;&gt;Getting info and editing requests with RequestProcessors&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href=&#34;document-processors&#34;&gt;Adding data to documents with DocumentProcessors&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href=&#34;value-handlers&#34;&gt;Treating JSON properties specially with ValueHandlers&lt;/a&gt;&lt;/li&gt;
+&lt;/ul&gt;
+</description>
+    </item>
+    
+  </channel>
+</rss>
