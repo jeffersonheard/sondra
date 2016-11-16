@@ -14,7 +14,7 @@ Announcement
 I have just gotten the news that the company behind RethinkDB is shutting down. They are committed and I am committed to RethinkDB continuing as a robust Open Source project. In the next week, there will be a general polishing of the Sondra documentation and a pruning / cleanup of Sondra. This will precede a 1.0.0 release of Sondra. In the future, we will concentrate on supporting multiple databases, asynchronous communication (websockets!) and OAuth-based API authentication.  I wish the RethinkDB folks the best of luck, and want to reiterate my continued commitment to what I think is the best NoSQL database out there.
 
 Author
-  Jefferson Heard
+  `Jefferson Heard`_
 
 Copyright
   2015 Jefferson Heard
@@ -23,16 +23,16 @@ License
   Apache 2.0
 
 Development home
-  https://github.com/JeffHeard/sondra
+  https://github.com/jeffersonheard/sondra
 
 Development status
-  pre-alpha
+  beta
 
 Maintainer
   Jefferson Heard
 
 Documentation
-  http://sondra.readthedocs.org/en/latest/
+  https://jeffersonheard.github.io/sondra
 
 Sondra is an "ORM" and REST-ful webservice framework for Python 3.x, Flask, and RethinkDB with some unique
 features. Sondra's goal is to aid full stack developers by letting them focus
@@ -182,3 +182,4 @@ may derive from any number of abstract Suite mixins.
 .. _LICENSE: https://github.com/JeffHeard/sondra/blob/master/LICENSE
 .. _Tornado: http://www.tornadoweb.org/en/stable/
 .. _urlparse: https://docs.python.org/3/library/urllib.parse.html
+.. _Jefferson Heard: https://jeffersonheard.github.io
