@@ -2,20 +2,20 @@
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
   <channel>
     <title>Basics-rsses on Sondra Documentation</title>
-    <link>https://sondra.github.io/basics/index.xml</link>
+    <link>https://jeffersonheard.github.io/sondra/basics/index.xml</link>
     <description>Recent content in Basics-rsses on Sondra Documentation</description>
     <generator>Hugo -- gohugo.io</generator>
     <language>en-us</language>
     <copyright>Released under the MIT license</copyright>
     <lastBuildDate>Wed, 12 Oct 2016 16:38:08 -0400</lastBuildDate>
-    <atom:link href="https://sondra.github.io/basics/index.xml" rel="self" type="application/rss+xml" />
+    <atom:link href="https://jeffersonheard.github.io/sondra/basics/index.xml" rel="self" type="application/rss+xml" />
     
     <item>
       <title>Tutorial</title>
-      <link>https://sondra.github.io/basics/</link>
+      <link>https://jeffersonheard.github.io/sondra/basics/</link>
       <pubDate>Wed, 12 Oct 2016 16:38:08 -0400</pubDate>
       
-      <guid>https://sondra.github.io/basics/</guid>
+      <guid>https://jeffersonheard.github.io/sondra/basics/</guid>
       <description>&lt;p&gt;The tutorial walks you through building the classic to-do list app with Sondra.&lt;/p&gt;
 
 &lt;ol&gt;
@@ -29,10 +29,10 @@
     
     <item>
       <title>Getting Started</title>
-      <link>https://sondra.github.io/basics/tutorial-1/</link>
+      <link>https://jeffersonheard.github.io/sondra/basics/tutorial-1/</link>
       <pubDate>Wed, 12 Oct 2016 16:38:34 -0400</pubDate>
       
-      <guid>https://sondra.github.io/basics/tutorial-1/</guid>
+      <guid>https://jeffersonheard.github.io/sondra/basics/tutorial-1/</guid>
       <description>
 
 &lt;h3 id=&#34;introduction&#34;&gt;Introduction&lt;/h3&gt;
@@ -183,10 +183,10 @@ dictionary-like objects. The keys are dash-cased versions of the classnames (thi
     
     <item>
       <title>Expose it to the Web</title>
-      <link>https://sondra.github.io/basics/tutorial-2/</link>
+      <link>https://jeffersonheard.github.io/sondra/basics/tutorial-2/</link>
       <pubDate>Wed, 12 Oct 2016 16:38:34 -0400</pubDate>
       
-      <guid>https://sondra.github.io/basics/tutorial-2/</guid>
+      <guid>https://jeffersonheard.github.io/sondra/basics/tutorial-2/</guid>
       <description>&lt;p&gt;Now how do we make it into an API and serve it to the web?  Add this code to the file we&amp;rsquo;ve been
 building and run it as a module in Python:&lt;/p&gt;
 
@@ -230,10 +230,10 @@ all. The additional things we have to do are, in order:&lt;/p&gt;
     
     <item>
       <title>Accessing Schemas</title>
-      <link>https://sondra.github.io/basics/tutorial-3/</link>
+      <link>https://jeffersonheard.github.io/sondra/basics/tutorial-3/</link>
       <pubDate>Wed, 12 Oct 2016 16:38:34 -0400</pubDate>
       
-      <guid>https://sondra.github.io/basics/tutorial-3/</guid>
+      <guid>https://jeffersonheard.github.io/sondra/basics/tutorial-3/</guid>
       <description>
 
 &lt;h3 id=&#34;schema-endpoints&#34;&gt;Schema Endpoints&lt;/h3&gt;
@@ -652,10 +652,10 @@ would access it via the API as &lt;code&gt;http://localhost:5000/api/todo-app/it
     
     <item>
       <title>Adding and Accessing Data</title>
-      <link>https://sondra.github.io/basics/tutorial-4/</link>
+      <link>https://jeffersonheard.github.io/sondra/basics/tutorial-4/</link>
       <pubDate>Wed, 12 Oct 2016 16:38:34 -0400</pubDate>
       
-      <guid>https://sondra.github.io/basics/tutorial-4/</guid>
+      <guid>https://jeffersonheard.github.io/sondra/basics/tutorial-4/</guid>
       <description>
 
 &lt;h2 id=&#34;adding-data-in-python&#34;&gt;Adding data in Python&lt;/h2&gt;
