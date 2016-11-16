@@ -7,27 +7,7 @@
   </url>
   
   <url>
-    <loc>https://jeffersonheard.github.io/sondra/topical-guides/applications/</loc>
-    <lastmod>2016-10-12T16:38:34-04:00</lastmod>
-  </url>
-  
-  <url>
-    <loc>https://jeffersonheard.github.io/sondra/topical-guides/collections/</loc>
-    <lastmod>2016-10-12T16:38:34-04:00</lastmod>
-  </url>
-  
-  <url>
     <loc>https://jeffersonheard.github.io/sondra/extending/document-processors/</loc>
-    <lastmod>2016-10-12T16:38:34-04:00</lastmod>
-  </url>
-  
-  <url>
-    <loc>https://jeffersonheard.github.io/sondra/topical-guides/documents/</loc>
-    <lastmod>2016-10-12T16:38:34-04:00</lastmod>
-  </url>
-  
-  <url>
-    <loc>https://jeffersonheard.github.io/sondra/topical-guides/methods/</loc>
     <lastmod>2016-10-12T16:38:34-04:00</lastmod>
   </url>
   
@@ -37,22 +17,7 @@
   </url>
   
   <url>
-    <loc>https://jeffersonheard.github.io/sondra/topical-guides/querying/</loc>
-    <lastmod>2016-10-12T16:38:34-04:00</lastmod>
-  </url>
-  
-  <url>
-    <loc>https://jeffersonheard.github.io/sondra/topical-guides/querysets/</loc>
-    <lastmod>2016-10-12T16:38:34-04:00</lastmod>
-  </url>
-  
-  <url>
     <loc>https://jeffersonheard.github.io/sondra/extending/request-processors/</loc>
-    <lastmod>2016-10-12T16:38:34-04:00</lastmod>
-  </url>
-  
-  <url>
-    <loc>https://jeffersonheard.github.io/sondra/topical-guides/suites/</loc>
     <lastmod>2016-10-12T16:38:34-04:00</lastmod>
   </url>
   
@@ -62,13 +27,8 @@
   </url>
   
   <url>
-    <loc>https://jeffersonheard.github.io/sondra/extending/</loc>
-    <lastmod>2016-10-12T16:38:08-04:00</lastmod>
-  </url>
-  
-  <url>
-    <loc>https://jeffersonheard.github.io/sondra/topical-guides/</loc>
-    <lastmod>2016-10-12T16:38:08-04:00</lastmod>
+    <loc>https://jeffersonheard.github.io/sondra/topical-guides/flask/</loc>
+    <lastmod>2016-10-12T16:38:34-04:00</lastmod>
   </url>
   
   <url>
@@ -78,6 +38,21 @@
   
   <url>
     <loc>https://jeffersonheard.github.io/sondra/basics/tutorial-1/</loc>
+    <lastmod>2016-10-12T16:38:34-04:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>https://jeffersonheard.github.io/sondra/topical-guides/applications/</loc>
+    <lastmod>2016-10-12T16:38:34-04:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>https://jeffersonheard.github.io/sondra/topical-guides/</loc>
+    <lastmod>2016-10-12T16:38:08-04:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>https://jeffersonheard.github.io/sondra/topical-guides/collections/</loc>
     <lastmod>2016-10-12T16:38:34-04:00</lastmod>
   </url>
   
@@ -92,7 +67,37 @@
   </url>
   
   <url>
+    <loc>https://jeffersonheard.github.io/sondra/topical-guides/documents/</loc>
+    <lastmod>2016-10-12T16:38:34-04:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>https://jeffersonheard.github.io/sondra/extending/</loc>
+    <lastmod>2016-10-12T16:38:08-04:00</lastmod>
+  </url>
+  
+  <url>
     <loc>https://jeffersonheard.github.io/sondra/basics/tutorial-4/</loc>
+    <lastmod>2016-10-12T16:38:34-04:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>https://jeffersonheard.github.io/sondra/topical-guides/methods/</loc>
+    <lastmod>2016-10-12T16:38:34-04:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>https://jeffersonheard.github.io/sondra/topical-guides/querying/</loc>
+    <lastmod>2016-10-12T16:38:34-04:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>https://jeffersonheard.github.io/sondra/topical-guides/querysets/</loc>
+    <lastmod>2016-10-12T16:38:34-04:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>https://jeffersonheard.github.io/sondra/topical-guides/suites/</loc>
     <lastmod>2016-10-12T16:38:34-04:00</lastmod>
   </url>
   

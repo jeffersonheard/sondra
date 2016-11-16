@@ -9,18 +9,18 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width,user-scalable=no,initial-scale=1,maximum-scale=1">
     <meta http-equiv="X-UA-Compatible" content="IE=10" />
-    <title>Topical Guides - Sondra Documentation</title>
+    <title>Your Flask app - Sondra Documentation</title>
     <meta name="generator" content="Hugo 0.17" />
 
     
     <meta name="description" content="A framework for creating rich APIs with Python and RethinkDB.">
     
-    <link rel="canonical" href="https://jeffersonheard.github.io/sondra/topical-guides/">
+    <link rel="canonical" href="https://jeffersonheard.github.io/sondra/topical-guides/flask/">
     
     <meta name="author" content="Jefferson Heard">
     
 
-    <meta property="og:url" content="https://jeffersonheard.github.io/sondra/topical-guides/">
+    <meta property="og:url" content="https://jeffersonheard.github.io/sondra/topical-guides/flask/">
     <meta property="og:title" content="Sondra Documentation">
     <meta property="og:image" content="https://jeffersonheard.github.io/sondra//img/sondra.svg">
     <meta name="apple-mobile-web-app-title" content="Sondra Documentation">
@@ -100,7 +100,7 @@
     </div>
     <div class="stretch">
       <div class="title">
-        Topical Guides
+        Your Flask app
       </div>
     </div>
 
@@ -481,21 +481,49 @@
 
 	<article class="article">
 		<div class="wrapper">
-			<h1>Topical Guides </h1>
+			<h1>Your Flask app </h1>
 
-			
+			<p>The following boilerplate, based on the Todo app in the tutorials, will give you what you need to
+create a basic Flask application to serve your API. Typically, this would be served via uWSGI and a
+webserver to serve static and uploaded content. Since Sondra is only an API server and ORM, these
+topics are not covered as part of the guide.</p>
 
-<h2 id="table-of-contents">Table of Contents</h2>
+<p>This boilerplate includes compression. Most suites will also require the CORS middleware, which
+can be configured in the suite, and is applied by default.</p>
 
-<ul>
-<li><a href="flask">Exposing your API with Flask</a></li>
-<li><a href="querying">Querying over the web</a></li>
-<li><a href="documents">Working with Documents</a></li>
-<li><a href="documents">Working with Collections</a></li>
-<li><a href="documents">Working with Applications</a></li>
-<li><a href="documents">Working with Suites</a></li>
-<li><a href="querysets">QuerySets in Python</a></li>
-</ul>
+<pre><code class="language-python">from sondra.auth import Auth  # this is a sample Auth application. You may want to use another service for auth.
+from sondra.flask import api_tree, init  
+from todo import TodoApp, TodoSuite
+from flask.ext.compress import Compress
+
+app = Flask(__name__)
+Compress(app)  # I can't think of a reason you wouldn't want to do this, especially for large payloads.
+
+# passing a parameter into the Suite will cause all databases to be prefixed with that string.
+# This can be useful for creating multiple test platforms using the same database server and
+# codebase without configuration changes.
+if len(sys.argv) &gt; 1:
+    app.suite = TodoSuite(sys.argv[1])
+else:
+    app.suite = TodoSuite()
+
+# this adds cross-origin capabilities, sets max content length, and others.
+init(app)
+
+# Register all the applications.
+auth = Auth(app.suite)
+core = TodoApp(app.suite)
+
+# Create all databases and tables.
+app.suite.validate()
+app.suite.ensure_database_objects()
+
+# Attach the API to the /api/ endpoint.
+app.register_blueprint(api_tree, url_prefix='/api')
+
+if __name__ == '__main__':
+    app.run()
+</code></pre>
 
 
 			<aside class="copyright" role="note">
@@ -514,7 +542,7 @@
 <nav class="pagination" aria-label="Footer">
   <div class="previous">
   
-      <a href="https://jeffersonheard.github.io/sondra/topical-guides/applications/" title="Working with Applications">
+      <a href="https://jeffersonheard.github.io/sondra/extending/value-handlers/" title="Value Handlers">
         <span class="direction">
           Previous
         </span>
@@ -524,7 +552,7 @@
           </div>
           <div class="stretch">
             <div class="title">
-              Working with Applications
+              Value Handlers
             </div>
           </div>
         </div>
@@ -534,14 +562,14 @@
 
   <div class="next">
   
-      <a href="https://jeffersonheard.github.io/sondra/topical-guides/collections/" title="Collections">
+      <a href="https://jeffersonheard.github.io/sondra/basics/" title="Tutorial">
         <span class="direction">
           Next
         </span>
         <div class="page">
           <div class="stretch">
             <div class="title">
-              Collections
+              Tutorial
             </div>
           </div>
           <div class="button button-next" role="button" aria-label="Next">

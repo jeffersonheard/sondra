@@ -9,7 +9,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width,user-scalable=no,initial-scale=1,maximum-scale=1">
     <meta http-equiv="X-UA-Compatible" content="IE=10" />
-    <title>Applications - Sondra Documentation</title>
+    <title>Working with Applications - Sondra Documentation</title>
     <meta name="generator" content="Hugo 0.17" />
 
     
@@ -100,7 +100,7 @@
     </div>
     <div class="stretch">
       <div class="title">
-        Applications
+        Working with Applications
       </div>
     </div>
 
@@ -178,30 +178,6 @@
         <ul>
           
 
-
-
-
-<li>
-  
-    <span class="section">Extending</span>
-    <ul>
-      
-        
-        
-
-
-
-<a  title="Document Processors" href="https://jeffersonheard.github.io/sondra/extending/document-processors/">
-	
-	Document Processors
-</a>
-
-
-
-      
-    </ul>
-  
-</li>
 
 
 
@@ -296,9 +272,61 @@
 
 
 
-<a  title="Applications" href="https://jeffersonheard.github.io/sondra/topical-guides/applications/">
+<a  title="Output Formats" href="https://jeffersonheard.github.io/sondra/extending/output-formats/">
 	
-	Applications
+	Output Formats
+</a>
+
+
+
+      
+        
+        
+
+
+
+<a  title="Request Processors" href="https://jeffersonheard.github.io/sondra/extending/request-processors/">
+	
+	Request Processors
+</a>
+
+
+
+      
+        
+        
+
+
+
+<a  title="Value Handlers" href="https://jeffersonheard.github.io/sondra/extending/value-handlers/">
+	
+	Value Handlers
+</a>
+
+
+
+      
+        
+        
+
+
+
+<a  title="Your Flask app" href="https://jeffersonheard.github.io/sondra/topical-guides/flask/">
+	
+	Your Flask app
+</a>
+
+
+
+      
+        
+        
+
+
+
+<a  title="Working with Applications" href="https://jeffersonheard.github.io/sondra/topical-guides/applications/">
+	
+	Working with Applications
 </a>
 
 
@@ -348,19 +376,6 @@
 
 
 
-<a  title="Output Formats" href="https://jeffersonheard.github.io/sondra/extending/output-formats/">
-	
-	Output Formats
-</a>
-
-
-
-      
-        
-        
-
-
-
 <a  title="Queries over HTTP/S" href="https://jeffersonheard.github.io/sondra/topical-guides/querying/">
 	
 	Queries over HTTP/S
@@ -387,19 +402,6 @@
 
 
 
-<a  title="Request Processors" href="https://jeffersonheard.github.io/sondra/extending/request-processors/">
-	
-	Request Processors
-</a>
-
-
-
-      
-        
-        
-
-
-
 <a  title="Suites" href="https://jeffersonheard.github.io/sondra/topical-guides/suites/">
 	
 	Suites
@@ -408,14 +410,25 @@
 
 
       
+    </ul>
+  
+</li>
+
+
+
+<li>
+  
+    <span class="section">Extending</span>
+    <ul>
+      
         
         
 
 
 
-<a  title="Value Handlers" href="https://jeffersonheard.github.io/sondra/extending/value-handlers/">
+<a  title="Document Processors" href="https://jeffersonheard.github.io/sondra/extending/document-processors/">
 	
-	Value Handlers
+	Document Processors
 </a>
 
 
@@ -468,9 +481,65 @@
 
 	<article class="article">
 		<div class="wrapper">
-			<h1>Applications </h1>
+			<h1>Working with Applications </h1>
 
-			<p>Coming Soon&hellip;</p>
+			
+
+<p>Applications are the highest level grouping for apis. A Sondra application subclass corresponds to a
+single database in the RethinkDB backend. Like collections and documents, you can attach methods to
+the application class and expose them as API endpoints.</p>
+
+<h2 id="using-applications-to-structure-your-api">Using Applications to Structure your API</h2>
+
+<h3 id="sample-definition-of-your-api">Sample definition of your API</h3>
+
+<pre><code class="language-python">
+from sondra.collection import Collection
+from sondra.document import Document
+from sondra.application import Application
+from sondra.suite import Suite
+from sondra.schema import S
+
+class Items(Collection):
+    document_class = Item  # this is the class that as instances per-record
+    indexes = [&quot;title&quot;, &quot;complete&quot;]  # the fields to build indexes on.
+    order_by = [&quot;created&quot;]  # Sondra treats &quot;format&quot;: &quot;date-time&quot; as a RethinkDB Date.
+
+class TodoApp(Application):
+    collections = (Items,)  # For now we'll just define the collections
+
+class TodoSuite(Suite):
+    cross_origin = True  # append CORS headers
+    debug = True  # extra logging
+</code></pre>
+
+<h2 id="application-object-lifecycle">Application Object Lifecycle</h2>
+
+<ol>
+<li>One creates an application object and assigns it to a particular suite in the constructor.</li>
+<li>The application ensures that its database exists.</li>
+<li>The application creates all its collections and registers them with itself.</li>
+</ol>
+
+<h3 id="signals">Signals</h3>
+
+<p>Unless otherwise noted, all signals are sent with the application instance as their first and only
+argument.</p>
+
+<ul>
+<li><code>pre_init</code> - Sent after the Application registers with the suite, but before it initializes any collections.</li>
+<li><code>post_init</code> - Sent after the Application object initializes its collections.</li>
+<li><code>pre_registration</code> - Sent before the Application registers with the suite.</li>
+<li><code>post_registration</code> - Sent after the Application registers with the suite.</li>
+<li><code>pre_create_database</code> - Sent before the Application&rsquo;s database is created / ensured to exist.</li>
+<li><code>post_create_database</code> - Sent after the Application&rsquo;s database is guaranteed to exist, but before tables and indexes are checked.</li>
+<li><code>pre_create_tables</code> - Sent after the Application&rsquo;s database is guaranteed to exist, but before the tables and indexes are checked.</li>
+<li><code>post_create_tables</code> - Sent as soon as all tables are created.</li>
+<li><code>pre_delete_database</code> - Sent before databases and all tables will be deleted.</li>
+<li><code>post_delete_database</code> - Sent after the database has been deleted.</li>
+<li><code>pre_delete_tables</code> - Sent before tables will be deleted.</li>
+<li><code>post_delete_tables</code> - Sent after tables have been deleted.</li>
+</ul>
 
 
 			<aside class="copyright" role="note">
@@ -489,18 +558,34 @@
 <nav class="pagination" aria-label="Footer">
   <div class="previous">
   
+      <a href="https://jeffersonheard.github.io/sondra/basics/tutorial-1/" title="Getting Started">
+        <span class="direction">
+          Previous
+        </span>
+        <div class="page">
+          <div class="button button-previous" role="button" aria-label="Previous">
+            <i class="icon icon-back"></i>
+          </div>
+          <div class="stretch">
+            <div class="title">
+              Getting Started
+            </div>
+          </div>
+        </div>
+      </a>
+  
   </div>
 
   <div class="next">
   
-      <a href="https://jeffersonheard.github.io/sondra/topical-guides/collections/" title="Collections">
+      <a href="https://jeffersonheard.github.io/sondra/topical-guides/" title="Topical Guides">
         <span class="direction">
           Next
         </span>
         <div class="page">
           <div class="stretch">
             <div class="title">
-              Collections
+              Topical Guides
             </div>
           </div>
           <div class="button button-next" role="button" aria-label="Next">
