@@ -118,7 +118,73 @@ if __name__ == &#39;__main__&#39;:
     </item>
     
     <item>
-      <title>Getting Started</title>
+      <title>Working with Applications</title>
+      <link>https://jeffersonheard.github.io/sondra/topical-guides/applications/</link>
+      <pubDate>Wed, 12 Oct 2016 16:38:34 -0400</pubDate>
+      
+      <guid>https://jeffersonheard.github.io/sondra/topical-guides/applications/</guid>
+      <description>
+
+&lt;p&gt;Applications are the highest level grouping for apis. A Sondra application subclass corresponds to a
+single database in the RethinkDB backend. Like collections and documents, you can attach methods to
+the application class and expose them as API endpoints.&lt;/p&gt;
+
+&lt;h2 id=&#34;using-applications-to-structure-your-api&#34;&gt;Using Applications to Structure your API&lt;/h2&gt;
+
+&lt;h3 id=&#34;sample-definition-of-your-api&#34;&gt;Sample definition of your API&lt;/h3&gt;
+
+&lt;pre&gt;&lt;code class=&#34;language-python&#34;&gt;
+from sondra.collection import Collection
+from sondra.document import Document
+from sondra.application import Application
+from sondra.suite import Suite
+from sondra.schema import S
+
+class Items(Collection):
+    document_class = Item  # this is the class that as instances per-record
+    indexes = [&amp;quot;title&amp;quot;, &amp;quot;complete&amp;quot;]  # the fields to build indexes on.
+    order_by = [&amp;quot;created&amp;quot;]  # Sondra treats &amp;quot;format&amp;quot;: &amp;quot;date-time&amp;quot; as a RethinkDB Date.
+
+class TodoApp(Application):
+    collections = (Items,)  # For now we&#39;ll just define the collections
+
+class TodoSuite(Suite):
+    cross_origin = True  # append CORS headers
+    debug = True  # extra logging
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;h2 id=&#34;application-object-lifecycle&#34;&gt;Application Object Lifecycle&lt;/h2&gt;
+
+&lt;ol&gt;
+&lt;li&gt;One creates an application object and assigns it to a particular suite in the constructor.&lt;/li&gt;
+&lt;li&gt;The application ensures that its database exists.&lt;/li&gt;
+&lt;li&gt;The application creates all its collections and registers them with itself.&lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;h3 id=&#34;signals&#34;&gt;Signals&lt;/h3&gt;
+
+&lt;p&gt;Unless otherwise noted, all signals are sent with the application instance as their first and only
+argument.&lt;/p&gt;
+
+&lt;ul&gt;
+&lt;li&gt;&lt;code&gt;pre_init&lt;/code&gt; - Sent after the Application registers with the suite, but before it initializes any collections.&lt;/li&gt;
+&lt;li&gt;&lt;code&gt;post_init&lt;/code&gt; - Sent after the Application object initializes its collections.&lt;/li&gt;
+&lt;li&gt;&lt;code&gt;pre_registration&lt;/code&gt; - Sent before the Application registers with the suite.&lt;/li&gt;
+&lt;li&gt;&lt;code&gt;post_registration&lt;/code&gt; - Sent after the Application registers with the suite.&lt;/li&gt;
+&lt;li&gt;&lt;code&gt;pre_create_database&lt;/code&gt; - Sent before the Application&amp;rsquo;s database is created / ensured to exist.&lt;/li&gt;
+&lt;li&gt;&lt;code&gt;post_create_database&lt;/code&gt; - Sent after the Application&amp;rsquo;s database is guaranteed to exist, but before tables and indexes are checked.&lt;/li&gt;
+&lt;li&gt;&lt;code&gt;pre_create_tables&lt;/code&gt; - Sent after the Application&amp;rsquo;s database is guaranteed to exist, but before the tables and indexes are checked.&lt;/li&gt;
+&lt;li&gt;&lt;code&gt;post_create_tables&lt;/code&gt; - Sent as soon as all tables are created.&lt;/li&gt;
+&lt;li&gt;&lt;code&gt;pre_delete_database&lt;/code&gt; - Sent before databases and all tables will be deleted.&lt;/li&gt;
+&lt;li&gt;&lt;code&gt;post_delete_database&lt;/code&gt; - Sent after the database has been deleted.&lt;/li&gt;
+&lt;li&gt;&lt;code&gt;pre_delete_tables&lt;/code&gt; - Sent before tables will be deleted.&lt;/li&gt;
+&lt;li&gt;&lt;code&gt;post_delete_tables&lt;/code&gt; - Sent after tables have been deleted.&lt;/li&gt;
+&lt;/ul&gt;
+</description>
+    </item>
+    
+    <item>
+      <title>Your first Sondra API</title>
       <link>https://jeffersonheard.github.io/sondra/basics/tutorial-1/</link>
       <pubDate>Wed, 12 Oct 2016 16:38:34 -0400</pubDate>
       
@@ -134,7 +200,7 @@ modeling, and then we&amp;rsquo;ll add exposed methods to see how those work.&lt
 
 &lt;p&gt;Finally, you&amp;rsquo;ll work through accessing the API via Javascript (ES2015) and Python.&lt;/p&gt;
 
-&lt;p&gt;To do this tutorial, you will need the following:&lt;/p&gt;
+&lt;p&gt;To do this tutorial, you will need the following installed and ready to go:&lt;/p&gt;
 
 &lt;ul&gt;
 &lt;li&gt;Sondra - &lt;a href=&#34;https://github.com/JeffHeard/sondra.git&#34;&gt;https://github.com/JeffHeard/sondra.git&lt;/a&gt;&lt;/li&gt;
@@ -268,72 +334,6 @@ clients now (we&amp;rsquo;ll handle authentication later), and you can play arou
 In Python, Sondra tries to be as pythonic as possible. All levels of the API are exposed as
 dictionary-like objects. The keys are dash-cased versions of the classnames (this can be overridden,
   but is the default).&lt;/p&gt;
-</description>
-    </item>
-    
-    <item>
-      <title>Working with Applications</title>
-      <link>https://jeffersonheard.github.io/sondra/topical-guides/applications/</link>
-      <pubDate>Wed, 12 Oct 2016 16:38:34 -0400</pubDate>
-      
-      <guid>https://jeffersonheard.github.io/sondra/topical-guides/applications/</guid>
-      <description>
-
-&lt;p&gt;Applications are the highest level grouping for apis. A Sondra application subclass corresponds to a
-single database in the RethinkDB backend. Like collections and documents, you can attach methods to
-the application class and expose them as API endpoints.&lt;/p&gt;
-
-&lt;h2 id=&#34;using-applications-to-structure-your-api&#34;&gt;Using Applications to Structure your API&lt;/h2&gt;
-
-&lt;h3 id=&#34;sample-definition-of-your-api&#34;&gt;Sample definition of your API&lt;/h3&gt;
-
-&lt;pre&gt;&lt;code class=&#34;language-python&#34;&gt;
-from sondra.collection import Collection
-from sondra.document import Document
-from sondra.application import Application
-from sondra.suite import Suite
-from sondra.schema import S
-
-class Items(Collection):
-    document_class = Item  # this is the class that as instances per-record
-    indexes = [&amp;quot;title&amp;quot;, &amp;quot;complete&amp;quot;]  # the fields to build indexes on.
-    order_by = [&amp;quot;created&amp;quot;]  # Sondra treats &amp;quot;format&amp;quot;: &amp;quot;date-time&amp;quot; as a RethinkDB Date.
-
-class TodoApp(Application):
-    collections = (Items,)  # For now we&#39;ll just define the collections
-
-class TodoSuite(Suite):
-    cross_origin = True  # append CORS headers
-    debug = True  # extra logging
-&lt;/code&gt;&lt;/pre&gt;
-
-&lt;h2 id=&#34;application-object-lifecycle&#34;&gt;Application Object Lifecycle&lt;/h2&gt;
-
-&lt;ol&gt;
-&lt;li&gt;One creates an application object and assigns it to a particular suite in the constructor.&lt;/li&gt;
-&lt;li&gt;The application ensures that its database exists.&lt;/li&gt;
-&lt;li&gt;The application creates all its collections and registers them with itself.&lt;/li&gt;
-&lt;/ol&gt;
-
-&lt;h3 id=&#34;signals&#34;&gt;Signals&lt;/h3&gt;
-
-&lt;p&gt;Unless otherwise noted, all signals are sent with the application instance as their first and only
-argument.&lt;/p&gt;
-
-&lt;ul&gt;
-&lt;li&gt;&lt;code&gt;pre_init&lt;/code&gt; - Sent after the Application registers with the suite, but before it initializes any collections.&lt;/li&gt;
-&lt;li&gt;&lt;code&gt;post_init&lt;/code&gt; - Sent after the Application object initializes its collections.&lt;/li&gt;
-&lt;li&gt;&lt;code&gt;pre_registration&lt;/code&gt; - Sent before the Application registers with the suite.&lt;/li&gt;
-&lt;li&gt;&lt;code&gt;post_registration&lt;/code&gt; - Sent after the Application registers with the suite.&lt;/li&gt;
-&lt;li&gt;&lt;code&gt;pre_create_database&lt;/code&gt; - Sent before the Application&amp;rsquo;s database is created / ensured to exist.&lt;/li&gt;
-&lt;li&gt;&lt;code&gt;post_create_database&lt;/code&gt; - Sent after the Application&amp;rsquo;s database is guaranteed to exist, but before tables and indexes are checked.&lt;/li&gt;
-&lt;li&gt;&lt;code&gt;pre_create_tables&lt;/code&gt; - Sent after the Application&amp;rsquo;s database is guaranteed to exist, but before the tables and indexes are checked.&lt;/li&gt;
-&lt;li&gt;&lt;code&gt;post_create_tables&lt;/code&gt; - Sent as soon as all tables are created.&lt;/li&gt;
-&lt;li&gt;&lt;code&gt;pre_delete_database&lt;/code&gt; - Sent before databases and all tables will be deleted.&lt;/li&gt;
-&lt;li&gt;&lt;code&gt;post_delete_database&lt;/code&gt; - Sent after the database has been deleted.&lt;/li&gt;
-&lt;li&gt;&lt;code&gt;pre_delete_tables&lt;/code&gt; - Sent before tables will be deleted.&lt;/li&gt;
-&lt;li&gt;&lt;code&gt;post_delete_tables&lt;/code&gt; - Sent after tables have been deleted.&lt;/li&gt;
-&lt;/ul&gt;
 </description>
     </item>
     
