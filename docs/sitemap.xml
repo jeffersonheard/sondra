@@ -22,18 +22,18 @@
   </url>
   
   <url>
-    <loc>https://jeffersonheard.github.io/sondra/extending/value-handlers/</loc>
-    <lastmod>2016-10-12T16:38:34-04:00</lastmod>
-  </url>
-  
-  <url>
     <loc>https://jeffersonheard.github.io/sondra/topical-guides/flask/</loc>
     <lastmod>2016-10-12T16:38:34-04:00</lastmod>
   </url>
   
   <url>
-    <loc>https://jeffersonheard.github.io/sondra/basics/</loc>
-    <lastmod>2016-10-12T16:38:08-04:00</lastmod>
+    <loc>https://jeffersonheard.github.io/sondra/extending/value-handlers/</loc>
+    <lastmod>2016-10-12T16:38:34-04:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>https://jeffersonheard.github.io/sondra/</loc>
+    <lastmod>2016-03-08T21:07:13+01:00</lastmod>
   </url>
   
   <url>
@@ -47,7 +47,7 @@
   </url>
   
   <url>
-    <loc>https://jeffersonheard.github.io/sondra/topical-guides/</loc>
+    <loc>https://jeffersonheard.github.io/sondra/basics/</loc>
     <lastmod>2016-10-12T16:38:08-04:00</lastmod>
   </url>
   
@@ -62,6 +62,11 @@
   </url>
   
   <url>
+    <loc>https://jeffersonheard.github.io/sondra/topical-guides/</loc>
+    <lastmod>2016-10-12T16:38:08-04:00</lastmod>
+  </url>
+  
+  <url>
     <loc>https://jeffersonheard.github.io/sondra/basics/tutorial-3/</loc>
     <lastmod>2016-10-12T16:38:34-04:00</lastmod>
   </url>
@@ -72,11 +77,6 @@
   </url>
   
   <url>
-    <loc>https://jeffersonheard.github.io/sondra/extending/</loc>
-    <lastmod>2016-10-12T16:38:08-04:00</lastmod>
-  </url>
-  
-  <url>
     <loc>https://jeffersonheard.github.io/sondra/basics/tutorial-4/</loc>
     <lastmod>2016-10-12T16:38:34-04:00</lastmod>
   </url>
@@ -84,6 +84,16 @@
   <url>
     <loc>https://jeffersonheard.github.io/sondra/topical-guides/methods/</loc>
     <lastmod>2016-10-12T16:38:34-04:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>https://jeffersonheard.github.io/sondra/topical-guides/javascript/</loc>
+    <lastmod>2016-10-12T16:38:34-04:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>https://jeffersonheard.github.io/sondra/extending/</loc>
+    <lastmod>2016-10-12T16:38:08-04:00</lastmod>
   </url>
   
   <url>
