@@ -301,9 +301,9 @@
 
 
 
-<a  title="Value Handlers" href="https://jeffersonheard.github.io/sondra/extending/value-handlers/">
+<a  title="The Flask App" href="https://jeffersonheard.github.io/sondra/topical-guides/flask/">
 	
-	Value Handlers
+	The Flask App
 </a>
 
 
@@ -314,9 +314,9 @@
 
 
 
-<a  title="Your Flask app" href="https://jeffersonheard.github.io/sondra/topical-guides/flask/">
+<a  title="Value Handlers" href="https://jeffersonheard.github.io/sondra/extending/value-handlers/">
 	
-	Your Flask app
+	Value Handlers
 </a>
 
 
@@ -369,6 +369,19 @@
 <a  title="Exposing Methods" href="https://jeffersonheard.github.io/sondra/topical-guides/methods/">
 	
 	Exposing Methods
+</a>
+
+
+
+      
+        
+        
+
+
+
+<a  title="The Javascript Client" href="https://jeffersonheard.github.io/sondra/topical-guides/javascript/">
+	
+	The Javascript Client
 </a>
 
 
@@ -485,6 +498,33 @@
 	<article class="article">
 		<div class="wrapper">
 			
+				<h1>Sondra </h1>
+
+				
+
+<p>Sondra is an &ldquo;ORM&rdquo; and REST-ful webservice framework for Python 3.x, Flask, and RethinkDB with some unique
+features. Sondra&rsquo;s goal is to aid full stack developers by letting them focus
+on data models and functionality instead of writing workarounds and glue code.
+It embraces common &ldquo;shortcuts&rdquo; developers take in common full-stack web
+applications, e.g. merging &ldquo;Model&rdquo; and &ldquo;Controller&rdquo; in the oft-used MVC
+pattern.</p>
+
+<p>Sondra does not currently support asynchronous access to RethinkDB.  The goal
+is to eventually support Tornado as an asynchronous backend for REST and WebSockets.</p>
+
+<h2 id="features">Features</h2>
+
+<ul>
+<li>A clear, DRY heirarchical application structure that emphasizes convention over configuration.</li>
+<li>Authentication via JSON Web Tokens (JWT)</li>
+<li>JSON-Schema validation for documents.</li>
+<li>Expose methods on documents, collections, and applications, complete with schemas for call and return.</li>
+<li>A clear, predictable URL scheme for all manner of API calls, covering a broad set of use-cases.</li>
+<li>Self documenting APIs with both human-readable help based on docstrings and schemas for every call.</li>
+<li>Use API idiomatically over HTTP and native Python without writing boilerplate code</li>
+</ul>
+
+			
 				<h1>Tutorial </h1>
 
 				<p>The tutorial walks you through building the classic to-do list app with Sondra.</p>
@@ -506,6 +546,7 @@
 <ul>
 <li><a href="https://jeffersonheard.github.io/sondra/topical-guides/flask">Exposing your API with Flask</a></li>
 <li><a href="https://jeffersonheard.github.io/sondra/topical-guides/querying">Querying over the web</a></li>
+<li><a href="https://jeffersonheard.github.io/sondra/topical-guides/javascript">Using the Javascript Client</a></li>
 <li><a href="https://jeffersonheard.github.io/sondra/topical-guides/documents">Working with Documents</a></li>
 <li><a href="https://jeffersonheard.github.io/sondra/topical-guides/collections">Working with Collections</a></li>
 <li><a href="https://jeffersonheard.github.io/sondra/topical-guides/applications">Working with Applications</a></li>
@@ -551,14 +592,14 @@
   
   
   <div class="next">
-      <a href="https://jeffersonheard.github.io/sondra/topical-guides/" title="Topical Guides">
+      <a href="https://jeffersonheard.github.io/sondra/basics/" title="Tutorial">
         <span class="direction">
           Next
         </span>
         <div class="page">
           <div class="stretch">
             <div class="title">
-              Topical Guides
+              Tutorial
             </div>
           </div>
           <div class="button button-next" role="button" aria-label="Next">
@@ -633,6 +674,38 @@
       }
     </script>
 
+    
+      <script>
+        (function(i,s,o,g,r,a,m){
+          i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){(i[r].q=i[r].q||
+          []).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+          m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;
+          m.parentNode.insertBefore(a,m)
+        })(window, document,
+          'script', '//www.google-analytics.com/analytics.js', 'ga');
+         
+        ga('create', 'UA-68674847-2', 'auto');
+        ga('set', 'anonymizeIp', true);
+        ga('send', 'pageview');
+         
+        var buttons = document.querySelectorAll('a');
+        Array.prototype.map.call(buttons, function(item) {
+          if (item.host != document.location.host) {
+            item.addEventListener('click', function() {
+              var action = item.getAttribute('data-action') || 'follow';
+              ga('send', 'event', 'outbound', action, item.href);
+            });
+          }
+        });
+         
+        var query = document.querySelector('.query');
+        query.addEventListener('blur', function() {
+          if (this.value) {
+            var path = document.location.pathname;
+            ga('send', 'pageview', path + '?q=' + this.value);
+          }
+        });
+      </script>
     
 
     <script src="//gohugo.io/js/highlight.pack.js"></script>

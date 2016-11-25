@@ -9,18 +9,18 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width,user-scalable=no,initial-scale=1,maximum-scale=1">
     <meta http-equiv="X-UA-Compatible" content="IE=10" />
-    <title>Document Processors - Sondra Documentation</title>
+    <title>The Javascript Client - Sondra Documentation</title>
     <meta name="generator" content="Hugo 0.17" />
 
     
     <meta name="description" content="A framework for creating rich APIs with Python and RethinkDB.">
     
-    <link rel="canonical" href="https://jeffersonheard.github.io/sondra/extending/document-processors/">
+    <link rel="canonical" href="https://jeffersonheard.github.io/sondra/topical-guides/javascript/">
     
     <meta name="author" content="Jefferson Heard">
     
 
-    <meta property="og:url" content="https://jeffersonheard.github.io/sondra/extending/document-processors/">
+    <meta property="og:url" content="https://jeffersonheard.github.io/sondra/topical-guides/javascript/">
     <meta property="og:title" content="Sondra Documentation">
     <meta property="og:image" content="https://jeffersonheard.github.io/sondra//img/sondra.svg">
     <meta name="apple-mobile-web-app-title" content="Sondra Documentation">
@@ -100,7 +100,7 @@
     </div>
     <div class="stretch">
       <div class="title">
-        Document Processors
+        The Javascript Client
       </div>
     </div>
 
@@ -494,9 +494,117 @@
 
 	<article class="article">
 		<div class="wrapper">
-			<h1>Document Processors </h1>
+			<h1>The Javascript Client </h1>
 
-			<p>Coming Soon&hellip;</p>
+			
+
+<p>Sondra does not wrap raw objects unless requested to. Also, GET, POST, PUT, PATCH, and DELETE
+metaphors behave as expected. Therefore a simple XMLHttpRequest or a call to the new standard
+Fetch API with raw JSON objects that conform to the schema will work just fine.
+<a href="https://jeffersonheard.github.io/sondra/basics/tutorial-4">See the tutorial</a> for more information on how these work.</p>
+
+<p>For those who want something more high level, Sondra has a
+<a href="https://github.com/jeffersonheard/sondra-client">Javascript client</a>. This client uses ES6 and
+Bluebird.js to make a modern, promise-based API for remote communication with a Sondra-based API
+server.</p>
+
+<h2 id="client-api">Client API</h2>
+
+<h2 id="example-fetch-a-schema">Example: Fetch a schema</h2>
+
+<pre><code class="language-javascript">import { Sondra, QuerySet } from 'sondra-client';
+
+const api = new Sondra().suite('http', 'localhost', 5000);
+const auth = api.app('auth');
+const users = auth.collection('users');
+const login = auth.method('login');
+const jefferson = users.document('jefferson');
+
+users.fetchSchema().then((schema) =&gt; {  // we set the format first to make sure that schema overrides it.
+  console.log('schema')    
+});
+</code></pre>
+
+<h3 id="results">Results</h3>
+
+<p>The resulting schema is quite large. For the purposes of this guide, we have left out much of it.
+API (Suite), application, and collection schemas are self describing. Within the suite schema are
+references to all the applications under the attribute <code>applications</code>. Within the application schema
+are references to all the collections under the attribute <code>collections</code> as well as to
+application-wide methods under <code>methods</code>. Within collections are the  document schemas, and these
+also contain references to collection-wide methods under the attribute <code>methods</code> and to
+document-specific (instance) methods under <code>documentMethods</code>.</p>
+
+<pre><code class="language-javascript">{
+  &quot;type&quot;: &quot;object&quot;,
+  &quot;properties&quot;: {
+    &quot;username&quot;: {
+      &quot;type&quot;: &quot;string&quot;,
+      &quot;description&quot;: &quot;The user's username&quot;,
+      &quot;title&quot;: &quot;Username&quot;
+    },
+    &quot;email&quot;: {
+      &quot;type&quot;: &quot;string&quot;,
+      &quot;format&quot;: &quot;email&quot;,
+      &quot;description&quot;: &quot;The user's email address&quot;,
+      &quot;title&quot;: &quot;Email&quot;,
+      &quot;pattern&quot;: &quot;^[^@]+@[^@]+\\.[^@]+$&quot;
+    },
+     /* ... The actual schema is quite long. */
+}
+</code></pre>
+
+<h2 id="example-fetch-a-set-of-documents">Example: Fetch a set of documents</h2>
+
+<p>This example retrieves the first page of documents from the API.</p>
+
+<pre><code class="language-javascript">
+const api = new Sondra().suite('http', 'localhost', 5000);
+const auth = api.app('auth');
+const users = auth.collection('users');
+const login = auth.method('login');
+
+login.call({body: {username: 'jefferson', password: 'mypassword'}})
+  .then((rsp) =&gt; {
+    const { _:token } = rsp;
+    const todoApp = todo.app('todo-app').auth(token);
+    const items = todoApp.collection('items');
+    items.call().then((items) =&gt; {
+      / ** do something with the item list *//
+    });
+</code></pre>
+
+<h2 id="example-query-a-collection">Example: Query a collection</h2>
+
+<p>The above example fetches by default the first hundred documents returned by a simple database
+query. This is often useful, but more useful is the ability to limit and filter the data. The
+following example uses a QuerySet object to limit the data. For more information on querying and
+querysets, <a href="querying">see the topical guide on querying</a>.</p>
+
+<pre><code class="language-javascript">
+import { Sondra, QuerySet } from 'sondra-client';
+
+const api = new Sondra().suite('http', 'localhost', 5000);
+const auth = api.app('auth');
+const users = auth.collection('users');
+const login = auth.method('login');
+
+login.call({body: {username: 'jefferson', password: 'mypassword'}})
+  .then((token) =&gt; Promise.resolve(api.auth(token._)))
+  .then((authorizedApi) =&gt; {
+    const todoApp = todo.app('todo-app');
+    const items = todoApp.collection('items');
+
+    // apply a start and a limit. See sondra.js for a full list of methods supported by QuerySet.
+    const q = new QuerySet().start(0).limit(5);  
+
+    items.query(q).call().then((items) =&gt; {
+      / ** do something with the item list *//
+    });
+</code></pre>
+
+<p>The Javascript client is complete, and you can do anything within it that you can with Fetch or
+XMLHttpRequest. For more information on the API, see the ESDoc in the repository.</p>
 
 
 			<aside class="copyright" role="note">
@@ -515,18 +623,34 @@
 <nav class="pagination" aria-label="Footer">
   <div class="previous">
   
+      <a href="https://jeffersonheard.github.io/sondra/topical-guides/methods/" title="Exposing Methods">
+        <span class="direction">
+          Previous
+        </span>
+        <div class="page">
+          <div class="button button-previous" role="button" aria-label="Previous">
+            <i class="icon icon-back"></i>
+          </div>
+          <div class="stretch">
+            <div class="title">
+              Exposing Methods
+            </div>
+          </div>
+        </div>
+      </a>
+  
   </div>
 
   <div class="next">
   
-      <a href="https://jeffersonheard.github.io/sondra/extending/output-formats/" title="Output Formats">
+      <a href="https://jeffersonheard.github.io/sondra/extending/" title="Extending">
         <span class="direction">
           Next
         </span>
         <div class="page">
           <div class="stretch">
             <div class="title">
-              Output Formats
+              Extending
             </div>
           </div>
           <div class="button button-next" role="button" aria-label="Next">

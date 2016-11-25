@@ -7,25 +7,8 @@
     <generator>Hugo -- gohugo.io</generator>
     <language>en-us</language>
     <copyright>Released under the MIT license</copyright>
-    <lastBuildDate>Wed, 12 Oct 2016 16:38:08 -0400</lastBuildDate>
+    <lastBuildDate>Wed, 12 Oct 2016 16:38:34 -0400</lastBuildDate>
     <atom:link href="https://jeffersonheard.github.io/sondra/basics/index.xml" rel="self" type="application/rss+xml" />
-    
-    <item>
-      <title>Tutorial</title>
-      <link>https://jeffersonheard.github.io/sondra/basics/</link>
-      <pubDate>Wed, 12 Oct 2016 16:38:08 -0400</pubDate>
-      
-      <guid>https://jeffersonheard.github.io/sondra/basics/</guid>
-      <description>&lt;p&gt;The tutorial walks you through building the classic to-do list app with Sondra.&lt;/p&gt;
-
-&lt;ol&gt;
-&lt;li&gt;&lt;a href=&#34;https://jeffersonheard.github.io/sondra/basics/tutorial-1&#34;&gt;Getting Started&lt;/a&gt;&lt;/li&gt;
-&lt;li&gt;&lt;a href=&#34;https://jeffersonheard.github.io/sondra/basics/tutorial-2&#34;&gt;Expose it to the web&lt;/a&gt;&lt;/li&gt;
-&lt;li&gt;&lt;a href=&#34;https://jeffersonheard.github.io/sondra/basics/tutorial-3&#34;&gt;Accessing Schemas&lt;/a&gt;&lt;/li&gt;
-&lt;li&gt;&lt;a href=&#34;https://jeffersonheard.github.io/sondra/basics/tutorial-4&#34;&gt;Adding Data&lt;/a&gt;&lt;/li&gt;
-&lt;/ol&gt;
-</description>
-    </item>
     
     <item>
       <title>Your first Sondra API</title>
@@ -178,6 +161,23 @@ clients now (we&amp;rsquo;ll handle authentication later), and you can play arou
 In Python, Sondra tries to be as pythonic as possible. All levels of the API are exposed as
 dictionary-like objects. The keys are dash-cased versions of the classnames (this can be overridden,
   but is the default).&lt;/p&gt;
+</description>
+    </item>
+    
+    <item>
+      <title>Tutorial</title>
+      <link>https://jeffersonheard.github.io/sondra/basics/</link>
+      <pubDate>Wed, 12 Oct 2016 16:38:08 -0400</pubDate>
+      
+      <guid>https://jeffersonheard.github.io/sondra/basics/</guid>
+      <description>&lt;p&gt;The tutorial walks you through building the classic to-do list app with Sondra.&lt;/p&gt;
+
+&lt;ol&gt;
+&lt;li&gt;&lt;a href=&#34;https://jeffersonheard.github.io/sondra/basics/tutorial-1&#34;&gt;Getting Started&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href=&#34;https://jeffersonheard.github.io/sondra/basics/tutorial-2&#34;&gt;Expose it to the web&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href=&#34;https://jeffersonheard.github.io/sondra/basics/tutorial-3&#34;&gt;Accessing Schemas&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href=&#34;https://jeffersonheard.github.io/sondra/basics/tutorial-4&#34;&gt;Adding Data&lt;/a&gt;&lt;/li&gt;
+&lt;/ol&gt;
 </description>
     </item>
     
