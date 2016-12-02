@@ -115,17 +115,12 @@ class APIRequest(object):
             },
         }
 
-        try:
-            if kind in decision_tree:
-                action = decision_tree[kind][method]
-                return self.formats[format](self.reference, action(), **self.formatter_kwargs)
-            else:
-                return self.formats[format](self.reference, self.reference.value, **self.formatter_kwargs)
-        except rethinkdb.ReqlDriverError as e:  # FIXME this is a hack.  Should be buried further into Sondra. Eek.
-            if not reconnect:
-                return self(reconnect=True)
-            else:
-                raise e
+        if kind in decision_tree:
+            action = decision_tree[kind][method]
+            return self.formats[format](self.reference, action(), **self.formatter_kwargs)
+        else:
+            return self.formats[format](self.reference, self.reference.value, **self.formatter_kwargs)
+
 
     def _parse_query(self):
         self.formatter_kwargs = self.reference.kwargs

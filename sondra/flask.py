@@ -9,6 +9,7 @@ from jsonschema import ValidationError
 
 from .api import APIRequest
 
+
 api_tree = Blueprint('api', __name__)
 
 def init(app):
@@ -112,6 +113,7 @@ def api_request(path):
     if request.method == 'HEAD':
         return Response(status=200)
     else:
+        current_app.suite.check_connections()
         args = {k:v for k, v in request.values.items()}
         r = APIRequest(
                 current_app.suite,
@@ -150,7 +152,7 @@ def api_request(path):
 
         except ValidationError as invalid_entry:
             return format_error(r, 400, "InvalidRequest", invalid_entry)
-
+        
         except Exception as error:
             return format_error(r, 500, "ServerError", error)
 

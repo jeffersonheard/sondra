@@ -240,6 +240,13 @@ class Suite(Mapping, metaclass=SuiteMetaclass):
         self.description = self.__doc__ or "No description provided."
         signals.post_init.send(self.__class__, instance=self)
 
+    def check_connections(self):
+        for name, conn in self.connections.items():
+            try:
+                r.db_list().run(conn)
+            except r.ReqlDriverError as e:
+                self.connections[name] = r.connect(**self.connection_config[name])
+
     def connect(self):
         self.connections = {name: r.connect(**kwargs) for name, kwargs in self.connection_config.items()}
 
