@@ -213,7 +213,7 @@ class Suite(Mapping, metaclass=SuiteMetaclass):
 
     def __init__(self, db_prefix=""):
         self.applications = {}
-
+        self.connections = None
         self.db_prefix = db_prefix
 
         if self.logging:
@@ -227,7 +227,7 @@ class Suite(Mapping, metaclass=SuiteMetaclass):
 
         signals.pre_init.send(self.__class__, isntance=self)
 
-        self.connections = {name: r.connect(**kwargs) for name, kwargs in self.connection_config.items()}
+        self.connect()
         for name in self.connections:
             self.log.info("Connection established to '{0}'".format(name))
 
@@ -239,6 +239,9 @@ class Suite(Mapping, metaclass=SuiteMetaclass):
         self.name = self.name or self.__class__.__name__
         self.description = self.__doc__ or "No description provided."
         signals.post_init.send(self.__class__, instance=self)
+
+    def connect(self):
+        self.connections = {name: r.connect(**kwargs) for name, kwargs in self.connection_config.items()}
 
     def register_application(self, app):
         """This is called automatically whenever an Application object is constructed."""

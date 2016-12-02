@@ -14,7 +14,7 @@ setup(
        'sondra.tests',
        'sondra.tests.web',
     ],
-    version='1.0.0',
+    version='1.0.1',
     description='JSON-Schema-based ORM for RethinkDB',
     author="Jefferson Heard",
     author_email="jefferson.r.heard@gmail.com",

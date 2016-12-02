@@ -91,12 +91,16 @@ class Application(Mapping, metaclass=ApplicationMetaclass):
     ..webservices reference: /docs/web-services.html
     """
     db = 'default'
-    connection = 'default'
     title = None
     slug = None
     collections = ()
     anonymous_reads = True
     definitions = None
+    connection_name = 'default'
+
+    @property
+    def connection(self):
+        return self.suite.connections[self.connection_name]
 
     @property
     def url(self):
@@ -192,7 +196,6 @@ class Application(Mapping, metaclass=ApplicationMetaclass):
             self.db = suite.db_prefix + utils.convert_camelcase(self.name)
         else:
             self.db = utils.convert_camelcase(self.name)
-        self.connection = suite.connections[self.connection]
         self._collections = {}
         self._url = '/'.join((self.suite.url, self.slug))
         self.log = logging.getLogger(self.name)
