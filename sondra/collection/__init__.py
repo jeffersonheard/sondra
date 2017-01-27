@@ -179,6 +179,10 @@ class Collection(MutableMapping, metaclass=CollectionMetaclass):
     order_by_index = None
 
     @property
+    def language(self):
+        return self.application.language
+
+    @property
     def suite(self):
         if self.application:
             return self.application.suite

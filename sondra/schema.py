@@ -218,3 +218,4 @@ class S(object):
         for s in schemas:
             result = deep_merge(result, s)
         return result
+

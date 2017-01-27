@@ -19,6 +19,7 @@ def init(app):
         CORS(api_tree, intercept_exceptions=True)
 
 
+
 @api_tree.route('/schema')
 @api_tree.route(';schema')
 @api_tree.route(';format=schema')

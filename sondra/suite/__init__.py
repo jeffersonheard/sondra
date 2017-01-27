@@ -183,6 +183,8 @@ class Suite(Mapping, metaclass=SuiteMetaclass):
         'default': {}
     }
     working_directory = os.getcwd()
+    language = 'en'
+    translations = None
     db_prefix = ""
 
     @property
@@ -236,6 +238,9 @@ class Suite(Mapping, metaclass=SuiteMetaclass):
         self.docstring_processor = DOCSTRING_PROCESSORS[self.docstring_processor_name]
         self.log.info('Docstring processor is {0}')
 
+        self.log.info('Default language is {0}'.format(self.language))
+        self.log.info('Translations for default language are {0}'.format('present' if self.translations else 'not present'))
+
         self.name = self.name or self.__class__.__name__
         self.description = self.__doc__ or "No description provided."
         signals.post_init.send(self.__class__, instance=self)
@@ -258,6 +263,53 @@ class Suite(Mapping, metaclass=SuiteMetaclass):
 
         self.applications[app.slug] = app
         self.log.info('Registered application {0} to {1}'.format(app.__class__.__name__, app.url))
+
+    def set_language_for_schema(self, app, collection, schema, definitions):
+        """Takes translations and applies them to the schema, overriding enumNames, title, and description where appropriate."""
+        self.log.info('Applying localization "{0}" for {1}/{2}'.format(self.language, app, collection))
+
+        # update schema
+        if (
+           self.language and
+           self.translations and
+           self.language in self.translations and
+           app in self.translations[self.language] and
+           collection in self.translations[self.language][app]
+        ):
+            translated_schema = self.translations[self.language][app][collection]
+            for key in translated_schema:
+                schema_to_update = schema
+                full_key = key.split('.')
+                while full_key:
+                    schema_to_update = schema_to_update['properties'][full_key.pop(0)]
+                schema_to_update.update(translated_schema[key])
+
+        # update definitions
+        if (
+            self.language and
+            self.translations and
+            self.language in self.translations and
+            'definitions' in self.translations[self.language]
+        ):
+            translated_definitions = self.translations[self.language]['definitions']
+            for key in translated_definitions:
+                entry, *full_key = key.split('.')
+                if entry in definitions:
+                    schema_to_update = definitions[entry]
+                    while full_key:
+                        schema_to_update = schema_to_update['properties'][full_key.pop(0)]
+                    schema_to_update.update(translated_definitions[key])
+
+                if entry in schema.get('definitions', {}):
+                    schema_to_update = schema['definitions'][entry]
+                    while full_key:
+                        schema_to_update = schema_to_update['properties'][full_key.pop(0)]
+                    schema_to_update.update(translated_definitions[key])
+
+    def set_language(self):
+        for app_key, collections in self.items():
+            for coll_key, coll in collections.items():
+                self.set_language_for_schema(app_key, coll_key, coll.schema, coll.definitions)
 
     def drop_database_objects(self):
         for app in self.values():

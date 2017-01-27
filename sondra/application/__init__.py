@@ -99,6 +99,10 @@ class Application(Mapping, metaclass=ApplicationMetaclass):
     connection_name = 'default'
 
     @property
+    def language(self):
+        return self.suite.language
+
+    @property
     def connection(self):
         return self.suite.connections[self.connection_name]
 
