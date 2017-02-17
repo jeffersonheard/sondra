@@ -47,8 +47,9 @@ try:
 
     DOCSTRING_PROCESSORS['google'] = google_processor
     DOCSTRING_PROCESSORS['numpy'] = numpy_processor
-except ImportError:
-    pass
+except:
+    DOCSTRING_PROCESSORS['google'] = lambda x: x
+    DOCSTRING_PROCESSORS['numpy'] = lambda x: x 
 
 try:
     from docutils.core import publish_string

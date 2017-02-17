@@ -7,14 +7,6 @@
 Sondra
 ######
 
-=============
-Announcements
-=============
-
-11.25.2016 - I have written a bunch of tutorial material and topical guides for Sondra.  It's here: https://jeffersonheard.github.io/sondra. I'm continuing to flesh out the documentation. I'd love to hear from anyone using this. If you find the tutorials helpful, or the topical guides full of gaps, let me know and I'll fill in the holes with new material.
-
-10.8.2016 - I have just gotten the news that the company behind RethinkDB is shutting down. They are committed and I am committed to RethinkDB continuing as a robust Open Source project. In the next week, there will be a general polishing of the Sondra documentation and a pruning / cleanup of Sondra. This will precede a 1.0.0 release of Sondra. In the future, we will concentrate on supporting multiple databases, asynchronous communication (websockets!) and OAuth-based API authentication.  I wish the RethinkDB folks the best of luck, and want to reiterate my continued commitment to what I think is the best NoSQL database out there.
-
 Author
   `Jefferson Heard`_
 
