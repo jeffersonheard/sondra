@@ -22,7 +22,7 @@ class ConcreteSuite(suite.Suite):
         FileUploadProcessor()
     )
 
-    file_storage = LocalFileStorage('/Users/pronto365/Source/foss/sondra/_media', 'http://localhost:5000/uploads')
+    file_storage = LocalFileStorage('/Users/jeff/Source/foss/sondra/_media', 'http://localhost:5000/uploads')
 
     @authenticated_method
     @expose_method
